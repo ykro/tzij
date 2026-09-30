@@ -158,7 +158,7 @@ input {
   height: 100vh;
   overflow: hidden;
   display: grid;
-  grid-template-rows: calc(var(--u) * 132) calc(var(--u) * 316) 1fr calc(var(--u) * 132);
+  grid-template-rows: calc(var(--u) * 132) auto minmax(0, 1fr) calc(var(--u) * 140);
   font-size: calc(var(--u) * 32);
 }
 
@@ -228,8 +228,8 @@ input {
 }
 
 .stage__qr .qr {
-  width: calc(var(--u) * 104);
-  height: calc(var(--u) * 104);
+  width: calc(var(--u) * 92);
+  height: calc(var(--u) * 92);
   box-sizing: content-box;
   padding: calc(var(--u) * 8);
   border-radius: var(--radius-sm);
@@ -261,15 +261,13 @@ input {
 /* phrase */
 
 .phrase {
-  padding: calc(var(--u) * 44) calc(var(--u) * 72) calc(var(--u) * 28);
+  padding: calc(var(--u) * 40) calc(var(--u) * 72) calc(var(--u) * 40);
   border-bottom: 1px solid var(--hairline);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
   min-width: 0;
 }
 
 .eyebrow {
+  margin: 0;
   font-size: calc(var(--u) * 26);
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -304,7 +302,7 @@ input {
 }
 
 .phrase__reference {
-  margin-top: calc(var(--u) * 12);
+  margin: calc(var(--u) * 14) 0 0;
   font-size: calc(var(--u) * 26);
   color: var(--muted);
   white-space: nowrap;
@@ -327,7 +325,7 @@ input {
 }
 
 .phrase__hint {
-  margin-top: calc(var(--u) * 18);
+  margin: calc(var(--u) * 20) 0 0;
   font-size: calc(var(--u) * 28);
   color: var(--muted);
 }
@@ -352,6 +350,7 @@ input {
 
 .side {
   position: relative;
+  overflow: hidden;
   padding: calc(var(--u) * 40) calc(var(--u) * 72) calc(var(--u) * 32);
   display: flex;
   flex-direction: column;
@@ -390,6 +389,7 @@ input {
 }
 
 .side__text {
+  flex: none;
   margin: calc(var(--u) * 22) 0 0;
   font-family: var(--font-display), Georgia, serif;
   font-weight: 500;
@@ -587,18 +587,16 @@ input {
 .scoreboard {
   display: grid;
   grid-template-columns: auto auto auto auto;
-  column-gap: calc(var(--u) * 28);
-  row-gap: calc(var(--u) * 4);
+  column-gap: calc(var(--u) * 36);
+  row-gap: calc(var(--u) * 6);
   align-items: baseline;
-  font-size: calc(var(--u) * 26);
+  font-size: calc(var(--u) * 28);
 }
 
-.scoreboard__head {
+.scoreboard__label {
   color: var(--muted);
-  font-size: calc(var(--u) * 20);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: calc(var(--u) * 22);
+  margin-right: calc(var(--u) * 10);
 }
 
 .scoreboard__name {
@@ -615,6 +613,7 @@ input {
 
 .scoreboard__chrf {
   font-size: calc(var(--u) * 34);
+  white-space: nowrap;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: right;
@@ -660,8 +659,10 @@ input {
 .model-card {
   position: absolute;
   left: calc(var(--u) * 72);
-  bottom: calc(var(--u) * 148);
-  width: calc(var(--u) * 980);
+  bottom: calc(var(--u) * 156);
+  width: calc(var(--u) * 1360);
+  max-height: calc(100% - var(--u) * 190);
+  overflow: auto;
   background: var(--surface);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-md);
@@ -696,6 +697,11 @@ input {
 .model-card ul {
   margin: 0;
   padding-left: 1.1em;
+}
+
+.model-card__sources {
+  columns: 2;
+  column-gap: calc(var(--u) * 40);
 }
 
 .model-card__note {
@@ -938,6 +944,7 @@ input {
 }
 
 .tcard__label {
+  margin: 0;
   font-size: 15px;
   color: var(--muted);
   font-weight: 600;

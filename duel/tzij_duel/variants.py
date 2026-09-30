@@ -116,8 +116,8 @@ def gemini_price(s: Settings) -> Price:
 def stage_variants(s: Settings) -> tuple[Variant, Variant]:
     """David and Goliath as the audience sees them."""
     if s.mock_ai:
-        david_client: ModelClient = MockClient(_mock_david, latency_ms=420)
-        goliath_client: ModelClient = MockClient(_mock_goliath, latency_ms=1500, offline=s.force_offline)
+        david_client: ModelClient = MockClient(_mock_david, latency_ms=420, sleep=True)
+        goliath_client: ModelClient = MockClient(_mock_goliath, latency_ms=1500, offline=s.force_offline, sleep=True)
     else:
         david_client = ollama_client(s)
         goliath_client = GeminiClient(s.project, s.location, thinking_level=s.gemini_thinking_level or None)

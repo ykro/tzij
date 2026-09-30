@@ -38,7 +38,7 @@ def dataset(tmp_path) -> Path:
                                      "license": "CC0", "ref": ""}, ensure_ascii=False))
     (version / "test.jsonl").write_text("\n".join(lines) + "\n")
     manifest = {"version": "v1", "created_at": "2026-09-30T20:58:55+00:00",
-                "sources": [{"name": "fixture", "title": "Fixture"}], "pairs_by_source": {"fixture": {"test": 2}},
+                "sources": [{"name": "fixture", "title": "Fixture", "role": "test"}], "pairs_by_source": {"fixture": {"test": 2}},
                 "pairs_by_split": {"train": 5, "dev": 0, "test": 2}, "finetune": {"threshold_met": False}}
     (version / "manifest.json").write_text(json.dumps(manifest))
     (processed / "LATEST").write_text("v1\n")

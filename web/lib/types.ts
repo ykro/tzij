@@ -45,6 +45,8 @@ export interface ModelCard {
   goliath_model: string | null;
   sources: number | null;
   source_names?: string[];
+  train_sources?: string[];
+  test_sources?: string[];
   pairs: number | null;
   test_pairs: number | null;
   data_date: string | null;

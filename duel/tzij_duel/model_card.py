@@ -10,6 +10,20 @@ from pathlib import Path
 from .deck import latest_dataset
 from .settings import Settings
 
+# Short Spanish names for the panel on stage (full titles live in data/SOURCES.md).
+SOURCE_LABELS = {
+    "bloom_kiche": "Libros infantiles de Bloom Library (MINEDUC)",
+    "bouquet": "BOUQuET (Meta), solo evaluación",
+    "ud_kiche_iu": "Ejemplos del vocabulario ALMG (UD Kʼicheʼ-IU)",
+    "coerll_kiche": "Curso Chqetaʼmaj le qachʼabʼal Kʼicheʼ (UT Austin)",
+    "udhr_ohchr": "Declaración Universal de Derechos Humanos",
+    "pontoon_mozilla": "Firefox en Kʼicheʼ (Mozilla Pontoon)",
+    "ebible_quctt": "Nuevo Testamento de Totonicapán (máx. 30 %)",
+    "gatitos": "Léxico GATITOS (Google)",
+    "panlex": "PanLex",
+    "wiktionary_es": "Wikcionario",
+}
+
 MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
           "septiembre", "octubre", "noviembre", "diciembre"]
 
@@ -39,7 +53,9 @@ def model_card(s: Settings) -> dict:
         used = [src for src in m["sources"] if src["name"] in m["pairs_by_source"]]
         card |= {
             "sources": len(used),
-            "source_names": [src["title"] for src in used],
+            "source_names": [SOURCE_LABELS.get(src["name"], src["title"]) for src in used],
+            "train_sources": [SOURCE_LABELS.get(src["name"], src["title"]) for src in used if src["role"] == "train"],
+            "test_sources": [SOURCE_LABELS.get(src["name"], src["title"]) for src in used if src["role"] == "test"],
             "pairs": sum(m["pairs_by_split"].values()),
             "test_pairs": m["pairs_by_split"].get("test"),
             "data_date": f"{MONTHS[created.month - 1]} {created.year}",

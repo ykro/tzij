@@ -52,6 +52,8 @@ class Deck:
                 r = json.loads(line)
                 if r["kind"] != "sentence" or not (MIN_WORDS <= len(r["source_text"].split()) <= MAX_WORDS):
                     continue
+                if r["source_text"].isupper() or r["target_text"].isupper():
+                    continue  # book headings ("CHAB'ANA K'OB'AL CHI'J") read poorly on stage
                 if r["source_name"] in exclude_sources:
                     continue
                 if require_validated and r["status"] != "validated":

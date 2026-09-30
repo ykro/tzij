@@ -145,7 +145,7 @@ class RoundStore:
             cost = sum(r.results.get(name, {}).get("cost_usd") or 0.0 for r in self.rounds)
             board[name] = {
                 "cost_usd": round(cost, 6),
-                "chrf_mean": round(sum(chrfs) / len(chrfs), 1) if chrfs else None,
+                "chrf_mean": round(sum(chrfs) / len(chrfs), 2) if chrfs else None,
                 "evaluation_rounds": len(chrfs),
                 "verdicts": counts,
             }

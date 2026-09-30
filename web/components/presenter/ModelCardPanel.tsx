@@ -26,12 +26,14 @@ export function ModelCardPanel({ card }: { card: ModelCard }) {
         <dd>
           {formatCount(card.pairs)} pares español–Kʼicheʼ de la web con licencia · versión {card.dataset_version ?? "—"}
         </dd>
-        <dt>Fuentes</dt>
+        <dt>Fuentes de David</dt>
         <dd>
-          <ul>{(card.source_names ?? []).map((s) => <li key={s}>{s.replace(/'/g, "ʼ")}</li>)}</ul>
+          <ul className="model-card__sources">{(card.train_sources ?? []).map((s) => <li key={s}>{s}</li>)}</ul>
         </dd>
         <dt>Prueba</dt>
-        <dd>{formatCount(card.test_pairs)} pares de fuentes que David nunca vio</dd>
+        <dd>
+          {formatCount(card.test_pairs)} pares de fuentes que David nunca vio: {(card.test_sources ?? []).join(" y ")}
+        </dd>
         <dt>Goliath</dt>
         <dd>{modelName(card.goliath_model)}, en la nube, sin datos extra</dd>
       </dl>
