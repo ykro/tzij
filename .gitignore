@@ -1,0 +1,25 @@
+.env
+.env.local
+node_modules/
+.next/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.gguf
+*.safetensors
+infra/.generated/
+.DS_Store
+build/
+.gradle/
+local.properties
+*.db-journal
+
+# Tzij data: raw downloads and generated datasets live in GCS (see data/SOURCES.md);
+# some licenses allow use but not redistribution, so nothing raw is committed.
+data/raw/
+data/processed/
+data/review/
+rag/index/
+rag/.cache/
+evals/.cache/
