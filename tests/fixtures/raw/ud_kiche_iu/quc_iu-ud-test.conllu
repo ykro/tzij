@@ -1,0 +1,15 @@
+# sent_id = almg-examples:3
+# text = Kʼakʼ ri abʼ.
+# text[orig] = Kʼakʼ ri abʼ.
+# text[spa] = La hamaca es nueva.
+1	Kʼakʼ	kʼakʼ	ADJ	_	_	0	root	_	_
+
+# sent_id = canpixabaj2015:1
+# text = Xinwar iwir.
+1	Xinwar	war	VERB	_	_	0	root	_	_
+
+# sent_id = biblia:7
+# text[orig] = Ri Dios xubʼan ri kaj.
+# text[spa] = Dios hizo el cielo.
+1	Ri	ri	DET	_	_	2	det	_	_
+
