@@ -17,8 +17,9 @@ from pipeline.record import Pair
 from pipeline.sources.base import TRAIN, Source, download
 
 BASE = "https://raw.githubusercontent.com/eric-muller/udhr/main/data/udhr/"
-HOME = "https://www.ohchr.org/en/human-rights/universal-declaration/translations/kiche-central"
-LICENSE = "OHCHR UDHR translation, reproduction with attribution (UDHR in Unicode XML)"
+HOME = "https://github.com/eric-muller/udhr/blob/main/data/udhr/udhr_quc.xml"
+OHCHR = "https://www.ohchr.org/en/human-rights/universal-declaration/universal-declaration-human-rights/about-universal-declaration-human-rights-translation-project"
+LICENSE = "OHCHR UDHR translation: free reproduction citing OHCHR as source (UDHR in Unicode XML)"
 NS = {"u": "http://efele.net/udhr"}
 
 

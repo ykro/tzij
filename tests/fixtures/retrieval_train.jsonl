@@ -1,0 +1,10 @@
+{"id": "a-es-quc", "direction": "es-quc", "source_text": "El perro duerme en la casa.", "target_text": "Le tz'i' kawar pa le ja.", "kind": "sentence", "split": "train", "source_name": "fx", "domain": "everyday", "license": "CC0", "url": "u"}
+{"id": "a-quc-es", "direction": "quc-es", "source_text": "Le tz'i' kawar pa le ja.", "target_text": "El perro duerme en la casa.", "kind": "sentence", "split": "train", "source_name": "fx", "domain": "everyday", "license": "CC0", "url": "u"}
+{"id": "b-es-quc", "direction": "es-quc", "source_text": "¿Cómo estás?", "target_text": "La utz awach?", "kind": "sentence", "split": "train", "source_name": "fx", "domain": "everyday", "license": "CC0", "url": "u"}
+{"id": "b-quc-es", "direction": "quc-es", "source_text": "La utz awach?", "target_text": "¿Cómo estás?", "kind": "sentence", "split": "train", "source_name": "fx", "domain": "everyday", "license": "CC0", "url": "u"}
+{"id": "c-es-quc", "direction": "es-quc", "source_text": "perro", "target_text": "tz'i'", "kind": "lexicon", "split": "train", "source_name": "fx", "domain": "dictionary", "license": "CC0", "url": "u"}
+{"id": "c-quc-es", "direction": "quc-es", "source_text": "tz'i'", "target_text": "perro", "kind": "lexicon", "split": "train", "source_name": "fx", "domain": "dictionary", "license": "CC0", "url": "u"}
+{"id": "d-es-quc", "direction": "es-quc", "source_text": "casa", "target_text": "ja", "kind": "lexicon", "split": "train", "source_name": "fx", "domain": "dictionary", "license": "CC0", "url": "u"}
+{"id": "d-quc-es", "direction": "quc-es", "source_text": "ja", "target_text": "casa", "kind": "lexicon", "split": "train", "source_name": "fx", "domain": "dictionary", "license": "CC0", "url": "u"}
+{"id": "e-es-quc", "direction": "es-quc", "source_text": "nuevo", "target_text": "k'ak'", "kind": "lexicon", "split": "train", "source_name": "fx", "domain": "dictionary", "license": "CC0", "url": "u"}
+{"id": "e-quc-es", "direction": "quc-es", "source_text": "k'ak'", "target_text": "nuevo", "kind": "lexicon", "split": "train", "source_name": "fx", "domain": "dictionary", "license": "CC0", "url": "u"}
