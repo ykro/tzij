@@ -6,7 +6,7 @@ export
 UV ?= uv
 REVIEW_CSV ?=
 
-.PHONY: help data data-cloud data-pull index review-test apply-review fertility datasheet test up reset
+.PHONY: help data data-cloud data-seed data-pull index review-test apply-review fertility datasheet test up reset
 
 help: ## Show targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -16,6 +16,9 @@ data: ## Run the data pipeline locally -> data/processed/<version>/ + data/DATAS
 
 data-cloud: ## Run the pipeline as a Cloud Run Job, writing a versioned dataset to the tzij-data bucket
 	bash infra/10-data-job.sh
+
+data-seed: ## Upload the local raw cache to the bucket (Hugging Face rate-limits Cloud Run downloads)
+	$(UV) run python -c "from pipeline import storage; print(storage.push_tree(__import__('pathlib').Path('data/raw'), '$(DATA_BUCKET_URI)/raw'), 'files uploaded')"
 
 data-pull: ## Download the latest dataset produced by the Cloud Run Job
 	$(UV) run python -m pipeline.pull

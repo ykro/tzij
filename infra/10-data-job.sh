@@ -5,6 +5,9 @@
 # filtered), must be reproducible, and shouldn't depend on the presenter's laptop.
 # It writes versioned datasets to gs://$DATA_BUCKET/datasets/<version>/ and keeps
 # the raw download cache in gs://$DATA_BUCKET/raw/ (never in git).
+#
+# Hugging Face rate-limits anonymous downloads from Cloud Run IPs (429). The job
+# reads the raw cache first, so seed it once from the laptop with `make data-seed`.
 source "$(dirname "$0")/env.sh"
 
 JOB="${APP}-data"

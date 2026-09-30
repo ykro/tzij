@@ -119,7 +119,7 @@ def main() -> None:
                         help="gs://bucket to sync the raw cache and upload outputs")
     parser.add_argument("--sources", default="", help="comma-separated subset of source names")
     parser.add_argument("--skip-fetch", action="store_true", help="parse only what is already in the raw cache")
-    parser.add_argument("--datasheet", type=Path, default=REPO / "data" / "DATASHEET.md",
+    parser.add_argument("--datasheet", default=str(REPO / "data" / "DATASHEET.md"),
                         help="where to write the datasheet ('' to skip)")
     args = parser.parse_args()
     run(
@@ -129,7 +129,7 @@ def main() -> None:
         gcs_uri=args.gcs_uri.rstrip("/") if args.gcs_uri else None,
         only={s for s in args.sources.split(",") if s} or None,
         skip_fetch=args.skip_fetch,
-        datasheet_path=args.datasheet if str(args.datasheet) else None,
+        datasheet_path=Path(args.datasheet) if args.datasheet else None,
     )
 
 

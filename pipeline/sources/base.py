@@ -8,6 +8,7 @@ out entirely so no sentence, book or lesson leaks into training or retrieval.
 
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -46,13 +47,18 @@ def download(url: str, dest: Path, *, headers: dict | None = None, retries: int 
         return dest
     dest.parent.mkdir(parents=True, exist_ok=True)
     tmp = dest.with_suffix(dest.suffix + ".part")
+    headers = dict(headers or {})
+    # Hugging Face throttles anonymous downloads from shared cloud IPs (Cloud Run
+    # egress gets 429). A read-only HF_TOKEN lifts that; locally it's optional.
+    if "huggingface.co" in url and os.environ.get("HF_TOKEN"):
+        headers.setdefault("Authorization", f"Bearer {os.environ['HF_TOKEN']}")
     last_error: Exception | None = None
     for attempt in range(retries):
         try:
             with httpx.stream(
                 "GET",
                 url,
-                headers={"User-Agent": USER_AGENT, **(headers or {})},
+                headers={"User-Agent": USER_AGENT, **headers},
                 follow_redirects=True,
                 timeout=120,
             ) as response:
