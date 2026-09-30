@@ -43,6 +43,9 @@ class Settings:
     base_model_tags: list[str] = field(default_factory=lambda: _list("BASE_MODEL_TAGS"))
     finetuned_model_tags: list[str] = field(default_factory=lambda: _list("FINETUNED_MODEL_TAGS"))
     ollama_url: str = field(default_factory=lambda: _env("OLLAMA_URL") or _env("OLLAMA_HOST", "http://127.0.0.1:11434"))
+    # A 128k default context makes Ollama reserve a huge KV cache: slower, and it evicts the
+    # embedding model on every request. Translations need a few hundred tokens.
+    ollama_num_ctx: int = field(default_factory=lambda: int(_env("OLLAMA_NUM_CTX", "4096")))
     rag_index: Path = field(default_factory=lambda: REPO_ROOT / _env("RAG_INDEX", "rag/index/tzij.sqlite"))
     rag_k: int = field(default_factory=lambda: int(_env("RAG_K", "6")))
     mock_ai: bool = field(default_factory=lambda: _flag("MOCK_AI"))

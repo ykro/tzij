@@ -1,0 +1,245 @@
+"""make eval: every available variant on the test set -> evals/report.md.
+
+Variants (see duel/tzij_duel/variants.py): each Gemma in BASE_MODEL_TAGS (and
+FINETUNED_MODEL_TAGS once they exist) with and without retrieval, Gemini alone
+and Gemini with the same retrieval. The best David variant goes on stage; the
+report shows all of them, including the ones that lose.
+
+Honest-eval rules this script follows:
+  * test pairs come only from test sources (never in the retrieval index);
+  * chrF++ is corpus-level, on normalized text (same apostrophe for everyone);
+  * local models run one request at a time, like on stage, so latency is real;
+  * predictions are cached per run so an interrupted eval resumes.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import hashlib
+import os
+import json
+import sys
+import time
+from collections import defaultdict
+from datetime import datetime, timezone
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path[:0] = [str(REPO), str(REPO / "duel")]
+
+from duel_core import Connectivity, corpus_chrf_pp, summarize  # noqa: E402
+from rag.retrieve import Retriever  # noqa: E402
+from tzij_duel.deck import latest_dataset  # noqa: E402
+from tzij_duel.settings import Settings, get_settings  # noqa: E402
+from tzij_duel.variants import Variant, eval_variants, translate  # noqa: E402
+
+RUNS = REPO / "evals" / "runs"
+REPORT = REPO / "evals" / "report.md"
+DIRECTION_LABEL = {"es-quc": "español → K'iche'", "quc-es": "K'iche' → español"}
+
+
+def load_test(dataset: Path, limit: int | None, per_source: int | None = None) -> list[dict]:
+    """Test sentences; optionally a stable sample of `per_source` pairs per source and direction.
+
+    Sampling by a hash of the pair id keeps the same pairs in every run, so reports
+    from different days compare the same sentences.
+    """
+    records = [json.loads(line) for line in (dataset / "test.jsonl").read_text(encoding="utf-8").splitlines()]
+    records = [r for r in records if r["kind"] == "sentence" and r["status"] != "rejected"]
+    if per_source:
+        groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
+        for r in records:
+            groups[(r["source_name"], r["direction"])].append(r)
+        records = [r for group in groups.values()
+                   for r in sorted(group, key=lambda r: hashlib.sha1(r["pair_id"].encode()).hexdigest())[:per_source]]
+    if limit:
+        by_direction: dict[str, list[dict]] = defaultdict(list)
+        for r in records:
+            if len(by_direction[r["direction"]]) < limit:
+                by_direction[r["direction"]].append(r)
+        records = [r for rs in by_direction.values() for r in rs]
+    return records
+
+
+async def run_variant(variant: Variant, records: list[dict], out: Path, *, retriever, online: bool,
+                      concurrency: int, k: int) -> list[dict]:
+    done = {}
+    if out.exists():
+        for line in out.read_text(encoding="utf-8").splitlines():
+            row = json.loads(line)
+            done[row["id"]] = row
+    todo = [r for r in records if r["id"] not in done]
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def one(record: dict) -> dict:
+        async with semaphore:
+            result = await translate(variant, record["source_text"], record["direction"], retriever=retriever,
+                                     online=online, reference=record["target_text"], k=k)
+        row = {"id": record["id"], "direction": record["direction"], "source_name": record["source_name"],
+               "reference": record["target_text"], **result.to_dict()}
+        with out.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+        return row
+
+    started = time.perf_counter()
+    for i in range(0, len(todo), 50):
+        rows = await asyncio.gather(*(one(r) for r in todo[i:i + 50]))
+        for row in rows:
+            done[row["id"]] = row
+        print(f"  {variant.name}: {min(i + 50, len(todo))}/{len(todo)} ({time.perf_counter() - started:.0f}s)", flush=True)
+    return [done[r["id"]] for r in records if r["id"] in done]
+
+
+def score(rows: list[dict]) -> dict:
+    ok = [r for r in rows if r["status"] == "ok"]
+    # Failed or offline answers count as empty translations: a model that can't answer scores 0.
+    chrf = corpus_chrf_pp([r["text"] if r["status"] == "ok" else "" for r in rows], [r["reference"] for r in rows])
+    latency = summarize([r["latency_ms"] for r in ok])
+    return {
+        "n": len(rows), "ok": len(ok), "chrf": round(chrf, 1),
+        "p50_ms": latency["p50"], "p95_ms": latency["p95"],
+        "cost_usd": sum(r.get("cost_usd") or 0 for r in rows),
+        "statuses": {s: sum(1 for r in rows if r["status"] == s) for s in ("ok", "offline", "error")},
+    }
+
+
+def _fmt_ms(ms: float | None) -> str:
+    return "—" if ms is None else f"{ms / 1000:.2f} s"
+
+
+def _fmt_cost_per_1k(cost: float, n: int) -> str:
+    return "$0 (local)" if cost == 0 else f"${cost / max(n, 1) * 1000:.3f}"
+
+
+def render(results: dict[str, dict], variants: list[Variant], records: list[dict], s: Settings,
+           dataset_version: str, run_id: str, notes: list[str]) -> str:
+    directions = ("es-quc", "quc-es")
+    sources = sorted({r["source_name"] for r in records})
+    lines = [
+        "# Evaluation report — Tzij",
+        "",
+        f"Generated by `evals/run_eval.py` (run `{run_id}`) on dataset `{dataset_version}`.",
+        f"Test set: {len(records)} sentence records ({', '.join(f'{sum(r['direction'] == d for r in records)} {DIRECTION_LABEL[d]}' for d in directions)}) "
+        f"from held-out sources ({', '.join(f'`{x}`' for x in sources)}), never in the retrieval index.",
+        f"Status of references: {', '.join(sorted({r['status'] for r in records}))}"
+        + (" — **not yet validated by a native speaker**; treat scores as provisional." if any(r["status"] == "pending_native_review" for r in records) else "."),
+        "",
+    ]
+    if s.mock_ai:
+        lines += ["> **MOCK_AI=1**: mock models, numbers are not meaningful.", ""]
+    for note in notes:
+        lines += [f"> {note}", ""]
+
+    lines += ["## chrF++ (corpus, higher is better)", "",
+              "| variant | where it runs | retrieval | " + " | ".join(DIRECTION_LABEL[d] for d in directions) + " | both | p50 latency | p95 latency | cost per 1,000 translations |",
+              "| --- | --- | --- | " + " | ".join("---:" for _ in directions) + " | ---: | ---: | ---: | ---: |"]
+    ranking = []
+    for v in variants:
+        rows = results.get(v.name)
+        if not rows:
+            continue
+        overall = score(rows)
+        per_dir = {d: score([r for r in rows if r["direction"] == d]) for d in directions}
+        ranking.append((v, overall))
+        lines.append(
+            f"| `{v.name}` | {'cloud' if v.requires_network else 'laptop'} | {'yes' if v.uses_rag else 'no'} | "
+            + " | ".join(f"{per_dir[d]['chrf']:.1f}" for d in directions)
+            + f" | **{overall['chrf']:.1f}** | {_fmt_ms(overall['p50_ms'])} | {_fmt_ms(overall['p95_ms'])} | "
+            f"{_fmt_cost_per_1k(overall['cost_usd'], overall['n'])} |"
+        )
+    lines.append("")
+
+    local = [(v, sc) for v, sc in ranking if not v.requires_network]
+    cloud = [(v, sc) for v, sc in ranking if v.requires_network]
+    if local:
+        best_v, best = max(local, key=lambda x: x[1]["chrf"])
+        lines += ["## Which David goes on stage", "",
+                  f"Best local variant: **`{best_v.name}`** (chrF++ {best['chrf']:.1f}). "
+                  f"Set `LOCAL_MODEL_TAG={best_v.model}` — the duel always adds retrieval to David, so pick a "
+                  "`+rag` variant unless the table shows retrieval hurting."]
+        if cloud:
+            goliath = next(((v, sc) for v, sc in cloud if not v.uses_rag), cloud[0])
+            delta = best["chrf"] - goliath[1]["chrf"]
+            lines.append(f"Against Goliath (`{goliath[0].name}`, {goliath[1]['chrf']:.1f}): "
+                         f"**{'+' if delta >= 0 else ''}{delta:.1f} chrF++** for David.")
+        lines.append("")
+
+    lines += ["## By test source (chrF++, both directions)", "",
+              "| variant | " + " | ".join(f"`{x}`" for x in sources) + " |",
+              "| --- | " + " | ".join("---:" for _ in sources) + " |"]
+    for v, _ in ranking:
+        rows = results[v.name]
+        lines.append(f"| `{v.name}` | " + " | ".join(
+            f"{score([r for r in rows if r['source_name'] == x])['chrf']:.1f}" for x in sources) + " |")
+    lines.append("")
+
+    lines += ["## Failures", "", "| variant | ok | offline | error |", "| --- | ---: | ---: | ---: |"]
+    for v, sc in ranking:
+        st = sc["statuses"]
+        lines.append(f"| `{v.name}` | {st['ok']} | {st['offline']} | {st['error']} |")
+    lines += ["", "Failed or offline answers count as empty translations in chrF++.", ""]
+
+    lines += ["## Method", "",
+              "- chrF++ = sacrebleu CHRF with word_order=2, corpus level, on text normalized by `data/normalize.py` "
+              "(hypotheses and references alike).",
+              "- Same instructions for every model (`duel/tzij_duel/prompts.py`, version `tzij-translate-v1`); "
+              f"`+rag` variants also get the top {s.rag_k} examples and glossary entries from the retrieval index "
+              "(train split only).",
+              "- Latency: wall clock per translation, retrieval included; local models one request at a time.",
+              f"- Cost: Gemini tokens × list price (input ${s.gemini_input_usd_per_m}/M, output ${s.gemini_output_usd_per_m}/M, "
+              "thinking billed as output). Local inference counted as $0.",
+              "- Fine-tuned variants appear here automatically when `FINETUNED_MODEL_TAGS` lists them.",
+              ""]
+
+    fertility = REPO / "evals" / "fertility.md"
+    if fertility.exists():
+        body = fertility.read_text(encoding="utf-8").split("\n", 1)[1]
+        lines += ["## Token fertility", "", body.replace("\n## ", "\n### ")]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+async def main_async(args) -> None:
+    s = get_settings()
+    dataset = latest_dataset(s.processed_dir)
+    if dataset is None:
+        raise SystemExit("No dataset: run `make data` (or `make data-pull`).")
+    records = load_test(dataset, args.limit, args.per_source or None)
+    variants = [v for v in eval_variants(s) if not args.only or v.name in args.only.split(",")]
+    retriever = None
+    if any(v.uses_rag for v in variants):
+        retriever = Retriever(s.rag_index) if s.rag_index.exists() else None
+        if retriever is None:
+            raise SystemExit("No retrieval index: run `make index`.")
+    online = s.mock_ai or await Connectivity(force_offline=s.force_offline).is_online()
+    notes = [] if online else ["No internet during this run: Gemini variants are reported as offline."]
+    run_id = args.run or datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    run_dir = RUNS / run_id
+    run_dir.mkdir(parents=True, exist_ok=True)
+    results = {}
+    for v in variants:
+        print(f"variant {v.name}")
+        concurrency = args.cloud_concurrency if v.requires_network else 1
+        out = run_dir / f"{v.name.replace('/', '_').replace(':', '_')}.jsonl"
+        results[v.name] = await run_variant(v, records, out, retriever=retriever, online=online,
+                                            concurrency=concurrency, k=s.rag_k)
+    report = render(results, variants, records, s, dataset.name, run_id, notes)
+    out_path = Path(args.out) if args.out else REPORT
+    out_path.write_text(report, encoding="utf-8")
+    print(f"-> {out_path.relative_to(REPO) if out_path.is_relative_to(REPO) else out_path}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--limit", type=int, default=None, help="max records per direction (quick runs)")
+    parser.add_argument("--per-source", type=int, default=int(os.environ.get("EVAL_PER_SOURCE", "150")),
+                        help="stable sample of pairs per test source and direction (0 = all)")
+    parser.add_argument("--only", default="", help="comma-separated variant names")
+    parser.add_argument("--run", default="", help="resume an existing run id")
+    parser.add_argument("--cloud-concurrency", type=int, default=8)
+    parser.add_argument("--out", default="")
+    asyncio.run(main_async(parser.parse_args()))
+
+
+if __name__ == "__main__":
+    main()

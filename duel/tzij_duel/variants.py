@@ -103,6 +103,12 @@ def _mock_goliath(messages) -> str:
     return messages[-1]["content"].rsplit("\n", 1)[-1]
 
 
+def ollama_client(s: Settings) -> OllamaClient:
+    client = OllamaClient(s.ollama_url)
+    client.options["num_ctx"] = s.ollama_num_ctx
+    return client
+
+
 def gemini_price(s: Settings) -> Price:
     return Price(s.gemini_input_usd_per_m, s.gemini_output_usd_per_m)
 
@@ -113,7 +119,7 @@ def stage_variants(s: Settings) -> tuple[Variant, Variant]:
         david_client: ModelClient = MockClient(_mock_david, latency_ms=420)
         goliath_client: ModelClient = MockClient(_mock_goliath, latency_ms=1500, offline=s.force_offline)
     else:
-        david_client = OllamaClient(s.ollama_url)
+        david_client = ollama_client(s)
         goliath_client = GeminiClient(s.project, s.location, thinking_level=s.gemini_thinking_level or None)
     david = Variant("david", "David", david_client, s.david_model or "mock-gemma", Price.free(), True, False)
     goliath = Variant("goliath", "Goliath", goliath_client, s.gemini_model or "mock-gemini", gemini_price(s), False, True)
@@ -126,7 +132,7 @@ def eval_variants(s: Settings) -> list[Variant]:
         ollama: ModelClient = MockClient(_mock_david, latency_ms=400)
         gemini: ModelClient = MockClient(_mock_goliath, latency_ms=1500)
     else:
-        ollama = OllamaClient(s.ollama_url)
+        ollama = ollama_client(s)
         gemini = GeminiClient(s.project, s.location, thinking_level=s.gemini_thinking_level or None)
     variants: list[Variant] = []
     for tag in s.base_model_tags + s.finetuned_model_tags:
