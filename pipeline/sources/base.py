@@ -40,7 +40,7 @@ class Source:
         return path
 
 
-def download(url: str, dest: Path, *, headers: dict | None = None, retries: int = 3) -> Path:
+def download(url: str, dest: Path, *, headers: dict | None = None, retries: int = 6) -> Path:
     """Download once. Raw files are a cache: if it's there, we don't hit the site again."""
     if dest.exists() and dest.stat().st_size > 0:
         return dest
@@ -63,9 +63,14 @@ def download(url: str, dest: Path, *, headers: dict | None = None, retries: int 
             tmp.rename(dest)
             return dest
         except httpx.HTTPStatusError as error:
-            if error.response.status_code < 500:  # 4xx won't fix itself: fail now
-                raise RuntimeError(f"download failed: {url}: {error.response.status_code}") from error
+            status = error.response.status_code
+            if status < 500 and status != 429:  # 4xx won't fix itself: fail now
+                raise RuntimeError(f"download failed: {url}: {status}") from error
+            # 429: Hugging Face rate-limits anonymous downloads from shared cloud IPs.
             last_error = error
+            retry_after = error.response.headers.get("Retry-After", "")
+            time.sleep(min(int(retry_after), 120) if retry_after.isdigit() else 15 * (attempt + 1))
+            continue
         except (httpx.HTTPError, OSError) as error:  # network hiccups are common on big files
             last_error = error
             time.sleep(2 * (attempt + 1))

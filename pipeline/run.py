@@ -52,12 +52,15 @@ def run(*, raw_root: Path, out_root: Path, version: str, gcs_uri: str | None,
         print(f"raw cache: pulled {pulled} files from {gcs_uri}/raw")
 
     if not skip_fetch:
-        for source in sources:
-            print(f"fetch  {source.name}")
-            source.fetch(source.raw_dir(raw_root))
-        if gcs_uri:
-            pushed = storage.push_tree(raw_root, f"{gcs_uri}/raw")
-            print(f"raw cache: pushed {pushed} new files")
+        try:
+            for source in sources:
+                print(f"fetch  {source.name}", flush=True)
+                source.fetch(source.raw_dir(raw_root))
+        finally:
+            # Keep whatever was downloaded, even if a later source failed.
+            if gcs_uri:
+                pushed = storage.push_tree(raw_root, f"{gcs_uri}/raw")
+                print(f"raw cache: pushed {pushed} new files")
 
     pairs: list[Pair] = []
     parsed: dict[str, int] = {}
