@@ -5,20 +5,19 @@ export
 
 UV ?= uv
 REVIEW_CSV ?=
+DUEL_PORT ?= 8787
+OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help data data-cloud data-seed data-pull index review-test apply-review fertility datasheet test up reset
+.PHONY: help data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots
 
 help: ## Show targets
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
+	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
 
 data: ## Run the data pipeline locally -> data/processed/<version>/ + data/DATASHEET.md
 	$(UV) run python -m pipeline.run --gcs-uri ""
 
 data-cloud: ## Run the pipeline as a Cloud Run Job, writing a versioned dataset to the tzij-data bucket
 	bash infra/10-data-job.sh
-
-data-seed: ## Upload the local raw cache to the bucket (Hugging Face rate-limits Cloud Run downloads)
-	$(UV) run python -c "from pipeline import storage; print(storage.push_tree(__import__('pathlib').Path('data/raw'), '$(DATA_BUCKET_URI)/raw'), 'files uploaded')"
 
 data-pull: ## Download the latest dataset produced by the Cloud Run Job
 	$(UV) run python -m pipeline.pull
@@ -39,13 +38,39 @@ fertility: ## Token fertility of K'iche' vs Spanish in Gemma's tokenizer -> eval
 datasheet: ## Re-render data/DATASHEET.md from the latest manifest
 	$(UV) run python -m pipeline.datasheet data/processed/$$(cat data/processed/LATEST)/manifest.json
 
-test: ## Run the test suite (offline; Ollama-only tests skip when it isn't running)
+eval: ## Compare every available variant on the test set -> evals/report.md
+	$(UV) run python -m evals.run_eval $(EVAL_ARGS)
+
+human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run (see evals/human_eval.md)
+	$(UV) run python -m evals.human_eval_sheet
+
+web: ## Build the presenter and validator views (static export; needs internet once for fonts)
+	cd web && npm ci --silent && npm run build
+
+duel: ## Run only the duel service (API + built views) on the LAN
+	$(UV) run uvicorn tzij_duel.main:create_app --factory --app-dir duel --host 0.0.0.0 --port $(DUEL_PORT)
+
+test: ## Python + web tests (offline; Ollama-only tests skip when it isn't running)
 	MOCK_AI=1 $(UV) run pytest -q
+	@if [ -d web/node_modules ]; then cd web && npx vitest run; else echo "(web: npm ci in web/ to run its tests)"; fi
 
-up: ## (Phase 2) start Ollama, the duel service and both views. For now: checks Ollama.
-	@curl -sf $${OLLAMA_HOST:-http://localhost:11434}/api/tags >/dev/null \
-	  && echo "Ollama is up. The duel service and views arrive in Phase 2." \
-	  || (echo "Ollama is not running: start it with 'ollama serve'." && exit 1)
+up: ## Start Ollama, warm David, build the views if needed and serve everything on the LAN
+	@curl -sf $(OLLAMA)/api/version >/dev/null || (ollama serve >/tmp/tzij-ollama.log 2>&1 &) ; \
+	  for i in $$(seq 1 40); do curl -sf $(OLLAMA)/api/version >/dev/null && break; sleep 0.25; done
+	@if [ "$(MOCK_AI)" != 1 ]; then \
+	  curl -sf $(OLLAMA)/api/chat -d '{"model":"$(LOCAL_MODEL_TAG)","messages":[],"keep_alive":"30m","options":{"num_ctx":$(or $(OLLAMA_NUM_CTX),4096)}}' >/dev/null \
+	    || echo "!! David ($(LOCAL_MODEL_TAG)) no está en Ollama: ollama pull $(LOCAL_MODEL_TAG)"; \
+	  curl -sf $(OLLAMA)/api/embed -d '{"model":"$(EMBEDDING_MODEL)","input":["hola"],"keep_alive":"30m"}' >/dev/null \
+	    || echo "!! $(EMBEDDING_MODEL) no está en Ollama: ollama pull $(EMBEDDING_MODEL)"; \
+	  test -f $(RAG_INDEX) || echo "!! Falta el índice de recuperación: make index"; \
+	fi
+	@test -f web/out/index.html || $(MAKE) web
+	@echo "Presentador: http://127.0.0.1:$(DUEL_PORT)/presentador/   (validador: el QR en pantalla)"
+	$(MAKE) duel
 
-reset: ## (Phase 2) clear rounds and verdicts. Nothing to clear yet.
-	@echo "Nothing to reset yet: rounds and verdicts arrive with the duel service (Phase 2)."
+reset: ## Clear rounds and verdicts (running service or state file), in well under 10 seconds
+	@curl -sf -X POST http://127.0.0.1:$(DUEL_PORT)/api/reset >/dev/null && echo "Marcador reiniciado (servicio en marcha)." \
+	  || (rm -f $(or $(DUEL_STATE_PATH),duel/state/rounds.json) && echo "Marcador reiniciado (archivo de estado borrado).")
+
+screenshots: ## Playwright screenshots of both views at 1920x1080 and 390x844 (service must be running)
+	cd web && node tests/screenshots.mjs

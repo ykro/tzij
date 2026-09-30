@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tzij">
+  <!-- The saltillo (glottal stop) in cochineal, and a slate dot: David's mark and Goliath's point. -->
+  <rect width="64" height="64" rx="12" fill="#F4F0E8"/>
+  <path d="M24 10h14c1.6 9-1.2 22-9.5 34.5L22.5 44C26.4 33 27 22 24 10z" fill="#8C2F39"/>
+  <circle cx="42" cy="44" r="6" fill="#3E5C76"/>
+</svg>

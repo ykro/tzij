@@ -41,13 +41,18 @@ def latest_dataset(processed: Path) -> Path | None:
 
 
 class Deck:
-    def __init__(self, processed: Path, *, require_validated: bool = False, seed: int = 2027):
+    def __init__(self, processed: Path, *, require_validated: bool = False, seed: int = 2027,
+                 exclude_sources: tuple[str, ...] = ("bouquet",)):
+        # BOUQuET's terms allow evaluation but only private redistribution: `make eval` uses
+        # it, the projector doesn't show it.
         self.items: list[DeckItem] = []
         dataset = latest_dataset(processed)
         if dataset and (dataset / "test.jsonl").exists():
             for line in (dataset / "test.jsonl").read_text(encoding="utf-8").splitlines():
                 r = json.loads(line)
                 if r["kind"] != "sentence" or not (MIN_WORDS <= len(r["source_text"].split()) <= MAX_WORDS):
+                    continue
+                if r["source_name"] in exclude_sources:
                     continue
                 if require_validated and r["status"] != "validated":
                     continue

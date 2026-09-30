@@ -185,8 +185,16 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
 
         watcher = asyncio.create_task(watch_connectivity())
         if not settings.mock_ai and isinstance(svc.david.client, OllamaClient):
+            # Load David with the same context size the rounds use (a different num_ctx reloads
+            # the model), and the embedding model too: a cold load costs seconds on stage.
             with contextlib.suppress(Exception):
-                await svc.david.client.warm_up(svc.david.model)  # a cold load costs seconds on stage
+                import httpx
+
+                async with httpx.AsyncClient(base_url=settings.ollama_url, timeout=120) as http:
+                    await http.post("/api/chat", json={"model": svc.david.model, "messages": [], "keep_alive": "30m",
+                                                       "options": {"num_ctx": settings.ollama_num_ctx}})
+                if svc.retriever:
+                    await asyncio.to_thread(svc.retriever.retrieve, "hola", "es-quc", 1)
         yield
         watcher.cancel()
 
