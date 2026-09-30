@@ -50,7 +50,14 @@ await api("/api/rounds", { kind: "en_vivo", direction: "es-quc", text: process.e
 await untilDone();
 await shot(phone, "phone-03-live");
 const buttons = phone.locator(".verdict");
+// End-to-end latency: tap on the phone -> verdict badge on the presenter screen.
+const before = await presenter.locator(".badge").count();
+const tapped = Date.now();
 await buttons.nth(0).click();
+await presenter.waitForFunction((n) => document.querySelectorAll(".badge").length > n, before, { timeout: 5000 });
+const verdictMs = Date.now() - tapped;
+console.log(`  verdict reached the presenter in ${verdictMs} ms`);
+if (verdictMs > 1000) throw new Error(`verdict took ${verdictMs} ms (> 1 s)`);
 await buttons.nth(4).click();
 await shot(phone, "phone-04-voted");
 await shot(presenter, "presenter-04-live-verdicts");
