@@ -32,3 +32,4 @@ web/test-results/
 data/train/
 models/
 train/runs/*.log
+web/tsconfig.tsbuildinfo
