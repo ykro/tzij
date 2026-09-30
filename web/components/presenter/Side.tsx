@@ -97,7 +97,8 @@ export function Side({ name, model, round, online }: Props) {
 function RoundScore({ name, round, result, other }: { name: ContenderName; round: Round; result: ContenderResult; other?: ContenderResult }) {
   if (round.kind === "evaluacion") {
     if (result.chrf == null) return null;
-    const wins = other?.status !== "ok" || other.chrf == null || result.chrf > other.chrf;
+    // A win needs a rival: if the other side is offline or failed, there is no duel to win.
+    const wins = other?.status === "ok" && other.chrf != null && result.chrf > other.chrf;
     return (
       <span className="score fade-in">
         chrF++ <b>{result.chrf.toLocaleString("es-GT", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}</b>

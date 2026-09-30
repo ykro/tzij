@@ -85,6 +85,9 @@ export default function Validator() {
           <>
             <p className="phone__eyebrow">{directionLabel(round.direction)}</p>
             <h1 className="phone__phrase" lang={round.direction === "quc-es" ? "quc" : "es"}>{displaySource(round.source_text, round.direction)}</h1>
+            {round.kind === "evaluacion" && (
+              <p className="phone__kind">Ronda de evaluación: se califica sola con chrF++, contra una traducción de referencia. Solo mira.</p>
+            )}
             {round.status === "translating" ? (
               [0, 1].map((slot) => (
                 <section key={slot} className="tcard" aria-busy="true">
@@ -110,9 +113,7 @@ export default function Validator() {
                             </button>
                           ))}
                         </div>
-                      ) : (
-                        <p className="tcard__empty">Ronda de evaluación: se califica sola con chrF++.</p>
-                      )}
+                      ) : null}
                     </>
                   ) : (
                     <p className="tcard__empty">{t.status === "offline" ? "Esta traducción no llegó: el modelo no tiene internet." : "Esta traducción falló."}</p>

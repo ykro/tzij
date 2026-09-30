@@ -209,8 +209,9 @@ input {
 }
 
 .pill--offline {
-  color: var(--ink);
-  background: var(--surface);
+  color: var(--surface);
+  background: var(--ink);
+  border-color: var(--ink);
 }
 
 .pill--offline .pill__dot {
@@ -458,7 +459,7 @@ input {
 }
 
 .side__offline {
-  margin-top: calc(var(--u) * 22);
+  margin: calc(var(--u) * 22) 0 0;
   font-family: var(--font-display), Georgia, serif;
   font-size: calc(var(--u) * 80);
   color: var(--slate);
@@ -466,7 +467,7 @@ input {
 }
 
 .side__offline-note {
-  margin-top: calc(var(--u) * 18);
+  margin: calc(var(--u) * 8) 0 0;
   font-size: calc(var(--u) * 32);
   color: var(--ink);
   max-width: 24em;
@@ -1023,6 +1024,12 @@ input {
 
 .verdict:disabled {
   cursor: progress;
+}
+
+.phone__kind {
+  margin: -8px 0 16px;
+  font-size: 15px;
+  color: var(--muted);
 }
 
 .phone__note {
