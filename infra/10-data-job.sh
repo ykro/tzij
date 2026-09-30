@@ -6,8 +6,9 @@
 # It writes versioned datasets to gs://$DATA_BUCKET/datasets/<version>/ and keeps
 # the raw download cache in gs://$DATA_BUCKET/raw/ (never in git).
 #
-# Hugging Face rate-limits anonymous downloads from Cloud Run IPs (429). The job
-# reads the raw cache first, so seed it once from the laptop with `make data-seed`.
+# The Hugging Face token (Secret Manager `hf-token`) is mounted as HF_TOKEN: it
+# unlocks the gated BOUQuET benchmark and avoids the 429s Hugging Face returns to
+# anonymous downloads from Cloud Run IPs.
 source "$(dirname "$0")/env.sh"
 
 JOB="${APP}-data"
@@ -28,13 +29,22 @@ for attempt in 1 2 3 4 5 6; do
   sleep 10
 done
 
+if exists gcloud secrets describe hf-token; then
+  gcloud secrets add-iam-policy-binding hf-token --member "serviceAccount:${SA}" \
+    --role roles/secretmanager.secretAccessor --quiet >/dev/null
+  SECRETS=(--set-secrets "HF_TOKEN=hf-token:latest")
+else
+  echo "!! Secret hf-token not found: gated sources (BOUQuET) will be skipped."
+  SECRETS=(--clear-secrets)
+fi
+
 say "Building ${IMAGE}"
 gcloud builds submit "$ROOT" --config "$ROOT/pipeline/cloudbuild.yaml" \
   --substitutions "_IMAGE=${IMAGE}" --region "$REGION" --quiet
 
 say "Deploying job ${JOB}"
 gcloud run jobs deploy "$JOB" --image "$IMAGE" --region "$REGION" \
-  --service-account "$SA" --cpu 2 --memory 4Gi --task-timeout 3600 --max-retries 0 \
+  --service-account "$SA" --cpu 2 --memory 4Gi --task-timeout 3600 --max-retries 0 "${SECRETS[@]}" \
   --set-env-vars "DATA_BUCKET_URI=gs://${DATA_BUCKET},GIT_SHA=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
   --quiet
 

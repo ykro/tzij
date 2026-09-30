@@ -228,3 +228,30 @@ def test_review_export_and_apply_roundtrip(pipeline_output):
     records = [json.loads(line) for line in (processed / "v1" / "test.jsonl").read_text().splitlines()]
     assert len(records) == 2 and all(r["status"] == "validated" for r in records)
     assert records[0]["target_text"] == "Le tz'i' kawar chupam le ja."
+
+
+def test_bouquet_parser_reads_parquet_and_unescapes(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from pipeline.sources import bouquet
+
+    rows = {
+        "uniq_id": ["P1-S1", "P1-S2"], "src_lang": ["spa_Latn"] * 2, "tgt_lang": ["quc_Latn"] * 2,
+        "src_text": ["<Yong:> En Egipto se rellenan con arroz.", "Receta de “dolma”."],
+        "tgt_text": ["<Yong:> Pa Egipto, knojsax ruk' aros.", '"Ucholajil rech ""dolma""."'],
+        "domain": ["how-to | instructions", "how-to | instructions"],
+    }
+    pq.write_table(pa.table(rows), tmp_path / "dev.parquet")
+    pairs = list(bouquet.parse(tmp_path))
+    assert [p.quc for p in pairs] == ["Pa Egipto, knojsax ruk' aros.", 'Ucholajil rech "dolma".']
+    assert pairs[0].domain == "how-to" and pairs[0].source_name == "bouquet"
+    assert bouquet.SOURCE.role == "test"
+
+
+def test_bouquet_fetch_skips_without_token(tmp_path, monkeypatch):
+    from pipeline.sources import bouquet
+
+    monkeypatch.setattr(bouquet, "hf_token", lambda: None)
+    bouquet.fetch(tmp_path)  # no exception, nothing downloaded
+    assert not list(tmp_path.iterdir())

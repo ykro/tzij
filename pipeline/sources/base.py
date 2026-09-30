@@ -8,7 +8,6 @@ out entirely so no sentence, book or lesson leaks into training or retrieval.
 
 from __future__ import annotations
 
-import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,9 +48,13 @@ def download(url: str, dest: Path, *, headers: dict | None = None, retries: int 
     tmp = dest.with_suffix(dest.suffix + ".part")
     headers = dict(headers or {})
     # Hugging Face throttles anonymous downloads from shared cloud IPs (Cloud Run
-    # egress gets 429). A read-only HF_TOKEN lifts that; locally it's optional.
-    if "huggingface.co" in url and os.environ.get("HF_TOKEN"):
-        headers.setdefault("Authorization", f"Bearer {os.environ['HF_TOKEN']}")
+    # egress gets 429) and gated datasets need it: send the token when we have one.
+    if "huggingface.co" in url:
+        from pipeline.secrets import hf_token
+
+        token = hf_token()
+        if token:
+            headers.setdefault("Authorization", f"Bearer {token}")
     last_error: Exception | None = None
     for attempt in range(retries):
         try:
