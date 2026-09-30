@@ -1,0 +1,172 @@
+"""Token fertility: how many Gemma tokens a K'iche' word costs vs a Spanish word.
+
+Why it matters for the talk: a language the tokenizer barely saw is split into
+many small pieces. More tokens per word means slower, more expensive and
+harder-to-learn translations — part of why frontier models struggle with
+K'iche' and why a small model needs help (retrieval, fine-tuning).
+
+Method
+  * Tokenizer: the Hugging Face `tokenizer.json` of GEMMA_BASE_MODEL (the
+    same Gemma family David runs in Ollama), loaded with `tokenizers`, no BOS.
+  * Cross-check: for a sample of sentences we ask Ollama (LOCAL_MODEL_TAG)
+    for `prompt_eval_count` on a raw prompt; it must equal our count + 1 (BOS).
+  * Words: whitespace-separated tokens that contain at least one letter;
+    K'iche' apostrophes stay inside the word (k'ak' is one word).
+  * Data: the same sentence pairs on both sides (all splits, sentences only,
+    religious excluded), so both languages express the same content.
+
+Run: make fertility  (writes evals/fertility.md)
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import random
+import re
+from collections import defaultdict
+from datetime import date
+from pathlib import Path
+
+import httpx
+
+REPO = Path(__file__).resolve().parent.parent
+OUT = REPO / "evals" / "fertility.md"
+_WORD_RE = re.compile(r"[^\W\d_]", re.UNICODE)
+
+
+def words(text: str) -> list[str]:
+    return [w for w in text.split() if _WORD_RE.search(w)]
+
+
+def load_tokenizer(model_id: str):
+    from huggingface_hub import hf_hub_download
+    from tokenizers import Tokenizer
+
+    return Tokenizer.from_file(hf_hub_download(model_id, "tokenizer.json"))
+
+
+def count_tokens(tokenizer, text: str) -> int:
+    return len(tokenizer.encode(text, add_special_tokens=False).ids)
+
+
+def load_pairs(dataset_dir: Path) -> list[dict]:
+    pairs = []
+    for split in ("train", "dev", "test"):
+        for line in (dataset_dir / f"{split}.jsonl").read_text(encoding="utf-8").splitlines():
+            record = json.loads(line)
+            if record["direction"] == "es-quc" and record["kind"] == "sentence" and record["domain"] != "religious":
+                pairs.append({"spa": record["source_text"], "quc": record["target_text"],
+                              "source": record["source_name"]})
+    return pairs
+
+
+def measure(pairs: list[dict], count) -> dict:
+    stats = defaultdict(lambda: {"pairs": 0, "quc_tokens": 0, "quc_words": 0, "quc_chars": 0,
+                                 "spa_tokens": 0, "spa_words": 0, "spa_chars": 0})
+    for pair in pairs:
+        for group in ("all", pair["source"]):
+            s = stats[group]
+            s["pairs"] += 1
+            for lang in ("quc", "spa"):
+                s[f"{lang}_tokens"] += count(pair[lang])
+                s[f"{lang}_words"] += len(words(pair[lang]))
+                s[f"{lang}_chars"] += len(pair[lang])
+    for s in stats.values():
+        s["quc_fertility"] = s["quc_tokens"] / max(s["quc_words"], 1)
+        s["spa_fertility"] = s["spa_tokens"] / max(s["spa_words"], 1)
+        s["token_ratio"] = s["quc_tokens"] / max(s["spa_tokens"], 1)
+        s["quc_chars_per_token"] = s["quc_chars"] / max(s["quc_tokens"], 1)
+        s["spa_chars_per_token"] = s["spa_chars"] / max(s["spa_tokens"], 1)
+    return dict(stats)
+
+
+def ollama_cross_check(pairs: list[dict], count, model: str | None, host: str, n: int = 20) -> dict | None:
+    if not model:
+        return None
+    sample = random.Random(0).sample(pairs, min(n, len(pairs)))
+    agree, checked = 0, 0
+    try:
+        for pair in sample:
+            for lang in ("quc", "spa"):
+                response = httpx.post(f"{host}/api/generate", timeout=120, json={
+                    "model": model, "prompt": pair[lang], "raw": True, "stream": False,
+                    "options": {"num_predict": 1}, "keep_alive": "5m",
+                })
+                response.raise_for_status()
+                checked += 1
+                agree += response.json().get("prompt_eval_count") == count(pair[lang]) + 1
+    except httpx.HTTPError:
+        return None
+    return {"model": model, "checked": checked, "agree": agree}
+
+
+def render(stats: dict, tokenizer_id: str, version: str, check: dict | None) -> str:
+    overall = stats["all"]
+    rows = [
+        f"| `{name}` | {s['pairs']} | {s['quc_fertility']:.2f} | {s['spa_fertility']:.2f} | "
+        f"{s['token_ratio']:.2f} | {s['quc_chars_per_token']:.2f} | {s['spa_chars_per_token']:.2f} |"
+        for name, s in sorted(stats.items(), key=lambda kv: (kv[0] != "all", kv[0]))
+    ]
+    check_line = (
+        f"Cross-check against Ollama `{check['model']}` `prompt_eval_count`: "
+        f"{check['agree']}/{check['checked']} sentences match (our count + 1 BOS token)."
+        if check else "Ollama cross-check skipped (LOCAL_MODEL_TAG unset or Ollama not running)."
+    )
+    return f"""# Token fertility — K'iche' vs Spanish in Gemma's tokenizer
+
+Generated by `evals/fertility.py` on {date.today().isoformat()} from dataset `{version}`.
+
+**Headline:** a K'iche' word costs **{overall['quc_fertility']:.2f} tokens**, a Spanish word
+**{overall['spa_fertility']:.2f}**. The same sentence takes **{overall['token_ratio']:.2f}×** as many
+tokens in K'iche' as in Spanish ({overall['pairs']} parallel sentence pairs).
+
+More tokens per word means the model sees K'iche' as fragments rather than words:
+it has to learn more from less, generation is slower, and a cloud API bills more for
+the same meaning.
+
+| subset | pairs | K'iche' tokens/word | Spanish tokens/word | K'iche'/Spanish tokens per sentence | K'iche' chars/token | Spanish chars/token |
+| --- | --- | --- | --- | --- | --- | --- |
+{chr(10).join(rows)}
+
+## Method
+
+- Tokenizer: `tokenizer.json` of `{tokenizer_id}` (from `GEMMA_BASE_MODEL`) loaded with
+  Hugging Face `tokenizers`, special tokens off.
+- {check_line}
+- Words: whitespace-separated chunks containing at least one letter; apostrophes stay
+  inside K'iche' words (`k'ak'` is one word). Text is normalized (`data/normalize.py`)
+  first, so every glottal stop is the ASCII `'` — which the tokenizer splits off as its
+  own token (`tz'i'` → `▁tz ' i '`), one reason K'iche' fertility is high.
+- Data: non-religious sentence pairs from all splits; both columns measure the same content.
+"""
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--processed", type=Path, default=REPO / "data" / "processed")
+    parser.add_argument("--out", type=Path, default=OUT)
+    args = parser.parse_args()
+    tokenizer_id = os.environ.get("GEMMA_BASE_MODEL")
+    if not tokenizer_id:
+        raise SystemExit("GEMMA_BASE_MODEL is not set (see .env.example)")
+    version = (args.processed / "LATEST").read_text().strip()
+    pairs = load_pairs(args.processed / version)
+    tokenizer = load_tokenizer(tokenizer_id)
+
+    def count(text: str) -> int:
+        return count_tokens(tokenizer, text)
+
+    stats = measure(pairs, count)
+    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+    host = host if host.startswith("http") else "http://" + host
+    check = ollama_cross_check(pairs, count, os.environ.get("LOCAL_MODEL_TAG"), host)
+    args.out.write_text(render(stats, tokenizer_id, version, check))
+    overall = stats["all"]
+    print(f"K'iche' {overall['quc_fertility']:.2f} tokens/word, Spanish {overall['spa_fertility']:.2f}; "
+          f"ratio {overall['token_ratio']:.2f}; cross-check {check}")
+
+
+if __name__ == "__main__":
+    main()
