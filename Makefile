@@ -8,7 +8,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots
+.PHONY: help train-data train train-local pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -44,11 +44,25 @@ eval: ## Compare every available variant on the test set -> evals/report.md
 human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run (see evals/human_eval.md)
 	$(UV) run python -m evals.human_eval_sheet
 
+train-data: ## Render the train split (sentences, both directions) as chat JSONL -> data/train/chat.jsonl
+	$(UV) run python -m pipeline.train_set
+
+train: train-data ## LoRA fine-tune on Vertex AI and record time and cost: make train TAG=tzij-2026-09
+	@test -n "$(TAG)" || (echo "usage: make train TAG=tzij-YYYY-MM" && exit 1)
+	$(UV) run python train/submit_job.py --app tzij --tag $(TAG) --data data/train/chat.jsonl
+
+train-local: train-data ## Same training on this Mac (MPS) when no cloud GPU is available
+	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
+	  python train/train_local.py $(TAG) data/train/chat.jsonl
+
+pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-09
+	MODELS_BUCKET=$(MODELS_BUCKET) train/pull_model.sh $(TAG)
+
 web: ## Build the presenter and validator views (static export; needs internet once for fonts)
 	cd web && npm ci --silent && npm run build
 
 duel: ## Run only the duel service (API + built views) on the LAN
-	$(UV) run uvicorn tzij_duel.main:create_app --factory --app-dir duel --host 0.0.0.0 --port $(DUEL_PORT)
+	PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run uvicorn tzij_duel.main:create_app --factory --host 0.0.0.0 --port $(DUEL_PORT)
 
 test: ## Python + web tests (offline; Ollama-only tests skip when it isn't running)
 	MOCK_AI=1 $(UV) run pytest -q

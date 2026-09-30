@@ -15,11 +15,12 @@ download code is what's versioned.
 
 Counts, splits and drop reasons per source are in `data/DATASHEET.md`.
 
-## Used (9)
+## Used (10)
 
 | Source (pipeline name) | URL | Owner | License / terms | Size (raw) | Domain | Orthography | Date | Role |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Bloom Library K'iche' books, CC BY subset (`bloom_kiche`) | https://bloomlibrary.org/language:quc | Mostly Ministerio de Educación de Guatemala / USAID, via SIL Bloom Library | CC BY 4.0 per book (130 of 142 K'iche' books). The 12 CC BY-NC-SA / NC-ND books are excluded. Read-online HTML fetched from Bloom's public harvester bucket; book list from the public API the website uses (no account) | 142 books; ~536 page-aligned quc/es text blocks in the ~28 bilingual CC BY books | Education (children's stories, parent guides) | Modern ALMG; a few books tagged `quc` are actually Mam (filtered) | 2012–2024 | **test** |
+| BOUQuET benchmark, sentence level dev + test (`bouquet`) | https://huggingface.co/datasets/facebook/bouquet | Meta FAIR + community translators | CC BY 4.0, **gated**: the presenter's Hugging Face account accepted the terms; the token is Secret Manager `hf-token`. Terms: **evaluation only** (never training or retrieval), redistribution only privately or behind a gate. Kept out of git (raw and processed data are gitignored; copies only in the private bucket) and not shown in the on-stage evaluation rounds | 1,358 spa→quc sentences (504 dev + 854 test) | Multi-domain: conversation, how-to, narration, reflection… (the `domain` field is kept) | Modern, mostly ALMG | 2025–2026 | **test** (evaluation only) |
 | UD K'iche'-IU treebank (`ud_kiche_iu`) | https://github.com/UniversalDependencies/UD_Kiche-IU | F. Tyers, R. Henderson (Indiana U.) | CC BY-SA 4.0. README: sentences used with permission of the Academia de Lenguas Mayas de Guatemala and Telma Can Pixabaj | 1,435 sentences, 980 with `text[spa]` (657 ALMG vocabulary examples, 288 UT course, a few Bible/legal/COVID) | Everyday (dictionary examples); small legal, health, religious | ALMG with lax vowels marked (`ä`); folded by `normalize.py` | 2021 (UD v2.8) | train |
 | COERLL "Chqeta'maj le qach'ab'al K'iche'!" (`coerll_kiche`) | https://tzij.coerll.utexas.edu/ | COERLL / LLILAS / AILLA, UT Austin | CC BY 4.0 (stated on the site). Lessons read via the public WordPress REST API | 46 lessons (Spanish edition); ~850 table rows (phrases + vocabulary) | Everyday / language learning | Near-ALMG, Nahualá variety | 2016–2026 | train |
 | Universal Declaration of Human Rights (`udhr_ohchr`) | https://github.com/eric-muller/udhr (XML); https://www.ohchr.org/en/human-rights/universal-declaration/universal-declaration-human-rights/about-universal-declaration-human-rights-translation-project | OHCHR; XML by the UDHR in Unicode project | OHCHR translation project: translations may be reproduced citing OHCHR as the source | 30 articles + title → 51 aligned paragraphs | Legal | Modern with `'` glottal | 2006 (XML) | train |
@@ -34,11 +35,10 @@ translations of the same English original — no machine translation is involved
 sense can diverge ("spot" → "punto" / "k'olib'al" = place). GATITOS entries are therefore
 `kind=lexicon` (retrieval context, not counted as translation examples).
 
-## Needs permission (14)
+## Needs permission (13)
 
 | Source | URL | Owner | License / terms | Size | Domain | Orthography | Date | Why not used yet |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| BOUQuET benchmark (spa↔quc) | https://huggingface.co/datasets/facebook/bouquet | Meta FAIR + community translators | CC BY 4.0, but the dataset is **gated** on Hugging Face (login + accept terms) | ~1,000+ sentences and paragraphs, spa_Latn–quc_Latn dev/test | Multi-domain (conversation, narrative, how-to…) | Modern | 2025–2026 | Behind a login. **Best candidate for a second, non-religious test set**: the presenter can accept the terms with their own HF account |
 | MayanV (quc subset) | https://github.com/transducens/mayanv | Transducens, U. d'Alacant (NAACL 2024) | CC0 for the *packaging*; README says they do not own the text. Text comes from the ALMG *Vocabulario K'iche'* | 2,632 pairs | Everyday (dictionary examples) | ALMG | 2024 | ALMG requires prior authorization; would more than double the everyday training data. 657 of these examples are already in via UD K'iche'-IU, which has ALMG's permission |
 | ALMG *K'iche' Choltzij / Vocabulario K'iche'* | https://aprendeporti.com/wp-content/uploads/2023/11/vocabulario-kiche.pdf (mirror; ALMG original 404) | Academia de Lenguas Mayas de Guatemala | No explicit license; ALMG publications state reproduction needs prior authorization | 221 pp., es↔quc entries with example sentences | Everyday | ALMG | 2010 | Authorization from the Comunidad Lingüística K'iche' |
 | ALMG *Kemtaqanik K'iche' Tzij, Gramática Normativa* | https://almg.org.gt/wp-content/uploads/2026/03/Gramatica-Normativa-Idioma-Kiche.pdf | ALMG | "La reproducción total o parcial puede realizarse previa autorización de la Comunidad Lingüística K'iche'" | 111 pp. | Grammar examples | ALMG (normative) | 2021 | Explicit prior authorization; used only as the orthography reference for `normalize.py` |

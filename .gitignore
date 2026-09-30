@@ -29,3 +29,6 @@ web/out/
 web/.next/
 web/node_modules/
 web/test-results/
+data/train/
+models/
+train/runs/*.log

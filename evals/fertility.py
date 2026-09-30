@@ -153,6 +153,10 @@ def main() -> None:
         raise SystemExit("GEMMA_BASE_MODEL is not set (see .env.example)")
     version = (args.processed / "LATEST").read_text().strip()
     pairs = load_pairs(args.processed / version)
+    # GEMMA_BASE_MODEL is the checkpoint name used for training ("gemma-4-E2B-it");
+    # its tokenizer lives in the ungated google/ repo on Hugging Face.
+    if "/" not in tokenizer_id:
+        tokenizer_id = f"google/{tokenizer_id}"
     tokenizer = load_tokenizer(tokenizer_id)
 
     def count(text: str) -> int:
