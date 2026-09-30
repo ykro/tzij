@@ -1,0 +1,12 @@
+.git
+.venv
+.env
+**/__pycache__
+data/raw
+data/processed
+data/review
+rag
+evals
+tests
+infra
+node_modules

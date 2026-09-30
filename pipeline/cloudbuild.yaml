@@ -1,0 +1,7 @@
+# Builds the pipeline image with the repo root as context (the Dockerfile lives in pipeline/).
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "pipeline/Dockerfile", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]
+substitutions:
+  _IMAGE: ""
