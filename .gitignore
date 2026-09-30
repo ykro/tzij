@@ -23,3 +23,9 @@ data/review/
 rag/index/
 rag/.cache/
 evals/.cache/
+duel/state/
+evals/runs/
+web/out/
+web/.next/
+web/node_modules/
+web/test-results/

@@ -12,6 +12,7 @@ a phone finds "k'ak'".
 from __future__ import annotations
 
 import os
+import threading
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
@@ -56,6 +57,8 @@ class RetrievalResult:
 
 class Retriever:
     def __init__(self, index_path: Path = DEFAULT_INDEX, embedder: Embedder | None = None):
+        if not Path(index_path).exists():
+            raise FileNotFoundError(f"retrieval index not found: {index_path} (run `make index`)")
         self.db = connect(index_path)
         meta = dict(self.db.execute("SELECT key, value FROM meta").fetchall())
         self.embedder = embedder or OllamaEmbedder()
@@ -65,6 +68,7 @@ class Retriever:
                 "rebuild with `make index`"
             )
         self.dataset_version = meta.get("dataset_version")
+        self._lock = threading.Lock()
 
     def _knn(self, vector: list[float], direction: str, kind: str, k: int) -> list[Hit]:
         rows = self.db.execute(
@@ -97,6 +101,10 @@ class Retriever:
         return hits[:k]
 
     def retrieve(self, text: str, direction: str, k: int = 8) -> RetrievalResult:
+        with self._lock:
+            return self._retrieve(text, direction, k)
+
+    def _retrieve(self, text: str, direction: str, k: int) -> RetrievalResult:
         if direction not in SOURCE_LANG:
             raise ValueError(f"direction must be one of {sorted(SOURCE_LANG)}")
         query = normalize(text, SOURCE_LANG[direction])

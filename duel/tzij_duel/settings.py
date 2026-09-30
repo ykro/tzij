@@ -1,0 +1,61 @@
+"""All configuration comes from env vars (see `.env.example`). No model names in code."""
+
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(REPO_ROOT / ".env")
+
+
+def _env(name: str, default: str = "") -> str:
+    return os.environ.get(name, default).strip()
+
+
+def _flag(name: str) -> bool:
+    return _env(name, "0").lower() in {"1", "true", "yes", "on"}
+
+
+def _float(name: str, default: float) -> float:
+    raw = _env(name)
+    return float(raw) if raw else default
+
+
+def _list(name: str) -> list[str]:
+    return [x.strip() for x in _env(name).split(",") if x.strip()]
+
+
+@dataclass
+class Settings:
+    project: str = field(default_factory=lambda: _env("GOOGLE_CLOUD_PROJECT", "ai-experiments-487722"))
+    location: str = field(default_factory=lambda: _env("GOOGLE_CLOUD_LOCATION", "global"))
+    gemini_model: str = field(default_factory=lambda: _env("GEMINI_MODEL"))
+    gemini_thinking_level: str = field(default_factory=lambda: _env("GEMINI_THINKING_LEVEL", "low"))
+    gemini_input_usd_per_m: float = field(default_factory=lambda: _float("GEMINI_INPUT_USD_PER_M", 0.0))
+    gemini_output_usd_per_m: float = field(default_factory=lambda: _float("GEMINI_OUTPUT_USD_PER_M", 0.0))
+    # David: the Gemma variant on stage (base or fine-tuned), always with retrieval.
+    david_model: str = field(default_factory=lambda: _env("LOCAL_MODEL_TAG"))
+    # Extra Ollama models compared in `make eval` (base E2B vs E4B, fine-tuned tags later).
+    base_model_tags: list[str] = field(default_factory=lambda: _list("BASE_MODEL_TAGS"))
+    finetuned_model_tags: list[str] = field(default_factory=lambda: _list("FINETUNED_MODEL_TAGS"))
+    ollama_url: str = field(default_factory=lambda: _env("OLLAMA_URL") or _env("OLLAMA_HOST", "http://127.0.0.1:11434"))
+    rag_index: Path = field(default_factory=lambda: REPO_ROOT / _env("RAG_INDEX", "rag/index/tzij.sqlite"))
+    rag_k: int = field(default_factory=lambda: int(_env("RAG_K", "6")))
+    mock_ai: bool = field(default_factory=lambda: _flag("MOCK_AI"))
+    force_offline: bool = field(default_factory=lambda: _flag("FORCE_OFFLINE"))
+    state_path: Path = field(default_factory=lambda: REPO_ROOT / _env("DUEL_STATE_PATH", "duel/state/rounds.json"))
+    processed_dir: Path = field(default_factory=lambda: REPO_ROOT / "data" / "processed")
+    web_dir: Path = field(default_factory=lambda: REPO_ROOT / "web" / "out")
+    port: int = field(default_factory=lambda: int(_env("DUEL_PORT", "8787")))
+    # URL the phone opens (QR). Empty: detected from the laptop's LAN address.
+    public_url: str = field(default_factory=lambda: _env("PUBLIC_URL"))
+    # On stage, evaluation rounds should use references a native speaker validated.
+    require_validated_test: bool = field(default_factory=lambda: _flag("REQUIRE_VALIDATED_TEST"))
+
+
+def get_settings() -> Settings:
+    return Settings()

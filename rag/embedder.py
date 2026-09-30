@@ -31,7 +31,7 @@ class Embedder(Protocol):
 class OllamaEmbedder:
     def __init__(self, model: str | None = None, host: str | None = None, batch_size: int = 64):
         self.name = model or os.environ.get("EMBEDDING_MODEL") or _missing("EMBEDDING_MODEL")
-        self.host = (host or os.environ.get("OLLAMA_HOST") or "http://localhost:11434").rstrip("/")
+        self.host = (host or os.environ.get("OLLAMA_URL") or os.environ.get("OLLAMA_HOST") or "http://localhost:11434").rstrip("/")
         if not self.host.startswith("http"):
             self.host = "http://" + self.host
         self.batch_size = batch_size

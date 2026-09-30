@@ -28,7 +28,8 @@ CREATE INDEX IF NOT EXISTS glossary_lookup ON glossary (direction, headword);
 
 
 def connect(path: Path) -> sqlite3.Connection:
-    db = sqlite3.connect(path)
+    # The duel service queries from worker threads; Retriever serializes access with a lock.
+    db = sqlite3.connect(path, check_same_thread=False)
     db.enable_load_extension(True)
     sqlite_vec.load(db)
     db.enable_load_extension(False)
