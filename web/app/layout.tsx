@@ -11,13 +11,15 @@ export const metadata: Metadata = {
   title: "Tzij",
   description: "Español ↔ Kʼicheʼ: un modelo pequeño sin internet contra un modelo frontera.",
   icons: { icon: "/brand/mark.svg" },
+  // Browser auto-translation would "translate" the K'iche' output: never offer it.
+  other: { google: "notranslate" },
 };
 
 export const viewport: Viewport = { themeColor: "#F4F0E8", colorScheme: "light" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es-GT" className={`${literata.variable} ${hanken.variable}`}>
+    <html lang="es-GT" translate="no" className={`${literata.variable} ${hanken.variable}`}>
       <body>{children}</body>
     </html>
   );
