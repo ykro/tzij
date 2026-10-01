@@ -100,11 +100,14 @@ class Retriever:
                     hits.append(Hit(s, t, kd, src, dom, 1.0, "exact"))
         return hits[:k]
 
-    def retrieve(self, text: str, direction: str, k: int = 8) -> RetrievalResult:
+    def retrieve(self, text: str, direction: str, k: int = 8, exclude: set[str] | None = None) -> RetrievalResult:
+        """`exclude`: texts that must not appear on either side of a hit, e.g. the training sentence
+        and its translation when building retrieval-augmented training data (otherwise the answer
+        would be in the prompt, through the pair itself or a duplicate with the same translation)."""
         with self._lock:
-            return self._retrieve(text, direction, k)
+            return self._retrieve(text, direction, k, exclude or set())
 
-    def _retrieve(self, text: str, direction: str, k: int) -> RetrievalResult:
+    def _retrieve(self, text: str, direction: str, k: int, exclude: set[str] = frozenset()) -> RetrievalResult:
         if direction not in SOURCE_LANG:
             raise ValueError(f"direction must be one of {sorted(SOURCE_LANG)}")
         query = normalize(text, SOURCE_LANG[direction])
@@ -112,10 +115,14 @@ class Retriever:
         if not query:
             return result
         vector = self.embedder.embed([query])[0]
-        result.examples = self._knn(vector, direction, "sentence", k)
-        glossary = self._exact_glossary(query, direction, k)
+        extra = 4 if exclude else 0  # ask for more so excluded hits don't shrink the context
+        banned = {match_key(x) for x in exclude}  # ignore case and punctuation: "b'e." == "b'e"
+        keep = lambda hits: [h for h in hits  # noqa: E731
+                             if match_key(h.source_text) not in banned and match_key(h.target_text) not in banned]
+        result.examples = keep(self._knn(vector, direction, "sentence", k + extra))[:k]
+        glossary = keep(self._exact_glossary(query, direction, k + extra))[:k]
         seen = {(h.source_text, h.target_text) for h in glossary}
-        for hit in self._knn(vector, direction, "lexicon", k):
+        for hit in keep(self._knn(vector, direction, "lexicon", k + extra)):
             if len(glossary) >= k:
                 break
             if (hit.source_text, hit.target_text) not in seen:

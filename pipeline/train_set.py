@@ -1,4 +1,11 @@
-"""Render the training split as chat JSONL for the LoRA fine-tune (make train-data).
+"""Render the training split as chat JSONL for the LoRA fine-tune (make train-data / train-data-raft).
+
+Two flavors:
+  plain  bare prompt, no retrieval context (tzij-2026-09).
+  raft   retrieval-augmented fine-tuning: the prompt carries the top-k dictionary entries and
+         example pairs exactly as the duel builds it at inference, so the model learns to *use*
+         the context. The sentence being trained on is excluded from its own retrieval, or the
+         answer would be sitting in the prompt.
 
 Only `train` sentence pairs, both directions, rendered with the exact prompt the
 duel uses (without retrieval context: the fine-tuned model has to carry the
@@ -20,9 +27,10 @@ from pipeline.split import RELIGIOUS_CAP  # noqa: E402
 from tzij_duel.prompts import translation_messages  # noqa: E402
 
 OUT = REPO / "data" / "train" / "chat.jsonl"
+OUT_RAFT = REPO / "data" / "train" / "chat-raft.jsonl"
 
 
-def build(dataset_dir: Path, out: Path = OUT) -> dict:
+def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6) -> dict:
     records = [json.loads(line) for line in (dataset_dir / "train.jsonl").read_text(encoding="utf-8").splitlines()]
     sentences = [r for r in records if r["kind"] == "sentence" and r["split"] == "train"]
     religious = sum(r["domain"] == "religious" for r in sentences) / max(len(sentences), 1)
@@ -31,13 +39,37 @@ def build(dataset_dir: Path, out: Path = OUT) -> dict:
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8") as fh:
         for r in sentences:
-            messages = translation_messages(r["source_text"], r["direction"])
+            context = ""
+            if retriever is not None:
+                found = retriever.retrieve(r["source_text"], r["direction"], k,
+                                           exclude={r["source_text"], r["target_text"]})
+                context = found.as_prompt_context()
+            messages = translation_messages(r["source_text"], r["direction"], context)
             messages.append({"role": "assistant", "content": r["target_text"]})
             fh.write(json.dumps({"messages": messages, "id": r["id"]}, ensure_ascii=False) + "\n")
     return {"examples": len(sentences), "religious_share": round(religious, 4), "out": str(out.relative_to(REPO))}
 
 
+def raft_retriever(dataset_version: str):
+    """The stage index, with embeddings served from the build cache (train sentences are already
+    embedded there), so building RAFT data barely touches Ollama."""
+    from rag.embedder import CachedEmbedder, OllamaEmbedder
+    from rag.retrieve import Retriever
+    from tzij_duel.settings import get_settings
+
+    s = get_settings()
+    embedder = CachedEmbedder(OllamaEmbedder(), REPO / "rag" / ".cache" / "embeddings.sqlite")
+    retriever = Retriever(s.rag_index, embedder=embedder)
+    if retriever.dataset_version != dataset_version:
+        raise SystemExit(f"index is from {retriever.dataset_version}, dataset is {dataset_version}: run `make index`")
+    return retriever, s.rag_k
+
+
 if __name__ == "__main__":
     processed = REPO / "data" / "processed"
     version = (processed / "LATEST").read_text().strip()
-    print({"dataset": version, **build(processed / version)})
+    if "--raft" in sys.argv:
+        retriever, k = raft_retriever(version)
+        print({"dataset": version, "k": k, **build(processed / version, OUT_RAFT, retriever, k)})
+    else:
+        print({"dataset": version, **build(processed / version)})

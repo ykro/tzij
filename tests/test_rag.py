@@ -123,3 +123,12 @@ def test_real_embeddinggemma_retrieval(tmp_path):
     build(_records(), OllamaEmbedder(), index, "fixture")
     result = Retriever(index).retrieve("Mi perro está dormido en casa", "es-quc", k=1)
     assert result.examples[0].target_text == "Le tz'i' kawar pa le ja."
+
+
+def test_exclude_keeps_the_answer_out_of_the_context(retriever):
+    plain = retriever.retrieve("El perro duerme en la casa.", "es-quc", k=3)
+    assert any(h.target_text == "Le tz'i' kawar pa le ja." for h in plain.examples)
+    raft = retriever.retrieve("El perro duerme en la casa.", "es-quc", k=3,
+                              exclude={"El perro duerme en la casa.", "Le tz'i' kawar pa le ja."})
+    assert "Le tz'i' kawar pa le ja." not in raft.as_prompt_context()
+    assert raft.examples  # the rest of the context is still there

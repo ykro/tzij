@@ -7,11 +7,13 @@ ENV_MK := $(shell test -f .env && sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$$/\1 
 export
 
 UV ?= uv
+# make train TRAIN_DATA=data/train/chat-raft.jsonl for the retrieval-augmented fine-tune.
+TRAIN_DATA ?= data/train/chat.jsonl
 REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help deploy train-data train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help deploy train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -56,9 +58,13 @@ human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run: [VARIA
 train-data: ## Render the train split (sentences, both directions) as chat JSONL -> data/train/chat.jsonl
 	$(UV) run python -m pipeline.train_set
 
-train: train-data ## LoRA fine-tune as a Cloud Run GPU Job (L4), record time and cost: make train TAG=tzij-2026-09 [TRAIN_ARGS="--epochs=1.5"]
+train-data-raft: ## Train split with retrieved context in every prompt (RAFT) -> data/train/chat-raft.jsonl
+	$(UV) run python -m pipeline.train_set --raft
+
+train: ## LoRA fine-tune as a Cloud Run GPU Job (L4), record time and cost: make train TAG=tzij-2026-09 [TRAIN_ARGS="--epochs=1.5"]
 	@test -n "$(TAG)" || (echo "usage: make train TAG=tzij-YYYY-MM" && exit 1)
-	$(UV) run python train/submit_job.py --app tzij --tag $(TAG) --data data/train/chat.jsonl -- $(TRAIN_ARGS)
+	@test -f $(TRAIN_DATA) || $(MAKE) train-data
+	$(UV) run python train/submit_job.py --app tzij --tag $(TAG) --data $(TRAIN_DATA) -- $(TRAIN_ARGS)
 
 train-local: train-data ## Same training on this Mac (MPS) when no cloud GPU is available: make train-local TAG=... [TRAIN_ARGS=...]
 	@test -n "$(TAG)" || (echo "usage: make train-local TAG=tzij-YYYY-MM [TRAIN_ARGS=\"--epochs=1\"]" && exit 1)
