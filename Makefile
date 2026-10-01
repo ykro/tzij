@@ -8,7 +8,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help train-data train train-local pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help train-data train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -54,6 +54,10 @@ train: train-data ## LoRA fine-tune as a Cloud Run GPU Job (L4), record time and
 train-local: train-data ## Same training on this Mac (MPS) when no cloud GPU is available
 	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
 	  python train/train_local.py $(TAG) data/train/chat.jsonl
+
+train-finish: ## Merge + GGUF a cloud-trained adapter on this Mac and publish it (E4B doesn't fit Cloud Run's 32 GiB)
+	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
+	  python train/finish_local.py $(TAG)
 
 pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-09
 	MODELS_BUCKET=$(MODELS_BUCKET) train/pull_model.sh $(TAG)

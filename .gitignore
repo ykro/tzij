@@ -33,3 +33,4 @@ data/train/
 models/
 train/runs/*.log
 web/tsconfig.tsbuildinfo
+train/.llama.cpp/
