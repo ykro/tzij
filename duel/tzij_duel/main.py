@@ -62,17 +62,22 @@ class ConnectivityToggle(BaseModel):
 
 class Service:
     def __init__(self, settings: Settings, *, david: Variant | None = None, goliath: Variant | None = None,
-                 retriever: Retriever | None = None, connectivity: Any = None) -> None:
+                 retriever: Retriever | None = None, connectivity: Any = None, deck: Deck | None = None) -> None:
         self.settings = settings
         default_david, default_goliath = stage_variants(settings)
         self.david = david or default_david
         self.goliath = goliath or default_goliath
-        self.retriever = retriever if retriever is not None else _load_retriever(settings)
+        self.retriever = retriever if retriever is not None else (
+            _mock_retriever(settings) if settings.mock_ai else _load_retriever(settings)
+        )
         self.connectivity = connectivity or (
             StaticOnline(settings.force_offline) if settings.mock_ai else Connectivity(force_offline=settings.force_offline)
         )
         self.store = RoundStore(settings.state_path)
-        self.deck = Deck(settings.processed_dir, require_validated=settings.require_validated_test)
+        self.deck = deck or (
+            Deck(None, test_file=MOCK_DATA / "deck.jsonl") if settings.mock_ai
+            else Deck(settings.processed_dir, require_validated=settings.require_validated_test)
+        )
         self.events = Broadcaster()
         self.card = model_card(settings)
         self.validator_url = public_url(settings.public_url, settings.port) + "/validar/"
@@ -161,9 +166,23 @@ class Service:
         self.publish()
 
 
+MOCK_DATA = Path(__file__).resolve().parent.parent / "mock_data"
+
+
+def _mock_retriever(settings: Settings) -> Retriever:
+    """MOCK_AI=1: a tiny index of licensed pairs with hashing embeddings. No Ollama, no `make index`."""
+    import json
+
+    from rag.build_index import build
+    from rag.embedder import HashingEmbedder
+
+    records = [json.loads(line) for line in (MOCK_DATA / "index_pairs.jsonl").read_text(encoding="utf-8").splitlines()]
+    path = settings.state_path.parent / "mock-index.sqlite"
+    build(records, HashingEmbedder(), path, "mock")
+    return Retriever(path, embedder=HashingEmbedder())
+
+
 def _load_retriever(settings: Settings) -> Retriever | None:
-    if settings.mock_ai and not settings.rag_index.exists():
-        return None
     try:
         return Retriever(settings.rag_index)
     except (FileNotFoundError, RuntimeError) as exc:

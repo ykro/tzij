@@ -1,4 +1,4 @@
-# Training image for the Vertex AI Custom Job (NVIDIA L4). Built with Cloud Build.
+# Training image for the Cloud Run GPU Job (NVIDIA L4; also runs as a Vertex AI job). Built with Cloud Build.
 # Stage 1 compiles llama.cpp's quantizer (CPU only: quantizing doesn't need the GPU).
 ARG LLAMA_CPP_TAG=b11292
 

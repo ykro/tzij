@@ -21,14 +21,18 @@ RUNS = REPO / "evals" / "runs"
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run", default="", help="eval run id (default: latest)")
-    parser.add_argument("--variants", default="", help="comma-separated variant files stems (default: all)")
+    parser.add_argument("--variants", default="", help="comma-separated variant names, e.g. gemma4:e4b+rag,gemini-3.8-flash (default: all)")
     parser.add_argument("--items", type=int, default=50)
     args = parser.parse_args()
     run = RUNS / args.run if args.run else max((p for p in RUNS.iterdir() if p.is_dir()), key=lambda p: p.name)
     files = sorted(run.glob("*.jsonl"))
     if args.variants:
-        wanted = set(args.variants.split(","))
+        # Variant names map to file stems the way run_eval writes them (":" and "/" become "_").
+        wanted = {v.strip().replace("/", "_").replace(":", "_") for v in args.variants.split(",") if v.strip()}
         files = [f for f in files if f.stem in wanted]
+        missing = wanted - {f.stem for f in files}
+        if missing:
+            raise SystemExit(f"no results in {run.name} for: {', '.join(sorted(missing))}")
     rows_by_variant = {f.stem: {r["id"]: r for r in map(json.loads, f.read_text().splitlines())} for f in files}
     common = set.intersection(*(set(v) for v in rows_by_variant.values()))
     items = sorted(common, key=lambda i: hashlib.sha1(i.encode()).hexdigest())[: args.items]

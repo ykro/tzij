@@ -85,3 +85,28 @@ class CachedEmbedder:
 
 def _missing(var: str):
     raise RuntimeError(f"{var} is not set (see .env.example)")
+
+
+class HashingEmbedder:
+    """Deterministic character-trigram embeddings, no model at all.
+
+    Only for MOCK_AI=1 (rehearsals without Ollama) and tests: similar spellings land close
+    together, which is enough to exercise retrieval end to end. Never used for real rounds.
+    """
+
+    name = "hashing-trigram-mock"
+
+    def __init__(self, dimensions: int = 128):
+        self.dimensions = dimensions
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        vectors = []
+        for text in texts:
+            vector = [0.0] * self.dimensions
+            padded = f"  {text.lower()}  "
+            for i in range(len(padded) - 2):
+                digest = hashlib.md5(padded[i:i + 3].encode()).digest()
+                vector[int.from_bytes(digest[:4], "little") % self.dimensions] += 1.0
+            norm = sum(v * v for v in vector) ** 0.5 or 1.0
+            vectors.append([v / norm for v in vector])
+        return vectors

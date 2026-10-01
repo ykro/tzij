@@ -178,3 +178,27 @@ async def test_model_card_and_validator_url(service):
 
 def test_verdict_options():
     assert VERDICTS == ("correcta", "aceptable", "incorrecta")
+
+
+async def test_mock_mode_needs_no_ollama_and_shows_only_licensed_kiche(tmp_path, monkeypatch):
+    """MOCK_AI=1 builds its own tiny index (hashing embeddings) and deck from duel/mock_data."""
+    import json as _json
+
+    import httpx as _httpx
+
+    from tzij_duel.main import MOCK_DATA, Service
+    from tzij_duel.settings import Settings
+
+    def no_ollama(*args, **kwargs):
+        raise AssertionError("mock mode must not call Ollama")
+
+    monkeypatch.setattr(_httpx.Client, "post", no_ollama)
+    settings = Settings(mock_ai=True, state_path=tmp_path / "state" / "rounds.json", processed_dir=tmp_path / "none",
+                        rag_index=tmp_path / "missing.sqlite", web_dir=tmp_path / "no-web")
+    service = Service(settings)
+    licensed = {r["target_text"] for r in map(_json.loads, (MOCK_DATA / "index_pairs.jsonl").read_text().splitlines())}
+    service.start_round(type("B", (), {"kind": "evaluacion", "direction": "es-quc", "text": None})())
+    await asyncio.gather(*list(service.tasks))
+    result = service.store.current.results["david"]
+    assert result["status"] == "ok" and result["text"] in licensed | {"…"}
+    assert service.store.current.reference_meta["source_name"] == "bloom_kiche"

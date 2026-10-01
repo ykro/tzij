@@ -1,20 +1,20 @@
 """Fine-tune a small Gemma with LoRA, merge, quantize to GGUF and publish it for Ollama.
 
-End to end, one command (runs inside the Vertex AI Custom Job, in Colab, or locally):
+End to end, one command (runs inside the Cloud Run GPU Job, in Colab, or locally):
 
-    python train_lora.py --data gs://…/train.jsonl --tag genlingo-2027-03 \
-        --base-model gemma-4-E2B-it --weights-uri gs://vertex-model-garden-public-us/gemma4 \
-        --output-uri gs://ai-experiments-487722-genlingo-models
+    python train_lora.py --data gs://…/train.jsonl --tag tzij-2026-09 \
+        --base-model gemma-4-E4B-it --weights-uri hf://google \
+        --output-uri gs://ai-experiments-487722-tzij-models
 
 Stages (each timed in metrics.json):
-  1. weights   download the base checkpoint (Model Garden public bucket: no Hugging Face token)
+  1. weights   download the base checkpoint (Hugging Face, token from HF_TOKEN or the hf-token secret)
   2. train     LoRA with TRL + PEFT: only ~0.5% of the weights learn; the rest stay frozen
   3. merge     fold the adapter back into the base weights -> a normal checkpoint
   4. gguf      llama.cpp: convert to GGUF f16, then quantize to Q4_K_M (~4x smaller)
   5. publish   Modelfile + GGUFs + adapter + metrics to gs://<bucket>/<tag>/
 
 The data file is chat-formatted JSONL: {"messages": [system, user, assistant]}. The app renders
-it with the same prompt the duel uses, so this script knows nothing about slang: it only
+it with the same prompt the duel uses, so this script knows nothing about K'iche': it only
 learns "given these messages, answer like the assistant turn".
 """
 
@@ -126,7 +126,7 @@ def hf_token_from_secret_manager(project: str | None, secret: str = "hf-token") 
 
 
 def base_weights(base_model: str, weights_uri: str, work: Path) -> Path:
-    """Model Garden (gs://…/<name>) by default; Hugging Face (hf://org) only if asked, with HF_TOKEN."""
+    """Hugging Face (hf://org, with HF_TOKEN), a gs:// copy of the checkpoint, or a local directory."""
     if weights_uri.startswith("hf://"):
         from huggingface_hub import snapshot_download
 
@@ -184,7 +184,7 @@ def train_and_merge(args, base_dir: Path, data_path: Path, work: Path) -> dict:
         lora_alpha=args.lora_alpha,  # scale of the update (alpha/r = 2 is a common, stable choice)
         lora_dropout=0.05,
         # Only the text decoder learns. Gemma 4 small models also carry vision/audio towers;
-        # translating slang doesn't need them, so they stay frozen and untouched.
+        # translating text doesn't need them, so they stay frozen and untouched.
         target_modules=r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)",
         task_type="CAUSAL_LM",
     )

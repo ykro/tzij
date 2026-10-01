@@ -66,4 +66,6 @@ def service(settings, retriever) -> Service:
     david = Variant("david", "David", MockClient(_mock_david, latency_ms=400), "gemma-test", Price.free(), True, False)
     goliath = Variant("goliath", "Goliath", MockClient(_mock_goliath, latency_ms=1500), "gemini-test",
                       Price(0.75, 3.75), False, True)
-    return Service(settings, david=david, goliath=goliath, retriever=retriever)
+    from tzij_duel.deck import Deck
+
+    return Service(settings, david=david, goliath=goliath, retriever=retriever, deck=Deck(settings.processed_dir))

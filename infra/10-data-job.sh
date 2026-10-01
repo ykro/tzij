@@ -48,6 +48,11 @@ gcloud run jobs deploy "$JOB" --image "$IMAGE" --region "$REGION" \
   --set-env-vars "DATA_BUCKET_URI=gs://${DATA_BUCKET},GIT_SHA=$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)" \
   --quiet
 
+if [ "${DEPLOY_ONLY:-0}" = 1 ]; then
+  echo "Deployed ${JOB} (not executed). Run it with: make data-cloud"
+  exit 0
+fi
+
 say "Running ${JOB}"
 gcloud run jobs execute "$JOB" --region "$REGION" --wait
 echo "Latest dataset: $(gcloud storage cat "gs://${DATA_BUCKET}/datasets/LATEST")"

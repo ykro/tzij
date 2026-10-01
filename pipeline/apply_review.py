@@ -1,8 +1,9 @@
 """Fold the native speaker's verdicts back into the test set.
 
 ok -> status=validated; fix -> K'iche' replaced by the correction, validated;
-reject -> removed. Pairs without a verdict stay pending_native_review and
-`make eval` reports them separately.
+reject -> removed. Pairs without a verdict stay pending_native_review: `make eval`
+lists how many references are validated vs pending, and on stage
+REQUIRE_VALIDATED_TEST=1 restricts evaluation rounds to validated ones.
 """
 
 from __future__ import annotations

@@ -1,7 +1,8 @@
 """chrF++ via sacrebleu.
 
-Why chrF++ and not BLEU: slang is full of spelling variants ("chido"/"chida", "q"/"que") and
-short sentences. Character n-grams (plus word bigrams, the "++") give partial credit where
+Why chrF++ and not BLEU: low-resource languages like K'iche' have spelling variants (k'ak' /
+kʼakʼ, lax vowels or not), rich morphology (one word can be a whole sentence) and short
+sentences. Character n-grams (plus word bigrams, the "++") give partial credit where
 BLEU gives zero, and it is the standard metric for low-resource MT (WMT).
 """
 

@@ -1,6 +1,9 @@
 # Tzij — Spanish <-> K'iche'. Run `make help` for the list.
 SHELL := /bin/bash
--include .env
+# .env provides defaults; anything set on the command line or in the environment wins
+# (e.g. `MOCK_AI=1 make up`). Each KEY=value line becomes `KEY ?= value`.
+ENV_MK := $(shell test -f .env && sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$$/\1 ?= \2/' .env > .env.mk && echo .env.mk)
+-include $(ENV_MK)
 export
 
 UV ?= uv
@@ -8,13 +11,19 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help train-data train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help deploy train-data train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
 
 data: ## Run the data pipeline locally -> data/processed/<version>/ + data/DATASHEET.md
 	$(UV) run python -m pipeline.run --gcs-uri ""
+
+deploy: ## Deploy the cloud parts: project setup, data Cloud Run Job, training job + image (duel and views stay on the laptop)
+	bash infra/00-project.sh
+	DEPLOY_ONLY=1 bash infra/10-data-job.sh
+	bash infra/01-train-service-account.sh
+	bash infra/03-train-job.sh
 
 data-cloud: ## Run the pipeline as a Cloud Run Job, writing a versioned dataset to the tzij-data bucket
 	bash infra/10-data-job.sh
@@ -41,8 +50,8 @@ datasheet: ## Re-render data/DATASHEET.md from the latest manifest
 eval: ## Compare every available variant on the test set -> evals/report.md
 	$(UV) run python -m evals.run_eval $(EVAL_ARGS)
 
-human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run (see evals/human_eval.md)
-	$(UV) run python -m evals.human_eval_sheet
+human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run: [VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"] [RUN=id]
+	$(UV) run python -m evals.human_eval_sheet $(if $(VARIANTS),--variants "$(VARIANTS)") $(if $(RUN),--run $(RUN))
 
 train-data: ## Render the train split (sentences, both directions) as chat JSONL -> data/train/chat.jsonl
 	$(UV) run python -m pipeline.train_set
@@ -51,15 +60,18 @@ train: train-data ## LoRA fine-tune as a Cloud Run GPU Job (L4), record time and
 	@test -n "$(TAG)" || (echo "usage: make train TAG=tzij-YYYY-MM" && exit 1)
 	$(UV) run python train/submit_job.py --app tzij --tag $(TAG) --data data/train/chat.jsonl -- $(TRAIN_ARGS)
 
-train-local: train-data ## Same training on this Mac (MPS) when no cloud GPU is available
+train-local: train-data ## Same training on this Mac (MPS) when no cloud GPU is available: make train-local TAG=... [TRAIN_ARGS=...]
+	@test -n "$(TAG)" || (echo "usage: make train-local TAG=tzij-YYYY-MM [TRAIN_ARGS=\"--epochs=1\"]" && exit 1)
 	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
-	  python train/train_local.py $(TAG) data/train/chat.jsonl
+	  python train/train_local.py $(TAG) data/train/chat.jsonl $(TRAIN_ARGS)
 
 train-finish: ## Merge + GGUF a cloud-trained adapter on this Mac and publish it (E4B doesn't fit Cloud Run's 32 GiB)
+	@test -n "$(TAG)" || (echo "usage: make train-finish TAG=tzij-YYYY-MM (the tag of a finished cloud training run)" && exit 1)
 	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
 	  python train/finish_local.py $(TAG)
 
 pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-09
+	@test -n "$(TAG)" || (echo "usage: make pull-model TAG=tzij-YYYY-MM" && exit 1)
 	MODELS_BUCKET=$(MODELS_BUCKET) train/pull_model.sh $(TAG)
 
 web: ## Build the presenter and validator views (static export; needs internet once for fonts)
@@ -72,10 +84,10 @@ test: ## Python + web tests (offline; Ollama-only tests skip when it isn't runni
 	MOCK_AI=1 $(UV) run pytest -q
 	@if [ -d web/node_modules ]; then cd web && npx vitest run; else echo "(web: npm ci in web/ to run its tests)"; fi
 
-up: ## Start Ollama, warm David, build the views if needed and serve everything on the LAN
-	@curl -sf $(OLLAMA)/api/version >/dev/null || (ollama serve >/tmp/tzij-ollama.log 2>&1 &) ; \
-	  for i in $$(seq 1 40); do curl -sf $(OLLAMA)/api/version >/dev/null && break; sleep 0.25; done
+up: ## Start Ollama, warm David, build the views if needed and serve everything on the LAN (MOCK_AI=1: no Ollama)
 	@if [ "$(MOCK_AI)" != 1 ]; then \
+	  curl -sf $(OLLAMA)/api/version >/dev/null || (ollama serve >/tmp/tzij-ollama.log 2>&1 &) ; \
+	  for i in $$(seq 1 40); do curl -sf $(OLLAMA)/api/version >/dev/null && break; sleep 0.25; done; \
 	  curl -sf $(OLLAMA)/api/chat -d '{"model":"$(LOCAL_MODEL_TAG)","messages":[],"keep_alive":"30m","options":{"num_ctx":$(or $(OLLAMA_NUM_CTX),4096)}}' >/dev/null \
 	    || echo "!! David ($(LOCAL_MODEL_TAG)) no está en Ollama: ollama pull $(LOCAL_MODEL_TAG)"; \
 	  curl -sf $(OLLAMA)/api/embed -d '{"model":"$(EMBEDDING_MODEL)","input":["hola"],"keep_alive":"30m"}' >/dev/null \
