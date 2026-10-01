@@ -13,6 +13,11 @@ On stage it competes against Goliath, a frontier model (Gemini) used as anyone w
 | Runs on | The presenter's laptop, offline | Google Cloud, needs internet |
 | Cost per translation | $0 (hardware already paid for) | Tokens × list price (shown live) |
 
+**On stage now:** `gemma4:e4b` + retrieval, the best local variant in `evals/report.md`
+(chrF++ 18.4 on 600 held-out test sentences, vs 36.4 for Gemini alone and 37.2 for Gemini
+with the same retrieval; base Gemma without retrieval: 9.8–11.5). Retrieval roughly doubles
+small Gemma's score; it does not yet close the gap with the frontier model.
+
 Variants compared in `make eval` (results in `evals/report.md`): each Gemma in
 `BASE_MODEL_TAGS` with and without retrieval, fine-tuned tags in `FINETUNED_MODEL_TAGS`
 with and without retrieval, Gemini alone, and Gemini with the same retrieval. The David
