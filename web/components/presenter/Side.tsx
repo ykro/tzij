@@ -29,11 +29,13 @@ function Elapsed({ since }: { since: number }) {
   return <span className="num">{formatSeconds(Math.max(0, now - since * 1000))}</span>;
 }
 
-function Result({ result, direction }: { result: ContenderResult; direction: Direction }) {
+function Result({ result, direction, compact }: { result: ContenderResult; direction: Direction; compact: boolean }) {
   const text = displayTarget(result.text, direction);
+  // A two-line phrase above leaves less room: answers drop one size step.
+  const size = Math.round(answerSize(text) * (compact ? 0.8 : 1));
   return (
     <>
-      <p className="side__text kiche fade-in" style={{ ["--answer-size" as string]: answerSize(text) }} lang={direction === "es-quc" ? "quc" : "es"}>
+      <p className="side__text kiche fade-in" style={{ ["--answer-size" as string]: size }} lang={direction === "es-quc" ? "quc" : "es"}>
         {text || "—"}
       </p>
       <div className="side__meta num fade-in">
@@ -79,7 +81,7 @@ export function Side({ name, model, round, online }: Props) {
       </p>
     );
   } else {
-    body = <Result result={result} direction={round.direction} />;
+    body = <Result result={result} direction={round.direction} compact={round.source_text.length > 32 || !!round.reference} />;
   }
 
   return (
@@ -88,7 +90,7 @@ export function Side({ name, model, round, online }: Props) {
         <span className="side__name">{LABEL[name]}</span>
         <span className="side__model">{subtitle(name, model)}</span>
       </header>
-      {body}
+      <div className="side__body">{body}</div>
       <footer className="side__foot">{round && result?.status === "ok" && <RoundScore name={name} round={round} result={result} other={other} />}</footer>
     </section>
   );

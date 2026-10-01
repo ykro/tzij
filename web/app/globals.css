@@ -352,11 +352,17 @@ input {
 .side {
   position: relative;
   overflow: hidden;
-  padding: calc(var(--u) * 40) calc(var(--u) * 72) calc(var(--u) * 32);
-  display: flex;
-  flex-direction: column;
+  padding: calc(var(--u) * 36) calc(var(--u) * 72) calc(var(--u) * 28);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   min-width: 0;
   min-height: 0;
+}
+
+/* The answer area absorbs overflow; the score row below is never cut off. */
+.side__body {
+  min-height: 0;
+  overflow: hidden;
 }
 
 .side + .side {
@@ -391,6 +397,7 @@ input {
 
 .side__text {
   flex: none;
+  padding-bottom: 0.12em; /* keep descenders (q, j, g) inside the line clamp */
   margin: calc(var(--u) * 22) 0 0;
   font-family: var(--font-display), Georgia, serif;
   font-weight: 500;
@@ -418,8 +425,7 @@ input {
 }
 
 .side__foot {
-  margin-top: auto;
-  padding-top: calc(var(--u) * 20);
+  padding-top: calc(var(--u) * 16);
   display: flex;
   gap: calc(var(--u) * 14);
   align-items: center;
