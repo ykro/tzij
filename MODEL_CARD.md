@@ -8,15 +8,38 @@ On stage it competes against Goliath, a frontier model (Gemini) used as anyone w
 
 | | David | Goliath |
 | --- | --- | --- |
-| Model | `LOCAL_MODEL_TAG` (Gemma 4, base or LoRA fine-tuned) served by Ollama | `GEMINI_MODEL` on Vertex AI |
+| Model | `LOCAL_MODEL_TAG` (now `gemma4:e4b`) served by Ollama | `GEMINI_MODEL` (now `gemini-3.8-flash`) on Vertex AI |
 | Extra knowledge | Retrieval index: ~7,000 dictionary entries and example pairs per direction (EmbeddingGemma + sqlite-vec) | None |
 | Runs on | The presenter's laptop, offline | Google Cloud, needs internet |
 | Cost per translation | $0 (hardware already paid for) | Tokens × list price (shown live) |
 
-**On stage now:** `gemma4:e4b` + retrieval, the best local variant in `evals/report.md`
-(chrF++ 18.4 on 600 held-out test sentences, vs 36.4 for Gemini alone and 37.2 for Gemini
-with the same retrieval; base Gemma without retrieval: 9.8–11.5). Retrieval roughly doubles
-small Gemma's score; it does not yet close the gap with the frontier model.
+**On stage now:** `gemma4:e4b` + retrieval, the best local variant in `evals/report.md`.
+
+| Variant (600 held-out sentences, Bloom + BOUQuET) | es→quc | quc→es | both | p50 | cost / 1,000 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Gemma 4 E4B, base | 7.4 | 16.3 | 11.5 | 1.2 s | $0 |
+| Gemma 4 E4B + retrieval (**David on stage**) | 18.0 | 18.9 | **18.4** | 1.7 s | $0 |
+| `tzij-2026-09` (LoRA on E4B, 1 epoch) | 13.8 | 16.8 | 15.2 | 1.1 s | $0 |
+| `tzij-2026-09` + retrieval | 17.5 | 17.8 | 17.6 | 1.8 s | $0 |
+| Gemini 3.8 Flash (**Goliath**) | 32.8 | 40.4 | **36.4** | 1.8 s | $0.26 |
+| Gemini 3.8 Flash + same retrieval | 34.3 | 40.4 | 37.2 | 2.3 s | $1.00 |
+
+The true picture, for the talk:
+
+- **Goliath is better at translating.** David trails by 18 chrF++ points overall and in every
+  slice (length, direction, domain); it beats Goliath on 45 of 598 sentences (8%) and is within
+  5 points on 18%.
+- **Data is what moves David.** Retrieval from ~7,000 licensed dictionary entries and example
+  pairs takes base E4B from 11.5 to 18.4 (+60%); most of the gain is Spanish → K'iche'
+  (7.4 → 18.0), the direction a model can't fake.
+- **Fine-tuning helped, but less than retrieval.** One LoRA epoch on 2,590 sentence pairs lifts
+  E4B alone from 11.5 to 15.2, but with retrieval it is 0.8 points *below* base + retrieval
+  overall (it does better on short phrases, 13.9 vs 11.2, and worse on long sentences). With
+  under 2,000 non-religious pairs, retrieval is the better investment; the fine-tune stays in
+  the report, not on stage.
+- **Where David wins outright:** cost ($0 vs $0.26 per 1,000 translations, and the cloud price
+  doubles in 2027) and availability. With no internet Goliath produces nothing, and David's
+  scores are unchanged: model, index and embeddings all live on the laptop.
 
 Variants compared in `make eval` (results in `evals/report.md`): each Gemma in
 `BASE_MODEL_TAGS` with and without retrieval, fine-tuned tags in `FINETUNED_MODEL_TAGS`
@@ -40,7 +63,10 @@ drop reasons are in `data/DATASHEET.md` (generated). Dataset `20260930-220035`:
 - **Orthography.** Glottal stops unified to `'` and lax vowels folded (`data/normalize.py`);
   the screen shows the modifier letter apostrophe `ʼ`.
 - **Fine-tuning threshold** (2,000 clean sentence pairs outside test): met with 2,701, of
-  which 1,924 are non-religious. The LoRA (`make train`) trains on the train split only.
+  which 1,924 are non-religious. `tzij-2026-09` is a LoRA (r=16) on Gemma 4 E4B, 1 epoch over
+  the train split (5,180 examples, both directions, religious ≤30%), trained as a Cloud Run Job
+  on one L4 in europe-west4 (22 min of training; merge and GGUF finished on the laptop because
+  the 16 GB checkpoint doesn't fit the job's 32 GiB). Runs in `train/runs/`.
 
 ## Evaluation
 

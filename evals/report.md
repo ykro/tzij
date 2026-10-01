@@ -12,6 +12,8 @@ Status of references: pending_native_review — **not yet validated by a native 
 | `gemma4:e2b-it-qat+rag` | laptop | yes | 15.1 | 15.9 | **15.4** | 0.84 s | 2.76 s | $0 (local) |
 | `gemma4:e4b` | laptop | no | 7.4 | 16.3 | **11.5** | 1.20 s | 3.21 s | $0 (local) |
 | `gemma4:e4b+rag` | laptop | yes | 18.0 | 18.9 | **18.4** | 1.73 s | 4.58 s | $0 (local) |
+| `tzij-2026-09` | laptop | no | 13.8 | 16.8 | **15.2** | 1.07 s | 4.06 s | $0 (local) |
+| `tzij-2026-09+rag` | laptop | yes | 17.5 | 17.8 | **17.6** | 1.75 s | 4.71 s | $0 (local) |
 | `gemini-3.8-flash` | cloud | no | 32.8 | 40.4 | **36.4** | 1.83 s | 4.98 s | $0.261 |
 | `gemini-3.8-flash+rag` | cloud | yes | 34.3 | 40.4 | **37.2** | 2.29 s | 7.66 s | $1.004 |
 
@@ -19,6 +21,10 @@ Status of references: pending_native_review — **not yet validated by a native 
 
 Best local variant: **`gemma4:e4b+rag`** (chrF++ 18.4). Set `LOCAL_MODEL_TAG=gemma4:e4b` — the duel always adds retrieval to David, so pick a `+rag` variant unless the table shows retrieval hurting.
 Against Goliath (`gemini-3.8-flash`, 36.4): **-18.0 chrF++** for David.
+
+**Fine-tuning, honestly:**
+- without retrieval: `tzij-2026-09` 15.2 vs best base `gemma4:e4b` 11.5 (**+3.7**).
+- with retrieval: `tzij-2026-09+rag` 17.6 vs best base `gemma4:e4b+rag` 18.4 (**-0.8**).
 
 ## By test source (chrF++, both directions)
 
@@ -28,6 +34,8 @@ Against Goliath (`gemini-3.8-flash`, 36.4): **-18.0 chrF++** for David.
 | `gemma4:e2b-it-qat+rag` | 13.7 | 18.1 |
 | `gemma4:e4b` | 11.6 | 11.4 |
 | `gemma4:e4b+rag` | 17.3 | 20.2 |
+| `tzij-2026-09` | 13.7 | 17.5 |
+| `tzij-2026-09+rag` | 15.6 | 20.7 |
 | `gemini-3.8-flash` | 34.3 | 39.8 |
 | `gemini-3.8-flash+rag` | 34.6 | 41.4 |
 
@@ -43,6 +51,8 @@ Same test pairs, sliced. `David` = best local variant (`gemma4:e4b+rag`), `Golia
 | `gemma4:e2b-it-qat+rag` | 15.1 (n=287) | 17.3 (n=233) | 12.3 (n=80) |
 | `gemma4:e4b` | 12.3 (n=287) | 9.3 (n=233) | 6.0 (n=80) |
 | `gemma4:e4b+rag` | 18.7 (n=287) | 18.5 (n=233) | 11.2 (n=80) |
+| `tzij-2026-09` | 15.9 (n=287) | 13.9 (n=233) | 8.6 (n=80) |
+| `tzij-2026-09+rag` | 17.4 (n=287) | 19.0 (n=233) | 13.9 (n=80) |
 | `gemini-3.8-flash` | 37.7 (n=287) | 34.0 (n=233) | 19.4 (n=80) |
 | `gemini-3.8-flash+rag` | 38.2 (n=287) | 35.8 (n=233) | 21.1 (n=80) |
 
@@ -54,6 +64,8 @@ Same test pairs, sliced. `David` = best local variant (`gemma4:e4b+rag`), `Golia
 | `gemma4:e2b-it-qat+rag` | 14.5 (n=150) | 17.9 (n=150) | 12.9 (n=150) | 18.2 (n=150) |
 | `gemma4:e4b` | 16.4 (n=150) | 16.1 (n=150) | 7.2 (n=150) | 7.6 (n=150) |
 | `gemma4:e4b+rag` | 19.0 (n=150) | 18.8 (n=150) | 15.7 (n=150) | 21.6 (n=150) |
+| `tzij-2026-09` | 15.1 (n=150) | 19.4 (n=150) | 12.5 (n=150) | 15.8 (n=150) |
+| `tzij-2026-09+rag` | 15.9 (n=150) | 20.6 (n=150) | 15.3 (n=150) | 20.8 (n=150) |
 | `gemini-3.8-flash` | 38.0 (n=150) | 44.2 (n=150) | 30.9 (n=150) | 35.8 (n=150) |
 | `gemini-3.8-flash+rag` | 37.9 (n=150) | 44.5 (n=150) | 31.6 (n=150) | 38.5 (n=150) |
 
@@ -65,6 +77,8 @@ Same test pairs, sliced. `David` = best local variant (`gemma4:e4b+rag`), `Golia
 | `gemma4:e2b-it-qat+rag` | 16.0 (n=22) | 16.7 (n=48) | 13.7 (n=300) | 18.8 (n=42) | 18.5 (n=40) | 16.5 (n=28) | 17.5 (n=32) | 20.3 (n=44) | 18.4 (n=44) |
 | `gemma4:e4b` | 10.3 (n=22) | 9.7 (n=48) | 11.6 (n=300) | 11.5 (n=42) | 12.1 (n=40) | 10.4 (n=28) | 12.1 (n=32) | 13.8 (n=44) | 9.8 (n=44) |
 | `gemma4:e4b+rag` | 20.3 (n=22) | 17.0 (n=48) | 17.3 (n=300) | 20.4 (n=42) | 21.5 (n=40) | 20.0 (n=28) | 19.0 (n=32) | 22.3 (n=44) | 20.0 (n=44) |
+| `tzij-2026-09` | 15.2 (n=22) | 16.1 (n=48) | 13.7 (n=300) | 18.1 (n=42) | 15.5 (n=40) | 17.5 (n=28) | 18.6 (n=32) | 20.0 (n=44) | 16.8 (n=44) |
+| `tzij-2026-09+rag` | 18.7 (n=22) | 21.2 (n=48) | 15.6 (n=300) | 18.8 (n=42) | 20.4 (n=40) | 18.9 (n=28) | 19.7 (n=32) | 24.0 (n=44) | 22.7 (n=44) |
 | `gemini-3.8-flash` | 36.4 (n=22) | 36.5 (n=48) | 34.3 (n=300) | 37.3 (n=42) | 42.3 (n=40) | 42.7 (n=28) | 40.4 (n=32) | 38.3 (n=44) | 41.2 (n=44) |
 | `gemini-3.8-flash+rag` | 38.2 (n=22) | 39.8 (n=48) | 34.6 (n=300) | 38.3 (n=42) | 44.7 (n=40) | 44.1 (n=28) | 39.7 (n=32) | 39.5 (n=44) | 43.7 (n=44) |
 
@@ -82,6 +96,8 @@ Same test pairs, sliced. `David` = best local variant (`gemma4:e4b+rag`), `Golia
 | `gemma4:e2b-it-qat+rag` | 599 | 0 | 1 |
 | `gemma4:e4b` | 600 | 0 | 0 |
 | `gemma4:e4b+rag` | 600 | 0 | 0 |
+| `tzij-2026-09` | 600 | 0 | 0 |
+| `tzij-2026-09+rag` | 600 | 0 | 0 |
 | `gemini-3.8-flash` | 598 | 0 | 2 |
 | `gemini-3.8-flash+rag` | 599 | 0 | 1 |
 
