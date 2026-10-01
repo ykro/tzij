@@ -10,7 +10,7 @@ Tzij ("palabra" en K'iche') traduce entre español y K'iche' (ISO 639-3 `quc`), 
 
 ![Ronda de evaluación: la referencia viene de un libro con licencia; David y Goliath traducen la misma frase](docs/screenshots/presenter-03-evaluation.png)
 
-*Ronda de evaluación. La frase y su **referencia** vienen de un libro de Bloom Library (MINEDUC Guatemala, CC BY 4.0). Las dos traducciones son **salida del modelo, sin validar** por una persona hablante nativa; chrF++ las compara con la referencia. La latencia de David en esta captura (9.3 s) se midió con otro proceso usando la GPU de la laptop; en el reporte, sin carga, su p50 es 1.7 s.*
+*Ronda de evaluación. La frase y su **referencia** vienen de un libro de Bloom Library (MINEDUC Guatemala, CC BY 4.0). Las dos traducciones son **salida del modelo, sin validar** por una persona hablante nativa; chrF++ las compara con la referencia. David tardó 1.8 s (con el modelo ya cargado; p50 en el reporte: 1.7 s) y Goliath 2.0 s.*
 
 ![Con Wi-Fi apagado: David traduce en la laptop, Goliath aparece sin conexión](docs/screenshots/presenter-06-offline.png)
 

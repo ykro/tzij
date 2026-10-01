@@ -10,7 +10,7 @@ Tzij ("word" in K'iche') translates between Spanish and K'iche' (ISO 639-3 `quc`
 
 ![Evaluation round: the reference comes from a licensed book; David and Goliath translate the same sentence](docs/screenshots/presenter-03-evaluation.png)
 
-*Evaluation round. The sentence and its **reference** come from a Bloom Library book (MINEDUC Guatemala, CC BY 4.0). Both translations are **unvalidated model output**; chrF++ compares them with the reference. David's latency in this capture (9.3 s) was measured while another process was using the laptop's GPU; unloaded, its p50 in the report is 1.7 s.*
+*Evaluation round. The sentence and its **reference** come from a Bloom Library book (MINEDUC Guatemala, CC BY 4.0). Both translations are **unvalidated model output**; chrF++ compares them with the reference. David took 1.8 s (model already loaded; p50 in the report: 1.7 s) and Goliath 2.0 s.*
 
 ![With Wi-Fi off: David translates on the laptop, Goliath shows as offline](docs/screenshots/presenter-06-offline.png)
 
