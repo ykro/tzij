@@ -223,7 +223,16 @@ async def main_async(args) -> None:
         out = run_dir / f"{v.name.replace('/', '_').replace(':', '_')}.jsonl"
         results[v.name] = await run_variant(v, records, out, retriever=retriever, online=online,
                                             concurrency=concurrency, k=s.rag_k)
-    report = render(results, variants, records, s, dataset.name, run_id, notes)
+    # The report covers every variant with results in this run, so new variants (e.g. a
+    # fine-tuned tag) can be added later with --run <id> --only <names> without rerunning all.
+    all_variants = eval_variants(s)
+    ids = {r["id"] for r in records}
+    for v in all_variants:
+        out = run_dir / f"{v.name.replace('/', '_').replace(':', '_')}.jsonl"
+        if v.name not in results and out.exists():
+            rows = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
+            results[v.name] = [r for r in rows if r["id"] in ids]
+    report = render(results, all_variants, records, s, dataset.name, run_id, notes)
     out_path = Path(args.out) if args.out else REPORT
     out_path.write_text(report, encoding="utf-8")
     print(f"-> {out_path.relative_to(REPO) if out_path.is_relative_to(REPO) else out_path}")
