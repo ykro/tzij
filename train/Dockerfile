@@ -11,7 +11,9 @@ RUN git clone --depth 1 --branch ${LLAMA_CPP_TAG} https://github.com/ggml-org/ll
     && cmake --build /opt/llama.cpp/build --target llama-quantize -j"$(nproc)"
 
 FROM python:3.12-slim
-RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 ca-certificates && rm -rf /var/lib/apt/lists/*
+# gcc + libc headers: Triton (used by torch on CUDA) compiles a small helper at runtime.
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 ca-certificates gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /bin/uv
 # CUDA 12.6 wheels: they run on the L4 drivers Vertex AI installs (>= 550).
 RUN uv pip install --system --no-cache --index-url https://download.pytorch.org/whl/cu126 torch==2.14.0

@@ -104,6 +104,60 @@ def score(rows: list[dict]) -> dict:
     }
 
 
+LENGTH_BUCKETS = (("short phrase (1–4 words)", 1, 4), ("sentence (5–12 words)", 5, 12), ("long sentence (13+ words)", 13, 10_000))
+
+
+def _bucket(words: int) -> str:
+    return next(name for name, lo, hi in LENGTH_BUCKETS if lo <= words <= hi)
+
+
+def breakdown(results: dict[str, list[dict]], ranking: list, records: list[dict]) -> list[str]:
+    """Where David wins or comes close, not just the headline average."""
+    by_id = {r["id"]: r for r in records}
+    local = [(v, sc) for v, sc in ranking if not v.requires_network]
+    cloud = [(v, sc) for v, sc in ranking if v.requires_network and not v.uses_rag]
+    if not local or not cloud:
+        return []
+    david_v, _ = max(local, key=lambda x: x[1]["chrf"])
+    goliath_v, _ = cloud[0]
+    names = [v.name for v, _ in ranking]
+    lines = ["## Where the gap is (chrF++ by slice)", "",
+             "Same test pairs, sliced. `David` = best local variant "
+             f"(`{david_v.name}`), `Goliath` = `{goliath_v.name}`.", ""]
+
+    def table(title: str, key) -> None:
+        groups = sorted({key(by_id[r["id"]]) for r in results[david_v.name] if r["id"] in by_id})
+        lines.extend([f"### {title}", "", "| variant | " + " | ".join(groups) + " |",
+                      "| --- | " + " | ".join("---:" for _ in groups) + " |"])
+        for name in names:
+            rows = results[name]
+            cells = []
+            for g in groups:
+                sub = [r for r in rows if r["id"] in by_id and key(by_id[r["id"]]) == g]
+                cells.append(f"{score(sub)['chrf']:.1f} (n={len(sub)})" if sub else "—")
+            lines.append(f"| `{name}` | " + " | ".join(cells) + " |")
+        lines.append("")
+
+    table("By length of the source text", lambda r: _bucket(len(r["source_text"].split())))
+    table("By direction and test source", lambda r: f"{DIRECTION_LABEL[r['direction']]} · {r['source_name']}")
+    table("By domain", lambda r: r["domain"])
+
+    # Head to head, sentence by sentence.
+    d = {r["id"]: r for r in results[david_v.name]}
+    g = {r["id"]: r for r in results[goliath_v.name]}
+    common = [i for i in d if i in g and d[i]["status"] == "ok" and g[i]["status"] == "ok"]
+    wins = sum(d[i]["chrf"] > g[i]["chrf"] for i in common)
+    close = sum(abs(d[i]["chrf"] - g[i]["chrf"]) <= 5 for i in common)
+    lines += ["### Head to head, sentence by sentence", "",
+              f"- David scores higher than Goliath on **{wins} of {len(common)}** sentences "
+              f"({wins / max(len(common), 1):.0%}) and within 5 chrF++ points on {close} ({close / max(len(common), 1):.0%}).",
+              f"- Cost of these {len(results[goliath_v.name])} translations: David $0, Goliath "
+              f"${sum(r.get('cost_usd') or 0 for r in results[goliath_v.name]):.2f}.",
+              "- With no internet, Goliath produces nothing (shown as offline on stage); David's numbers above "
+              "are unchanged because everything it uses — model, index, embeddings — is on the laptop.", ""]
+    return lines
+
+
 def _fmt_ms(ms: float | None) -> str:
     return "—" if ms is None else f"{ms / 1000:.2f} s"
 
@@ -173,6 +227,8 @@ def render(results: dict[str, dict], variants: list[Variant], records: list[dict
         lines.append(f"| `{v.name}` | " + " | ".join(
             f"{score([r for r in rows if r['source_name'] == x])['chrf']:.1f}" for x in sources) + " |")
     lines.append("")
+
+    lines += breakdown(results, ranking, records)
 
     lines += ["## Failures", "", "| variant | ok | offline | error |", "| --- | ---: | ---: | ---: |"]
     for v, sc in ranking:

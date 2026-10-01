@@ -47,9 +47,9 @@ human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run (see ev
 train-data: ## Render the train split (sentences, both directions) as chat JSONL -> data/train/chat.jsonl
 	$(UV) run python -m pipeline.train_set
 
-train: train-data ## LoRA fine-tune on Vertex AI and record time and cost: make train TAG=tzij-2026-09
+train: train-data ## LoRA fine-tune as a Cloud Run GPU Job (L4), record time and cost: make train TAG=tzij-2026-09 [TRAIN_ARGS="--epochs=1.5"]
 	@test -n "$(TAG)" || (echo "usage: make train TAG=tzij-YYYY-MM" && exit 1)
-	$(UV) run python train/submit_job.py --app tzij --tag $(TAG) --data data/train/chat.jsonl
+	$(UV) run python train/submit_job.py --app tzij --tag $(TAG) --data data/train/chat.jsonl -- $(TRAIN_ARGS)
 
 train-local: train-data ## Same training on this Mac (MPS) when no cloud GPU is available
 	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \

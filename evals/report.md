@@ -31,6 +31,49 @@ Against Goliath (`gemini-3.8-flash`, 36.4): **-18.0 chrF++** for David.
 | `gemini-3.8-flash` | 34.3 | 39.8 |
 | `gemini-3.8-flash+rag` | 34.6 | 41.4 |
 
+## Where the gap is (chrF++ by slice)
+
+Same test pairs, sliced. `David` = best local variant (`gemma4:e4b+rag`), `Goliath` = `gemini-3.8-flash`.
+
+### By length of the source text
+
+| variant | long sentence (13+ words) | sentence (5–12 words) | short phrase (1–4 words) |
+| --- | ---: | ---: | ---: |
+| `gemma4:e2b-it-qat` | 10.5 (n=287) | 8.3 (n=233) | 4.8 (n=80) |
+| `gemma4:e2b-it-qat+rag` | 15.1 (n=287) | 17.3 (n=233) | 12.3 (n=80) |
+| `gemma4:e4b` | 12.3 (n=287) | 9.3 (n=233) | 6.0 (n=80) |
+| `gemma4:e4b+rag` | 18.7 (n=287) | 18.5 (n=233) | 11.2 (n=80) |
+| `gemini-3.8-flash` | 37.7 (n=287) | 34.0 (n=233) | 19.4 (n=80) |
+| `gemini-3.8-flash+rag` | 38.2 (n=287) | 35.8 (n=233) | 21.1 (n=80) |
+
+### By direction and test source
+
+| variant | K'iche' → español · bloom_kiche | K'iche' → español · bouquet | español → K'iche' · bloom_kiche | español → K'iche' · bouquet |
+| --- | ---: | ---: | ---: | ---: |
+| `gemma4:e2b-it-qat` | 10.8 (n=150) | 12.4 (n=150) | 8.7 (n=150) | 8.1 (n=150) |
+| `gemma4:e2b-it-qat+rag` | 14.5 (n=150) | 17.9 (n=150) | 12.9 (n=150) | 18.2 (n=150) |
+| `gemma4:e4b` | 16.4 (n=150) | 16.1 (n=150) | 7.2 (n=150) | 7.6 (n=150) |
+| `gemma4:e4b+rag` | 19.0 (n=150) | 18.8 (n=150) | 15.7 (n=150) | 21.6 (n=150) |
+| `gemini-3.8-flash` | 38.0 (n=150) | 44.2 (n=150) | 30.9 (n=150) | 35.8 (n=150) |
+| `gemini-3.8-flash+rag` | 37.9 (n=150) | 44.5 (n=150) | 31.6 (n=150) | 38.5 (n=150) |
+
+### By domain
+
+| variant | comments | conversation | education | how-to | narration | other-misc. | reflection | social-posts | web-misc. |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `gemma4:e2b-it-qat` | 9.4 (n=22) | 8.0 (n=48) | 9.7 (n=300) | 11.3 (n=42) | 8.7 (n=40) | 10.2 (n=28) | 9.5 (n=32) | 12.9 (n=44) | 9.7 (n=44) |
+| `gemma4:e2b-it-qat+rag` | 16.0 (n=22) | 16.7 (n=48) | 13.7 (n=300) | 18.8 (n=42) | 18.5 (n=40) | 16.5 (n=28) | 17.5 (n=32) | 20.3 (n=44) | 18.4 (n=44) |
+| `gemma4:e4b` | 10.3 (n=22) | 9.7 (n=48) | 11.6 (n=300) | 11.5 (n=42) | 12.1 (n=40) | 10.4 (n=28) | 12.1 (n=32) | 13.8 (n=44) | 9.8 (n=44) |
+| `gemma4:e4b+rag` | 20.3 (n=22) | 17.0 (n=48) | 17.3 (n=300) | 20.4 (n=42) | 21.5 (n=40) | 20.0 (n=28) | 19.0 (n=32) | 22.3 (n=44) | 20.0 (n=44) |
+| `gemini-3.8-flash` | 36.4 (n=22) | 36.5 (n=48) | 34.3 (n=300) | 37.3 (n=42) | 42.3 (n=40) | 42.7 (n=28) | 40.4 (n=32) | 38.3 (n=44) | 41.2 (n=44) |
+| `gemini-3.8-flash+rag` | 38.2 (n=22) | 39.8 (n=48) | 34.6 (n=300) | 38.3 (n=42) | 44.7 (n=40) | 44.1 (n=28) | 39.7 (n=32) | 39.5 (n=44) | 43.7 (n=44) |
+
+### Head to head, sentence by sentence
+
+- David scores higher than Goliath on **45 of 598** sentences (8%) and within 5 chrF++ points on 110 (18%).
+- Cost of these 600 translations: David $0, Goliath $0.16.
+- With no internet, Goliath produces nothing (shown as offline on stage); David's numbers above are unchanged because everything it uses — model, index, embeddings — is on the laptop.
+
 ## Failures
 
 | variant | ok | offline | error |
