@@ -8,9 +8,13 @@ Tzij ("word" in K'iche') translates between Spanish and K'iche' (ISO 639-3 `quc`
 
 **The result, unvarnished:** Goliath translates better. David scores **18.4 chrF++** and Goliath **36.4**. David wins elsewhere: it costs **$0** per translation, the data never leaves the laptop, and it **works without internet**, where Goliath produces nothing. This repo is the half of the talk about *when NOT to fine-tune* and *what retrieval buys you*: retrieval lifts Gemma more than the fine-tune does, and the fine-tune doesn't go on stage.
 
-![Presenter view with Wi-Fi off: David translates on the laptop, Goliath shows as offline](docs/screenshots/real/presenter-06-offline.png)
+![Evaluation round: the reference comes from a licensed book; David and Goliath translate the same sentence](docs/screenshots/presenter-03-evaluation.png)
 
-*Presenter view during an evaluation round with the network cut. The reference comes from a Bloom Library book (MINEDUC, CC BY 4.0); the translations on screen are model outputs, not references.*
+*Evaluation round. The sentence and its **reference** come from a Bloom Library book (MINEDUC Guatemala, CC BY 4.0). Both translations are **unvalidated model output**; chrF++ compares them with the reference. David's latency in this capture (9.3 s) was measured while another process was using the laptop's GPU; unloaded, its p50 in the report is 1.7 s.*
+
+![With Wi-Fi off: David translates on the laptop, Goliath shows as offline](docs/screenshots/presenter-06-offline.png)
+
+*Same kind of round with the network cut (rehearsal switch). David's translation is **unvalidated model output**.*
 
 ## What you'll learn
 
@@ -19,7 +23,7 @@ Tzij ("word" in K'iche') translates between Spanish and K'iche' (ISO 639-3 `quc`
 | **Licensed web data and orthography normalization.** Every record carries `origin=web`, a URL and a license. Sources that don't allow this use are left out. Typographic single quotes, the saltillo `ꞌ`, `ʼ` and the other characters used as a glottal stop are unified to the ASCII apostrophe before indexing, training or evaluating. | [`data/SOURCES.md`](data/SOURCES.md) (10 sources used, 13 needing permission, 24 rejected), [`pipeline/sources/`](pipeline/sources/), [`data/normalize.py`](data/normalize.py), [`tests/test_normalize.py`](tests/test_normalize.py) |
 | **Split by source, not by sentence.** A source is either entirely test or entirely training, and any training pair that repeats a test sentence is dropped. A random sentence split would measure memory. | [`pipeline/split.py`](pipeline/split.py), [`pipeline/sources/__init__.py`](pipeline/sources/__init__.py), [`data/DATASHEET.md`](data/DATASHEET.md) |
 | **Retrieval vs fine-tuning, decided by `make eval`.** All six variant types (base, base + retrieval, fine-tuned, fine-tuned + retrieval, Gemini, Gemini + retrieval) run on the same 600 sentences. The best local variant wins, even if it isn't the one that took the most work. | [`evals/run_eval.py`](evals/run_eval.py), [`duel/tzij_duel/variants.py`](duel/tzij_duel/variants.py), [`evals/report.md`](evals/report.md) |
-| **Token fertility.** In Gemma's tokenizer a K'iche' word costs 2.68 tokens and a Spanish word 1.45. The same sentence takes **1.88×** as many tokens in K'iche'. | [`evals/fertility.py`](evals/fertility.py), [`evals/fertility.md`](evals/fertility.md) |
+| **Token fertility.** In Gemma's tokenizer a K'iche' word costs 2.64 tokens and a Spanish word 1.41. The same sentence takes **1.92×** as many tokens in K'iche'. | [`evals/fertility.py`](evals/fertility.py), [`evals/fertility.md`](evals/fertility.md) |
 | **Offline by design.** Model, embeddings, index, service and views all live on the laptop. Fonts are downloaded at build time. A 0.8 s TCP probe decides whether Goliath is online before calling it. | [`duel/duel_core/connectivity.py`](duel/duel_core/connectivity.py), [`rag/embedder.py`](rag/embedder.py), [`web/next.config.ts`](web/next.config.ts), [`duel/tzij_duel/main.py`](duel/tzij_duel/main.py) |
 | **Native-speaker validation.** The test set stays `pending_native_review` until a person reviews it. In live rounds a person gives the verdict from their phone, blind. A human-evaluation template is filled before each event. | [`pipeline/review.py`](pipeline/review.py), [`pipeline/apply_review.py`](pipeline/apply_review.py), [`web/app/validar/page.tsx`](web/app/validar/page.tsx), [`evals/human_eval.md`](evals/human_eval.md) |
 
@@ -69,7 +73,7 @@ To rehearse without the cloud or a GPU: `make up MOCK_AI=1`. Pass variables **af
 | `make fertility` | Measures K'iche' vs Spanish token fertility and writes `evals/fertility.md`. |
 | `make datasheet` | Regenerates `data/DATASHEET.md` from the latest manifest. |
 | `make eval [EVAL_ARGS=…]` | Compares every available variant and writes `evals/report.md`. |
-| `make human-eval-sheet` | Builds a blind human-evaluation sheet (50 sentences) from the latest eval run. |
+| `make human-eval-sheet` | Builds a blind human-evaluation sheet (50 sentences) from the latest eval run; `VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"` picks variants. |
 | `make train-data` | Renders the `train` sentences as chat JSONL (`data/train/chat.jsonl`). |
 | `make train TAG=tzij-YYYY-MM [TRAIN_ARGS=…]` | LoRA fine-tune as a Cloud Run Job on one L4. Records duration and cost in `train/runs/<tag>.json`. |
 | `make train-local TAG=…` | The same training on the Mac (MPS), for when no cloud GPU is available. |
@@ -77,13 +81,14 @@ To rehearse without the cloud or a GPU: `make up MOCK_AI=1`. Pass variables **af
 | `make pull-model TAG=…` | Downloads the GGUF from the bucket and registers it in Ollama. |
 | `make web` | Builds the presenter and validator views (static export). |
 | `make duel` | Runs only the duel service on `0.0.0.0:$DUEL_PORT`. |
-| `make up` | Starts Ollama if needed, warms David and EmbeddingGemma, builds the views if missing and serves everything on the LAN. |
+| `make up` | (`MOCK_AI=1 make up`: no Ollama, index or dataset needed.) Starts Ollama if needed, warms David and EmbeddingGemma, builds the views if missing and serves everything on the LAN. |
 | `make reset` | Clears rounds and verdicts, whether the service is running or not, in under 10 s. |
 | `make test` | Python tests (`MOCK_AI=1`, no network) and web tests (vitest). |
+| `make deploy` | Deploys the cloud parts (project, data job, training job and image). The duel and views stay on the laptop. |
 | `make emulator` | Opens the validator in Chrome on the Android emulator (`10.0.2.2`) and fails if a vote takes more than 1 s to reach the screen. |
 | `make screenshots` | Playwright screenshots of both views at 1920×1080 and 390×844 (the service must be running). |
 
-There is no `make deploy`. Nothing in this project is served from the cloud: what runs in the cloud are the two jobs (`make data-cloud`, `make train`).
+`make deploy` deploys only what lives in the cloud: project setup (APIs, Artifact Registry, buckets, `hf-token` secret) via `infra/00-project.sh`, the data Cloud Run Job, and the training job with its image. **The duel service and the views are not deployed, on purpose:** they run on the laptop because the talk is about what works without internet.
 
 ## Repo map
 
@@ -103,7 +108,7 @@ train/         train_lora.py (TRL + PEFT → merge → GGUF), submit_job.py (Clo
 infra/         env.sh, 01-train-service-account.sh, 02-train-image.sh, 03-train-job.sh, 10-data-job.sh
 web/           Next.js: app/presentador, app/validar, components/, lib/, tests/
 tests/         pipeline, normalization, retrieval and fertility tests
-docs/          ONBOARDING.md, diagrams/, screenshots/
+docs/          ONBOARDING.md, diagrams/, screenshots/ (every translation in a screenshot is unvalidated model output)
 MODEL_CARD.md  what David is, its data, results and limits
 ```
 

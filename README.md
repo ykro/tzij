@@ -8,9 +8,13 @@ Tzij ("palabra" en K'iche') traduce entre español y K'iche' (ISO 639-3 `quc`), 
 
 **El resultado, sin maquillaje:** Goliath traduce mejor. David saca **18.4 chrF++** y Goliath **36.4**. David gana en otras cosas: cuesta **$0** por traducción, los datos no salen de la laptop y **funciona sin internet**, donde Goliath no produce nada. Este repo es la mitad de la charla que responde a *cuándo NO hacer fine-tuning* y *qué compra la recuperación*: la recuperación le sube a Gemma más que el fine-tune, y el fine-tune no entra al escenario.
 
-![Presentador con Wi-Fi apagado: David traduce en la laptop, Goliath aparece sin conexión](docs/screenshots/real/presenter-06-offline.png)
+![Ronda de evaluación: la referencia viene de un libro con licencia; David y Goliath traducen la misma frase](docs/screenshots/presenter-03-evaluation.png)
 
-*Vista del presentador en una ronda de evaluación con la red cortada. La referencia viene de un libro de Bloom Library (MINEDUC, CC BY 4.0); las traducciones en pantalla son salidas de los modelos, no referencias.*
+*Ronda de evaluación. La frase y su **referencia** vienen de un libro de Bloom Library (MINEDUC Guatemala, CC BY 4.0). Las dos traducciones son **salida del modelo, sin validar** por una persona hablante nativa; chrF++ las compara con la referencia. La latencia de David en esta captura (9.3 s) se midió con otro proceso usando la GPU de la laptop; en el reporte, sin carga, su p50 es 1.7 s.*
+
+![Con Wi-Fi apagado: David traduce en la laptop, Goliath aparece sin conexión](docs/screenshots/presenter-06-offline.png)
+
+*Misma ronda con la red cortada (interruptor de ensayo). La traducción de David es **salida del modelo, sin validar**.*
 
 ## Qué vas a aprender
 
@@ -19,7 +23,7 @@ Tzij ("palabra" en K'iche') traduce entre español y K'iche' (ISO 639-3 `quc`), 
 | **Datos web con licencia y normalización ortográfica.** Cada registro lleva `origin=web`, URL y licencia. Las fuentes que no lo permiten quedan fuera. Las comillas simples tipográficas, la saltillo `ꞌ`, el `ʼ` y otros caracteres que se usan como saltillo se unifican al apóstrofo ASCII antes de indexar, entrenar o evaluar. | [`data/SOURCES.md`](data/SOURCES.md) (10 fuentes usadas, 13 a la espera de permiso, 24 rechazadas), [`pipeline/sources/`](pipeline/sources/), [`data/normalize.py`](data/normalize.py), [`tests/test_normalize.py`](tests/test_normalize.py) |
 | **Split por fuente, no por oración.** Una fuente entera es de prueba o entera de entrenamiento, y cualquier par de entrenamiento que repita una oración de prueba se descarta. Si las oraciones se repartieran al azar, la evaluación mediría memoria. | [`pipeline/split.py`](pipeline/split.py), [`pipeline/sources/__init__.py`](pipeline/sources/__init__.py), [`data/DATASHEET.md`](data/DATASHEET.md) |
 | **Recuperación vs fine-tune, decidido por `make eval`.** Los seis tipos de variante (base, base + recuperación, fine-tune, fine-tune + recuperación, Gemini, Gemini + recuperación) sobre las mismas 600 frases. Gana la mejor variante local, aunque no sea la que costó más trabajo. | [`evals/run_eval.py`](evals/run_eval.py), [`duel/tzij_duel/variants.py`](duel/tzij_duel/variants.py), [`evals/report.md`](evals/report.md) |
-| **Fertilidad de tokens.** En el tokenizador de Gemma, una palabra K'iche' cuesta 2.68 tokens y una española 1.45. La misma oración ocupa **1.88×** tokens en K'iche'. | [`evals/fertility.py`](evals/fertility.py), [`evals/fertility.md`](evals/fertility.md) |
+| **Fertilidad de tokens.** En el tokenizador de Gemma, una palabra K'iche' cuesta 2.64 tokens y una española 1.41. La misma oración ocupa **1.92×** tokens en K'iche'. | [`evals/fertility.py`](evals/fertility.py), [`evals/fertility.md`](evals/fertility.md) |
 | **Offline por diseño.** Modelo, embeddings, índice, servicio y vistas viven en la laptop. Las tipografías se descargan al compilar. Un sondeo TCP de 0.8 s decide si Goliath está en línea antes de llamarlo. | [`duel/duel_core/connectivity.py`](duel/duel_core/connectivity.py), [`rag/embedder.py`](rag/embedder.py), [`web/next.config.ts`](web/next.config.ts), [`duel/tzij_duel/main.py`](duel/tzij_duel/main.py) |
 | **Validación con hablantes nativos.** El conjunto de prueba queda `pending_native_review` hasta que una persona lo revisa. En vivo, el veredicto lo da una persona desde su teléfono, a ciegas. Antes de cada evento se llena una plantilla de evaluación humana. | [`pipeline/review.py`](pipeline/review.py), [`pipeline/apply_review.py`](pipeline/apply_review.py), [`web/app/validar/page.tsx`](web/app/validar/page.tsx), [`evals/human_eval.md`](evals/human_eval.md) |
 
@@ -67,7 +71,7 @@ Para ensayar sin la nube ni GPU: `make up MOCK_AI=1`. Las variables se pasan **d
 | `make fertility` | Mide la fertilidad de tokens de K'iche' vs español y escribe `evals/fertility.md`. |
 | `make datasheet` | Vuelve a generar `data/DATASHEET.md` desde el último manifest. |
 | `make eval [EVAL_ARGS=…]` | Compara todas las variantes disponibles y escribe `evals/report.md`. |
-| `make human-eval-sheet` | Genera una hoja de evaluación humana a ciegas (50 frases) a partir de la última corrida de eval. |
+| `make human-eval-sheet` | Genera una hoja de evaluación humana a ciegas (50 frases) de la última corrida; `VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"` elige variantes. |
 | `make train-data` | Convierte las oraciones de `train` en JSONL de chat (`data/train/chat.jsonl`). |
 | `make train TAG=tzij-AAAA-MM [TRAIN_ARGS=…]` | Fine-tune LoRA como Cloud Run Job con una L4. Registra duración y costo en `train/runs/<tag>.json`. |
 | `make train-local TAG=…` | El mismo entrenamiento en la Mac (MPS), por si no hay GPU en la nube. |
@@ -75,13 +79,14 @@ Para ensayar sin la nube ni GPU: `make up MOCK_AI=1`. Las variables se pasan **d
 | `make pull-model TAG=…` | Baja el GGUF del bucket y lo registra en Ollama. |
 | `make web` | Compila las vistas del presentador y del validador (export estático). |
 | `make duel` | Levanta solo el servicio de duelo en `0.0.0.0:$DUEL_PORT`. |
-| `make up` | Arranca Ollama si hace falta, precarga David y EmbeddingGemma, compila las vistas si faltan y sirve todo en la LAN. |
+| `make up` | (`MOCK_AI=1 make up`: sin Ollama, índice ni dataset.) Arranca Ollama si hace falta, precarga David y EmbeddingGemma, compila las vistas si faltan y sirve todo en la LAN. |
 | `make reset` | Borra rondas y veredictos, con el servicio corriendo o no, en menos de 10 s. |
 | `make test` | Pruebas de Python (`MOCK_AI=1`, sin red) y de la web (vitest). |
+| `make deploy` | Despliega las partes en la nube (proyecto, job de datos, job e imagen de entrenamiento). El duelo y las vistas se quedan en la laptop. |
 | `make emulator` | Abre el validador en Chrome del emulador Android (`10.0.2.2`) y falla si el voto tarda más de 1 s en llegar a la pantalla. |
 | `make screenshots` | Capturas de Playwright de ambas vistas a 1920×1080 y 390×844 (el servicio debe estar corriendo). |
 
-No hay `make deploy`. Nada de este proyecto se sirve desde la nube: lo que corre en la nube son los dos jobs (`make data-cloud`, `make train`).
+`make deploy` despliega solo lo que vive en la nube: prepara el proyecto (APIs, Artifact Registry, buckets, secreto `hf-token`) con `infra/00-project.sh`, despliega el Cloud Run Job de datos y el job de entrenamiento con su imagen. **El servicio de duelo y las vistas no se despliegan, a propósito:** corren en la laptop porque la charla mide lo que pasa sin internet.
 
 ## Mapa del repo
 
@@ -101,7 +106,7 @@ train/         train_lora.py (TRL + PEFT → merge → GGUF), submit_job.py (Clo
 infra/         env.sh, 01-train-service-account.sh, 02-train-image.sh, 03-train-job.sh, 10-data-job.sh
 web/           Next.js: app/presentador, app/validar, components/, lib/, tests/
 tests/         pruebas del pipeline, normalización, recuperación y fertilidad
-docs/          ONBOARDING.md, diagrams/, screenshots/
+docs/          ONBOARDING.md, diagrams/, screenshots/ (toda traducción en una captura es salida del modelo, sin validar)
 MODEL_CARD.md  qué es David, con qué datos, resultados y límites
 ```
 

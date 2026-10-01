@@ -72,7 +72,7 @@ drop reasons are in `data/DATASHEET.md` (generated). Dataset `20260930-220035`:
 
 - chrF++ (corpus level, normalized text) per direction and per test source, latency p50/p95
   and cost per 1,000 translations: `evals/report.md`.
-- Token fertility: K'iche' costs 2.68 Gemma tokens per word vs 1.45 for Spanish
+- Token fertility: K'iche' costs 2.64 Gemma 4 E4B tokens per word vs 1.41 for Spanish
   (`evals/fertility.md`).
 - Test references are `pending_native_review` until a native speaker validates them
   (`make review-test`, `make apply-review`); report scores are provisional until then.

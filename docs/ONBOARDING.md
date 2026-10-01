@@ -65,7 +65,7 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 | `REQUIRE_VALIDATED_TEST` | `0` | `1` limita las rondas de evaluación a pares validados por una persona nativa |
 | `MOCK_AI` | `0` | `1` evita la nube y la GPU (pruebas y ensayos) |
 
-**Importante:** las variables se pasan **después** de `make` (`make up MOCK_AI=1`). Como el `Makefile` incluye `.env`, sus valores ganan sobre las variables de entorno, así que `MOCK_AI=1 make up` se ignora.
+`.env` solo pone valores por defecto: lo que pases por la línea de comandos o el entorno gana (`MOCK_AI=1 make up` y `make up MOCK_AI=1` hacen lo mismo). El `Makefile` convierte cada `CLAVE=valor` de `.env` en `CLAVE ?= valor` (archivo `.env.mk`, ignorado por git).
 
 ## 3. Modelos de Ollama
 
@@ -114,23 +114,24 @@ Orden de búsqueda (`pipeline/secrets.py`, `train/train_lora.py`): variable `HF_
 
 Proyecto: `ai-experiments-487722`. Los jobs de datos y las imágenes viven en `us-central1` (Artifact Registry `charlas2027`). El entrenamiento corre en `europe-west4`, donde está la GPU L4.
 
-### 5.1 Lo que `infra/` no crea (una sola vez, a mano)
+### 5.1 Todo desde cero: `make deploy`
 
 ```bash
-P=ai-experiments-487722
-gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
-  secretmanager.googleapis.com aiplatform.googleapis.com storage.googleapis.com iam.googleapis.com --project $P
-
-# Artifact Registry compartido por los demos de 2027 (si todavía no existe)
-gcloud artifacts repositories create charlas2027 --repository-format=docker --location=us-central1 --project $P
-
-# Buckets de .env (si todavía no existen). El de staging va en la misma región que la GPU.
-gcloud storage buckets create gs://$P-tzij-data   --location=us-central1  --project $P
-gcloud storage buckets create gs://$P-tzij-models --location=us-central1  --project $P
-gcloud storage buckets create gs://$P-train-eu    --location=europe-west4 --project $P
+HF_TOKEN=hf_... make deploy   # HF_TOKEN solo la primera vez, para crear el secreto hf-token
 ```
 
-Además necesitas cuota de GPU NVIDIA L4 para Cloud Run en `europe-west4` (el job usa una L4 sin redundancia zonal) y el secreto `hf-token` del §4.
+`make deploy` despliega **solo las partes en la nube**, en este orden: `infra/00-project.sh`
+(habilita las APIs, crea el Artifact Registry `charlas2027`, los buckets `…-tzij-data`,
+`…-tzij-models` y `…-train-eu`, y el secreto `hf-token` si le pasas `HF_TOKEN`), el Cloud Run Job
+de datos sin ejecutarlo (`DEPLOY_ONLY=1 infra/10-data-job.sh`), la cuenta de servicio de
+entrenamiento y el Cloud Run Job `tzij-train` con su imagen. Todo es idempotente: se puede volver a
+correr.
+
+**El servicio de duelo y las dos vistas no se despliegan, a propósito:** corren en la laptop porque
+la charla mide lo que pasa sin internet (`make up`).
+
+Lo único que no se puede automatizar: aceptar los términos de BOUQuET con tu cuenta de Hugging Face
+(antes de crear el token) y tener cuota de GPU NVIDIA L4 para Cloud Run en `europe-west4`.
 
 ### 5.2 Los scripts, en orden
 
@@ -138,10 +139,11 @@ Todos cargan `infra/env.sh` (proyecto, regiones, Artifact Registry) e `infra/app
 
 | Orden | Script | Qué hace | ¿Quién lo llama? |
 | --- | --- | --- | --- |
-| 1 | `infra/10-data-job.sh` | Crea la cuenta de servicio `tzij-data-job` con acceso solo al bucket de datos (y a `hf-token`), construye la imagen con Cloud Build (`pipeline/cloudbuild.yaml`), despliega el job `tzij-data` (2 vCPU, 4 GiB, 1 h, sin reintentos) y lo ejecuta. | `make data-cloud` |
-| 2 | `infra/01-train-service-account.sh` | Crea la cuenta de servicio `tzij-train` con acceso al bucket de modelos, al de staging, a Artifact Registry y a `hf-token`. | A mano, una vez antes del primer `make train` |
+| 0 | `infra/00-project.sh` | Habilita APIs; crea Artifact Registry, los tres buckets y el secreto `hf-token` (si recibe `HF_TOKEN`). Idempotente. | `make deploy` |
+| 1 | `infra/10-data-job.sh` | Crea la cuenta de servicio `tzij-data-job` con acceso solo al bucket de datos (y a `hf-token`), construye la imagen con Cloud Build (`pipeline/cloudbuild.yaml`), despliega el job `tzij-data` (2 vCPU, 4 GiB, 1 h, sin reintentos) y lo ejecuta (con `DEPLOY_ONLY=1`, solo despliega). | `make data-cloud`, `make deploy` |
+| 2 | `infra/01-train-service-account.sh` | Crea la cuenta de servicio `tzij-train` con acceso al bucket de modelos, al de staging, a Artifact Registry y a `hf-token`. | `make deploy` |
 | 3 | `infra/02-train-image.sh` | Construye la imagen de entrenamiento con Cloud Build. La etiqueta es un hash del `Dockerfile`, `requirements.txt` y `train_lora.py`, así que una receta sin cambios no se reconstruye (la primera vez tarda unos 15 min). | `make train` (vía `train/submit_job.py`) |
-| 4 | `infra/03-train-job.sh` | Crea o actualiza el Cloud Run Job `tzij-train` en `europe-west4`: 1× L4, 8 vCPU, 32 GiB, 1 h, el bucket de staging montado en `/mnt/work` (caché de pesos base), `GGUF_OUTTYPE` desde `.env`. | `make train` (vía `train/submit_job.py`) |
+| 4 | `infra/03-train-job.sh` | Crea o actualiza el Cloud Run Job `tzij-train` en `europe-west4`: 1× L4, 8 vCPU, 32 GiB, 1 h, el bucket de staging montado en `/mnt/work` (caché de pesos base), `GGUF_OUTTYPE` desde `.env`. | `make deploy`, `make train` (vía `train/submit_job.py`) |
 
 La numeración agrupa los scripts (`0x` entrenamiento, `1x` datos). En el flujo real, los datos van primero. No hay dependencias entre el script 10 y los 01–03.
 
@@ -193,7 +195,7 @@ make pull-model  TAG=tzij-2026-09    # baja Modelfile + GGUF + metrics.json a mo
 
 `train-finish` usa `uv run --python 3.12 --with-requirements train/requirements.txt --with torch` (un entorno aparte del proyecto) y descarga llama.cpp `b11292` a `train/.llama.cpp/`. El GGUF Q4_K_M resultante pesa unos 5.3 GB. El `Modelfile` usa el renderer y el parser de `gemma4`, así que el modelo ajustado se pide igual que su base.
 
-Si no hay GPU en la nube: `make train-local TAG=…` corre el mismo entrenamiento en la Mac (MPS) y publica igual.
+Si no hay GPU en la nube: `make train-local TAG=… [TRAIN_ARGS="--epochs=1"]` corre el mismo entrenamiento en la Mac (MPS) y publica igual. `train`, `train-local`, `train-finish` y `pull-model` exigen `TAG` y lo dicen si falta.
 
 ### 6.6 `make eval`
 
@@ -271,20 +273,20 @@ Se llena antes de cada evento: 50 frases por modelo, adecuación y fluidez de 1 
 
 ```bash
 make eval
-uv run python -m evals.human_eval_sheet --variants "gemma4_e4b+rag,gemini-3.8-flash"
-# o `make human-eval-sheet` para incluir todas las variantes de la corrida
+make human-eval-sheet VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"   # RUN=<id> para otra corrida
+# sin VARIANTS incluye todas las variantes de la corrida
 ```
 
-Escribe `evals/runs/<run>/human_eval_sheet.csv` (sin nombres de modelo, filas mezcladas) y `human_eval_key.json` (letra → modelo, que no se comparte hasta terminar). Los nombres de `--variants` son los nombres de archivo de la corrida, con `:` cambiado por `_`. La hoja muestra el texto original, así que aplica la misma regla de privacidad para BOUQuET.
+Escribe `evals/runs/<run>/human_eval_sheet.csv` (sin nombres de modelo, filas mezcladas) y `human_eval_key.json` (letra → modelo, que no se comparte hasta terminar). `VARIANTS` usa los nombres de variante del reporte (los mismos de `make eval`); si alguno no tiene resultados en la corrida, el comando lo dice y no genera la hoja. La hoja muestra el texto original, así que aplica la misma regla de privacidad para BOUQuET.
 
 ## 10. Pruebas y ensayo
 
 ```bash
-make test        # 105 pruebas de Python (MOCK_AI=1, sin red) + 4 de la web (vitest)
+make test        # 106 pruebas de Python (MOCK_AI=1, sin red) + 4 de la web (vitest)
 make screenshots # con el servicio corriendo: capturas en web/test-results/screens/
 ```
 
-Las pruebas que necesitan Ollama de verdad están marcadas `@pytest.mark.ollama` y se saltan si Ollama o el modelo no están. El ensayo completo sin nube es `make up MOCK_AI=1`: Goliath devuelve el texto de entrada sin cambios y David el mejor ejemplo recuperado. Sirve para ensayar el flujo, no los números.
+Las pruebas que necesitan Ollama de verdad están marcadas `@pytest.mark.ollama` y se saltan si Ollama o el modelo no están. El ensayo completo sin nube ni Ollama es `MOCK_AI=1 make up`: no necesita Ollama, ni `make index`, ni el dataset. Usa `duel/mock_data/` (26 pares con licencia indexados con embeddings de hash y 8 frases de prueba de Bloom). Goliath devuelve el texto de entrada sin cambios y David el mejor ejemplo recuperado, así que todo el K'iche' en pantalla viene de datos con licencia. Sirve para ensayar el flujo, no los números.
 
 ## 11. Recorrido por el código: una traducción
 
@@ -321,7 +323,6 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 | La primera ronda tarda varios segundos | Modelo frío, o `num_ctx` distinto al de la precarga (fuerza una recarga) | Usa `make up` (precarga); no cambies `OLLAMA_NUM_CTX` en caliente |
 | Goliath sale "Sin conexión" con internet | `FORCE_OFFLINE=1` o el interruptor de ensayo activado; o la red bloquea `aiplatform.googleapis.com:443` | Revisa `.env` y la barra de comandos; prueba `nc -z aiplatform.googleapis.com 443` |
 | Goliath sale con error (no "sin conexión") | ADC vencido, permisos de Vertex AI o timeout de 20 s | `gcloud auth application-default login`; revisa `GEMINI_MODEL` |
-| `MOCK_AI=1 make up` no simula nada | `.env` gana sobre las variables de entorno | `make up MOCK_AI=1` |
 | `/` responde `Web views not built: run make web` | Falta `web/out/` | `make web` (con internet, por las tipografías) |
 | El teléfono no abre el QR | Otra red, aislamiento de clientes, firewall de macOS o IP equivocada | Misma red; permite Python en el firewall; fija `PUBLIC_URL` |
 | `make emulator` no encuentra la pestaña o falla por más de 1 s | Serial equivocado, Chrome sin abrir, o pestañas viejas con conexiones SSE abiertas | `adb devices`; `make emulator ANDROID_SERIAL=…`; el script cierra las pestañas viejas, vuelve a correrlo |
@@ -331,7 +332,6 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 | Errores 429 de Hugging Face en Cloud Run | Descargas anónimas desde IPs compartidas | Mismo arreglo: el token |
 | `make train` termina en `JOB_STATE_FAILED` por memoria | Esperado con E4B: el entrenamiento terminó, el merge no cabe en 32 GiB | Revisa `train/runs/<tag>.json` (`training: succeeded`) y corre `make train-finish TAG=…` |
 | El job de entrenamiento no termina en 1 h | Demasiadas épocas para el límite de GPU de Cloud Run | `TRAIN_ARGS="--epochs=1"` |
-| `make train-finish` sin `TAG` falla con un `IndexError` | La receta no valida `TAG` | Pasa siempre `TAG=…` |
 | `make eval` termina con `No retrieval index` / `No dataset` | Falta `make index` / `make data-pull` | Córrelos primero |
 
 ## 13. Checklist del día de la charla
