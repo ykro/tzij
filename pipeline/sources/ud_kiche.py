@@ -29,6 +29,7 @@ DOMAIN_BY_ORIGIN = {
     "ley2009-9": "legal",
     "covid": "health",
     "wikipedia": "encyclopedic",
+    "cuentos": "narrative",
 }
 
 
@@ -40,7 +41,8 @@ def parse(raw: Path) -> Iterable[Pair]:
     text = (raw / "quc_iu-ud-test.conllu").read_text(encoding="utf-8")
     for block in text.split("\n\n"):
         meta = dict(re.findall(r"^# ([^=]+?) = (.*)$", block, flags=re.M))
-        spa = meta.get("text[spa]")
+        # The treebank spells the key `text[spa]` and, in the stories, `text[spa']`.
+        spa = next((v for k, v in meta.items() if k.startswith("text[spa")), None)
         quc = meta.get("text[orig]") or meta.get("text")
         if not spa or not quc:
             continue

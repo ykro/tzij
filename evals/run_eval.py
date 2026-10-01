@@ -46,7 +46,8 @@ def load_test(dataset: Path, limit: int | None, per_source: int | None = None) -
     from different days compare the same sentences.
     """
     records = [json.loads(line) for line in (dataset / "test.jsonl").read_text(encoding="utf-8").splitlines()]
-    records = [r for r in records if r["kind"] == "sentence" and r["status"] != "rejected"]
+    # auto_rejected pairs failed pipeline/validate_test.py; they never count.
+    records = [r for r in records if r["kind"] == "sentence" and r["status"] not in ("rejected", "auto_rejected")]
     if per_source:
         groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
         for r in records:
@@ -177,7 +178,8 @@ def render(results: dict[str, dict], variants: list[Variant], records: list[dict
         f"Test set: {len(records)} sentence records ({', '.join(f'{sum(r['direction'] == d for r in records)} {DIRECTION_LABEL[d]}' for d in directions)}) "
         f"from held-out sources ({', '.join(f'`{x}`' for x in sources)}), never in the retrieval index.",
         "Status of references: " + ", ".join(f"{sum(r['status'] == s for r in records)} {s}" for s in sorted({r['status'] for r in records}))
-        + (" — **not yet validated by a native speaker**; treat scores as provisional." if any(r["status"] == "pending_native_review" for r in records) else "."),
+        + (" — references validated automatically (`pipeline/validate_test.py`); a native-speaker review is optional."
+           if any(r["status"] == "auto_validated" for r in records) else "."),
         "",
     ]
     if s.mock_ai:

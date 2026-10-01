@@ -27,7 +27,11 @@ def build_manifest(
     dropped: list[tuple[Pair, str]],
     result: SplitResult,
     git_sha: str,
+    test_status: dict[str, str] | None = None,
+    test_rejections: Counter | None = None,
 ) -> dict:
+    from pipeline.validate_test import AUTO_VALIDATED, CRITERIA
+
     splits = result.by_split()
     by_source: dict[str, dict] = defaultdict(lambda: defaultdict(int))
     by_domain: dict[str, dict] = defaultdict(lambda: defaultdict(int))
@@ -49,6 +53,11 @@ def build_manifest(
         1 for name in FINETUNE_SPLITS for p in splits[name] if p.kind == SENTENCE and p.domain != RELIGIOUS
     )
     test_sentences = sum(1 for p in result.test if p.kind == SENTENCE)
+    test_status = test_status or {}
+    validated = [p for p in result.test if test_status.get(p.pair_id) == AUTO_VALIDATED]
+    validated_by_source: dict[str, int] = defaultdict(int)
+    for p in validated:
+        validated_by_source[p.source_name] += 1
     return {
         "version": version,
         "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -82,6 +91,10 @@ def build_manifest(
         "test": {
             "sentence_pairs": test_sentences,
             "pairs_per_direction": len(result.test),
-            "status": "pending_native_review",
+            "status": "auto_validated",
+            "auto_validated_pairs": len(validated),
+            "auto_validated_by_source": dict(validated_by_source),
+            "auto_rejected": dict(test_rejections or {}),
+            "criteria": list(CRITERIA),
         },
     }

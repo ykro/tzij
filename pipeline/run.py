@@ -26,9 +26,9 @@ from pipeline.record import Pair
 from pipeline.sources import SOURCES, TEST
 from pipeline.split import TEST as TEST_SPLIT
 from pipeline.split import dedupe, split_by_source
+from pipeline.validate_test import validate
 
 REPO = Path(__file__).resolve().parent.parent
-TEST_STATUS = "pending_native_review"  # until a native speaker validates it
 CLEAN_STATUS = "clean"
 
 
@@ -81,18 +81,21 @@ def run(*, raw_root: Path, out_root: Path, version: str, gcs_uri: str | None,
     dropped += duplicates
 
     result = split_by_source(pairs, test_sources={s.name for s in sources if s.role == TEST})
+    # No human in the loop: test pairs are validated automatically (pipeline/validate_test.py).
+    test_status, test_rejections = validate(result.test, result.train + result.dev)
 
     out_dir = out_root / version
     out_dir.mkdir(parents=True, exist_ok=True)
     for split_name, split_pairs in result.by_split().items():
-        status = TEST_STATUS if split_name == TEST_SPLIT else CLEAN_STATUS
         with (out_dir / f"{split_name}.jsonl").open("w", encoding="utf-8") as fh:
             for pair in split_pairs:
+                status = test_status[pair.pair_id] if split_name == TEST_SPLIT else CLEAN_STATUS
                 for record in pair.to_records(split_name, status):
                     fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
     manifest = build_manifest(version=version, sources=sources, parsed=parsed, raw_flags=raw_flags,
-                              dropped=dropped, result=result, git_sha=_git_sha())
+                              dropped=dropped, result=result, git_sha=_git_sha(),
+                              test_status=test_status, test_rejections=test_rejections)
     (out_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2))
     datasheet = render_datasheet(manifest)
     (out_dir / "DATASHEET.md").write_text(datasheet)

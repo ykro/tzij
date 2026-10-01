@@ -200,7 +200,8 @@ def test_end_to_end_outputs(pipeline_output):
     out = root / "processed" / "v1"
     assert (root / "processed" / "LATEST").read_text().strip() == "v1"
     test_records = [json.loads(line) for line in (out / "test.jsonl").read_text().splitlines()]
-    assert test_records and all(r["status"] == "pending_native_review" for r in test_records)
+    assert test_records and all(r["status"] in ("auto_validated", "auto_rejected") for r in test_records)
+    assert manifest["test"]["criteria"] and manifest["test"]["auto_validated_pairs"] >= 1
     assert all(r["source_name"] == "bloom_kiche" for r in test_records)
     train_records = [json.loads(line) for line in (out / "train.jsonl").read_text().splitlines()]
     assert train_records and all(r["status"] == "clean" for r in train_records)
@@ -255,3 +256,18 @@ def test_bouquet_fetch_skips_without_token(tmp_path, monkeypatch):
     monkeypatch.setattr(bouquet, "hf_token", lambda: None)
     bouquet.fetch(tmp_path)  # no exception, nothing downloaded
     assert not list(tmp_path.iterdir())
+
+
+def test_auto_validation_criteria():
+    from pipeline.validate_test import AUTO_REJECTED, AUTO_VALIDATED, validate
+
+    good = pair("Le tz'i' kawar pa le ja.", "El perro duerme en la casa.", source="t")
+    loose = pair("Utz.", "Estoy muy bien, gracias por preguntar cómo estoy hoy en la mañana", source="t")
+    copied = pair("Ri ala xb'e pa tinamit chanim", "Ri ala xb'e pa tinamit wakami", source="t")
+    overlap = pair("Utz awach.", "Estoy bien hoy.", source="t")
+    glossary = pair("kaq", "rojo", source="t", kind=LEXICON)
+    train = [pair("Utz awach.", "Estoy bien.", source="a")]
+    statuses, reasons = validate([good, loose, copied, overlap, glossary], train)
+    assert statuses[good.pair_id] == AUTO_VALIDATED
+    assert {statuses[p.pair_id] for p in (loose, copied, overlap, glossary)} == {AUTO_REJECTED}
+    assert set(reasons) == {"loose_translation_ratio", "spanish_side_not_spanish", "overlaps_train", "not_a_sentence"}

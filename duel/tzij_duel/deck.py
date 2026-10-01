@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 MIN_WORDS, MAX_WORDS = 2, 14
+# auto_validated: passed pipeline/validate_test.py; validated: a native speaker also approved it.
+# pending_native_review is accepted for datasets built before automatic validation existed.
+USABLE = {"auto_validated", "validated", "pending_native_review"}
 
 
 @dataclass
@@ -58,7 +61,7 @@ class Deck:
                     continue  # book headings ("CHAB'ANA K'OB'AL CHI'J") read poorly on stage
                 if r["source_name"] in exclude_sources:
                     continue
-                if require_validated and r["status"] != "validated":
+                if r["status"] not in USABLE or (require_validated and r["status"] != "validated"):
                     continue
                 self.items.append(DeckItem(r["pair_id"], r["direction"], r["source_text"], r["target_text"],
                                            r["source_name"], r["url"], r["license"], r["status"], r["domain"]))
