@@ -281,6 +281,10 @@ async def main_async(args) -> None:
         retriever = Retriever(s.rag_index) if s.rag_index.exists() else None
         if retriever is None:
             raise SystemExit("No retrieval index: run `make index`.")
+        if retriever.dataset_version != dataset.name:
+            # Retrieval from another dataset version could contain sentences that are now in test.
+            raise SystemExit(f"Retrieval index is from dataset {retriever.dataset_version}, "
+                             f"but data/processed/LATEST is {dataset.name}: run `make index` first.")
     online = s.mock_ai or await Connectivity(force_offline=s.force_offline).is_online()
     notes = [] if online else ["No internet during this run: Gemini variants are reported as offline."]
     run_id = args.run or datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")

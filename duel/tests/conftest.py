@@ -17,6 +17,7 @@ from tzij_duel.variants import Variant, _mock_david, _mock_goliath
 REPO = Path(__file__).resolve().parents[2]
 FIXTURES = REPO / "tests" / "fixtures"
 
+# Hand-written test-only pairs (origin=human, license test-only): never indexed, shown or trained on.
 TEST_RECORDS = [
     ("t1", "El perro duerme en la casa.", "Le tz'i' kawar pa le ja."),
     ("t2", "¿Cómo estás tú hoy?", "La utz awach kamik?"),
@@ -34,8 +35,8 @@ def dataset(tmp_path) -> Path:
             lines.append(json.dumps({"id": f"{pid}-{direction}", "pair_id": pid, "direction": direction,
                                      "source_text": src, "target_text": tgt, "source_name": "fixture",
                                      "domain": "everyday", "kind": "sentence", "split": "test",
-                                     "status": "pending_native_review", "origin": "web", "url": "u",
-                                     "license": "CC0", "ref": ""}, ensure_ascii=False))
+                                     "status": "pending_native_review", "origin": "human", "url": "tests/fixtures/README.md",
+                                     "license": "test-only", "ref": ""}, ensure_ascii=False))
     (version / "test.jsonl").write_text("\n".join(lines) + "\n")
     manifest = {"version": "v1", "created_at": "2026-09-30T20:58:55+00:00",
                 "sources": [{"name": "fixture", "title": "Fixture", "role": "test"}], "pairs_by_source": {"fixture": {"test": 2}},

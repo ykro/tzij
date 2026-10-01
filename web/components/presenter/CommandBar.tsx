@@ -6,6 +6,7 @@ import type { Direction } from "@/lib/types";
 import { postJSON } from "@/lib/useEventState";
 
 interface Props {
+  indexWarning?: string | null;
   direction: Direction;
   onDirection: (d: Direction) => void;
   busy: boolean;
@@ -15,7 +16,7 @@ interface Props {
 
 // Presenter controls. Hidden during the talk until "/" (or the "Nueva ronda" button):
 // the audience sees the duel, not a form.
-export function CommandBar({ direction, onDirection, busy, forceOffline, onClose }: Props) {
+export function CommandBar({ indexWarning, direction, onDirection, busy, forceOffline, onClose }: Props) {
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -112,6 +113,7 @@ export function CommandBar({ direction, onDirection, busy, forceOffline, onClose
           Simular sin Wi-Fi (ensayo)
         </label>
         {error && <span className="command__error" role="alert">{error}</span>}
+        {!error && indexWarning && <span className="command__error" role="status">Aviso: {indexWarning}</span>}
         <span>
           {confirmReset ? (
             <>

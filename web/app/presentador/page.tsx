@@ -133,7 +133,7 @@ export default function Presenter() {
 
       {cardOpen && <ModelCardPanel card={state.model_card} />}
       {commandOpen && (
-        <CommandBar direction={direction} onDirection={setDirection} busy={busy} forceOffline={state.force_offline}
+        <CommandBar indexWarning={state.index_warning} direction={direction} onDirection={setDirection} busy={busy} forceOffline={state.force_offline}
           onClose={() => setCommandOpen(false)} />
       )}
     </main>

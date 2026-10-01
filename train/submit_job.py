@@ -65,6 +65,7 @@ def train_args(args, data_uri: str, work_dir: str | None = None) -> list[str]:
         f"--base-model={env('GEMMA_BASE_MODEL')}",
         f"--weights-uri={env('GEMMA_WEIGHTS_URI')}",
         f"--output-uri={env('MODELS_BUCKET')}",
+        f"--ollama-renderer={env('OLLAMA_RENDERER')}",
     ]
     if work_dir:
         out.append(f"--work-dir={work_dir}")

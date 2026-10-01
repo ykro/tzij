@@ -100,9 +100,11 @@ class RoundStore:
     def current(self) -> Round | None:
         return self.rounds[-1] if self.rounds else None
 
-    def set_results(self, round_id: str, results: dict[str, dict]) -> Round:
+    def set_results(self, round_id: str, results: dict[str, dict]) -> Round | None:
         with self._lock:
             round_ = self.get(round_id)
+            if round_ is None:  # reset while the round was translating: nothing to store
+                return None
             round_.results = results
             round_.status = "done"
             self.save()
@@ -115,12 +117,20 @@ class RoundStore:
             round_ = self.get(round_id)
             if round_ is None:
                 raise KeyError(round_id)
+            # The verdict endpoint is open on the LAN, so it only accepts what the validator can
+            # legitimately do: judge the round on screen, once per translation.
+            if round_ is not self.current:
+                raise ValueError("Esa ronda ya terminó.")
+            if round_.kind != LIVE:
+                raise ValueError("Las rondas de evaluación se califican con chrF++, no con votos.")
             if round_.status != "done":
-                raise ValueError("round not finished")
+                raise ValueError("La ronda todavía se está traduciendo.")
             contender = round_.blind_order[slot]
             if round_.results.get(contender, {}).get("status") != "ok":
-                raise ValueError("no translation to judge")
-            round_.verdicts.setdefault(contender, {})[voter] = verdict  # one verdict per voter; last wins
+                raise ValueError("No hay traducción que calificar.")
+            if round_.verdicts.get(contender):
+                raise ValueError("Esta traducción ya tiene veredicto.")
+            round_.verdicts.setdefault(contender, {})[voter] = verdict
             self.save()
             return round_
 
@@ -159,8 +169,7 @@ def _wins(rounds: list[Round]) -> dict[str, int]:
         if r.kind != EVALUATION or r.status != "done":
             continue
         d, g = (r.results.get(c, {}).get("chrf") for c in CONTENDERS)
-        if d is None and g is None:
-            continue
-        d, g = d or 0.0, g or 0.0
+        if d is None or g is None:
+            continue  # no rival (offline, error): nobody wins that round
         wins["david" if d > g else "goliath" if g > d else "empate"] += 1
     return wins

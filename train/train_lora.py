@@ -290,8 +290,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap = argparse.ArgumentParser(description="LoRA fine-tune -> merge -> GGUF -> Ollama Modelfile -> GCS")
     ap.add_argument("--data", required=True, help="chat JSONL (local path or gs://)")
     ap.add_argument("--tag", required=True, help="model tag with the data date, e.g. genlingo-2027-03")
-    ap.add_argument("--base-model", default=env("GEMMA_BASE_MODEL"))
-    ap.add_argument("--weights-uri", default=env("GEMMA_WEIGHTS_URI", "gs://vertex-model-garden-public-us/gemma4"))
+    ap.add_argument("--base-model", default=env("GEMMA_BASE_MODEL"), required=not env("GEMMA_BASE_MODEL"))
+    # No model or family names in code: they come from the env (.env) or the command line.
+    ap.add_argument("--weights-uri", default=env("GEMMA_WEIGHTS_URI"), required=not env("GEMMA_WEIGHTS_URI"),
+                    help="hf://google, gs://<copy of the checkpoint> or a local dir (env GEMMA_WEIGHTS_URI)")
     ap.add_argument("--output-uri", default=env("MODELS_BUCKET"), help="gs://bucket (the tag is appended); empty = keep local")
     ap.add_argument("--work-dir", default=env("WORK_DIR", "/tmp/train_lora"))
     # Base weights are cached here between runs (on Cloud Run: a Cloud Storage volume, so next
@@ -307,7 +309,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--quant", default="Q4_K_M")
     ap.add_argument("--gguf-outtype", default=env("GGUF_OUTTYPE", "f16"),
                     help="intermediate GGUF before quantizing: f16 (reference) or q8_0 (fits E4B in 32 GiB)")
-    ap.add_argument("--ollama-renderer", default=env("OLLAMA_RENDERER", "gemma4"))
+    ap.add_argument("--ollama-renderer", default=env("OLLAMA_RENDERER"), required=not env("OLLAMA_RENDERER"),
+                    help="Ollama RENDERER/PARSER of the base family, e.g. the one its Modelfile uses (env OLLAMA_RENDERER)")
     ap.add_argument("--temperature", type=float, default=0.2)
     ap.add_argument("--lora-r", type=int, default=16)
     ap.add_argument("--lora-alpha", type=int, default=32)

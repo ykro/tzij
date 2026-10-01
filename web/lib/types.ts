@@ -66,6 +66,7 @@ export interface PresenterState {
   validator_url: string;
   deck_size: number;
   mock: boolean;
+  index_warning: string | null;
 }
 
 export interface BlindRound {

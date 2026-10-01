@@ -131,6 +131,23 @@ Generated files that are not committed: `data/raw/`, `data/processed/`, `data/re
 
 **The validator on the LAN.** The phone opens `http://<laptop IP>:8787/validar/` (the QR code works it out in `duel/tzij_duel/lan.py`, or you can pin it with `PUBLIC_URL`). It receives both translations in random order, with no name, latency or cost, and its vote shows up on the presenter view over SSE. On the Android emulator the laptop is `10.0.2.2`. `make emulator` checks that the vote arrives in under 1 s.
 
+### Who can do what on the LAN
+
+The service listens on `0.0.0.0` so the phone can reach it, so the API separates two audiences:
+
+- **The presenter's laptop** (requests from `127.0.0.1`): start rounds, reset, simulate Wi-Fi off,
+  read the full state and the `state` stream. That's why the presenter view is opened at
+  `http://127.0.0.1:8787/presentador/`, not via the LAN IP. From any other machine these routes
+  answer 403.
+- **The phone:** only the `validator` stream and the verdict. The phone's stream is a separate
+  subscriber set (`duel/tzij_duel/events.py`): it never receives model names, latency, cost or the
+  reference, so the vote is truly blind, not just in the UI. A verdict is accepted only for the
+  current live round and once per translation; evaluation rounds don't take votes (chrF++ scores
+  them).
+
+Discarded: username/password login. There's no time to sign in on stage, and what needs protecting
+is who drives the show (the laptop), not who watches.
+
 ### Why the E4B merge/GGUF finishes on the laptop
 
 A Cloud Run GPU job has at most **32 GiB** of memory, and its filesystem lives in that same memory. Training E4B fits: the LoRA adapter is saved to a Cloud Storage volume. What doesn't fit is saving the 16 GB merged checkpoint and converting it to GGUF. The `tzij-2026-09` run trained 324 steps in 1,316 s (22 min). Then it ran out of memory while saving the merged model (`train/runs/tzij-2026-09.json`, ~30 min of job time, ~$0.70 estimated). `make train-finish` downloads the adapter, merges it and converts it to GGUF Q4_K_M on the laptop with the same functions `train_lora.py` uses, then publishes the result to the models bucket. `make pull-model` doesn't care where the merge happened. A first run at 1.5 epochs was cancelled because, at ~4 s per step, it would not finish within Cloud Run's 1 h limit for a GPU task (`train/runs/failed/`).

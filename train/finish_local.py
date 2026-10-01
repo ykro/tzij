@@ -68,7 +68,7 @@ def main() -> None:
     os.environ["PATH"] = f"{llama_cpp / 'bin'}:{os.environ['PATH']}"  # prebuilt llama-quantize
     metrics.update(train_lora.to_gguf(merged_dir, out, tag, llama_cpp, "Q4_K_M", drop_merged=True, outtype="f16"))
     (out / f"{tag}-f16.gguf").unlink(missing_ok=True)  # the laptop only needs the quantized model
-    train_lora.write_modelfile(out, metrics["gguf_quant"], os.environ.get("OLLAMA_RENDERER", "gemma4"), 0.2)
+    train_lora.write_modelfile(out, metrics["gguf_quant"], os.environ["OLLAMA_RENDERER"], 0.2)
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n")
     train_lora.publish(out, f"{models}/{tag}")
     print(json.dumps(metrics))

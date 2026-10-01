@@ -46,7 +46,7 @@ export default function Validator() {
   }, [round?.id]);
 
   async function vote(slot: number, verdict: VerdictName) {
-    if (!round) return;
+    if (!round || mine[slot]) return; // one verdict per translation
     const previous = mine;
     const next = { ...mine, [slot]: verdict };
     setMine(next); // optimistic: the button answers instantly
@@ -107,7 +107,7 @@ export default function Validator() {
                         <div className="verdicts" role="group" aria-label={`Veredicto para la traducción ${t.slot + 1}`}>
                           {VERDICTS.map((v) => (
                             <button key={v} type="button" className={`verdict verdict--${v}`} aria-pressed={mine[t.slot] === v}
-                              disabled={pending === t.slot} onClick={() => vote(t.slot, v)}>
+                              disabled={pending === t.slot || (!!mine[t.slot] && mine[t.slot] !== v)} onClick={() => vote(t.slot, v)}>
                               <VerdictIcon verdict={v} size={22} />
                               {VERDICT_LABEL[v]}
                             </button>
@@ -123,7 +123,7 @@ export default function Validator() {
             )}
             <p className="phone__saved" aria-live="polite">{saved}</p>
             {error && <p className="phone__alert" role="alert">{error}</p>}
-            <p className="phone__note">No sabrás qué modelo hizo cada una.</p>
+            <p className="phone__note">Un veredicto por traducción. No sabrás qué modelo hizo cada una.</p>
           </>
         )}
       </main>

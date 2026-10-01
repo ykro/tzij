@@ -129,6 +129,23 @@ Archivos generados que no se suben a git: `data/raw/`, `data/processed/`, `data/
 
 **El validador en la LAN.** El teléfono abre `http://<IP de la laptop>:8787/validar/` (el QR la calcula en `duel/tzij_duel/lan.py`, o se fija con `PUBLIC_URL`). Recibe las dos traducciones en orden aleatorio, sin nombre, latencia ni costo, y su voto aparece en la pantalla del presentador por SSE. En el emulador Android la laptop es `10.0.2.2`. `make emulator` comprueba que el voto llegue en menos de 1 s.
 
+### Qué puede hacer cada quien en la LAN
+
+El servicio escucha en `0.0.0.0` para que el teléfono llegue, así que la API separa dos públicos:
+
+- **La laptop del presentador** (peticiones desde `127.0.0.1`): iniciar rondas, reiniciar, simular
+  Wi-Fi apagado, leer el estado completo y el flujo `state`. Por eso la vista del presentador se
+  abre en `http://127.0.0.1:8787/presentador/`, no con la IP de la LAN. Desde otra máquina estas
+  rutas responden 403.
+- **El teléfono:** solo el flujo `validator` y el voto. El flujo del teléfono es otro conjunto de
+  suscriptores (`duel/tzij_duel/events.py`): nunca recibe nombres de modelo, latencia, costo ni la
+  referencia, así que el voto es a ciegas de verdad, no solo en la interfaz. El voto se acepta solo
+  para la ronda en vivo actual y una vez por traducción; las rondas de evaluación no aceptan votos
+  (se califican con chrF++).
+
+Descartado: autenticación con usuario y contraseña. En el escenario no hay tiempo para iniciar
+sesión, y lo que hay que proteger es quién manda (la laptop), no quién mira.
+
 ### Por qué el merge/GGUF de E4B termina en la laptop
 
 Un Cloud Run Job con GPU tiene como máximo **32 GiB** de memoria, y su sistema de archivos vive en esa misma memoria. El entrenamiento de E4B cabe: el adapter LoRA se guarda en un volumen de Cloud Storage. Lo que no cabe es guardar el checkpoint fusionado de 16 GB y convertirlo a GGUF. La corrida `tzij-2026-09` entrenó 324 pasos en 1,316 s (22 min). Después se quedó sin memoria al guardar el modelo fusionado (`train/runs/tzij-2026-09.json`, ~30 min de job, ~$0.70 estimados). `make train-finish` baja el adapter, hace el merge y la conversión a GGUF Q4_K_M en la laptop con las mismas funciones de `train_lora.py`, y publica el resultado en el bucket de modelos. A `make pull-model` le da igual dónde se hizo el merge. Una primera corrida con 1.5 épocas se canceló porque, a ~4 s por paso, no terminaba dentro del límite de 1 h de una tarea de GPU en Cloud Run (`train/runs/failed/`).

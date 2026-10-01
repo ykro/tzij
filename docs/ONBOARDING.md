@@ -282,7 +282,7 @@ Escribe `evals/runs/<run>/human_eval_sheet.csv` (sin nombres de modelo, filas me
 ## 10. Pruebas y ensayo
 
 ```bash
-make test        # 106 pruebas de Python (MOCK_AI=1, sin red) + 4 de la web (vitest)
+make test        # 113 pruebas de Python (MOCK_AI=1, sin red) + 4 de la web (vitest)
 make screenshots # con el servicio corriendo: capturas en web/test-results/screens/
 ```
 
@@ -316,6 +316,9 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 
 | Síntoma | Causa probable | Qué hacer |
 | --- | --- | --- |
+| La vista del presentador dice "Solo desde la laptop del presentador" o las rondas responden 403 | Se abrió con la IP de la LAN en vez de `127.0.0.1` | Abre `http://127.0.0.1:8787/presentador/` en la laptop; el teléfono usa el QR |
+| El teléfono dice "Esta traducción ya tiene veredicto" | Una traducción acepta un solo veredicto por ronda | Es lo esperado; espera la siguiente ronda en vivo |
+| `!! el índice de recuperación es del dataset …` al arrancar, o `make eval` se niega a correr | El índice se construyó con otra versión del dataset | `make index` |
 | `!! David (gemma4:e4b) no está en Ollama` al hacer `make up` | El modelo no está descargado | `ollama pull gemma4:e4b` (o `make pull-model TAG=…` si es un fine-tune) |
 | David responde "índice de recuperación no disponible" | Falta `rag/index/tzij.sqlite`, o el servicio lo desactivó al arrancar (`!! retrieval disabled` en la consola) | `make index`; reinicia `make up` |
 | `index built with 'X' but queries use 'Y'` | El índice se construyó con otro `EMBEDDING_MODEL` | `make index` con el modelo de `.env` |

@@ -15,7 +15,7 @@ import contextlib
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -24,7 +24,7 @@ from duel_core import Connectivity, OllamaClient
 from rag.retrieve import Retriever
 
 from .deck import Deck
-from .events import Broadcaster
+from .events import PRESENTER, VALIDATOR, Broadcaster
 from .lan import public_url
 from .model_card import model_card
 from .rounds import EVALUATION, LIVE, VERDICTS, RoundStore
@@ -32,6 +32,21 @@ from .settings import Settings, get_settings
 from .variants import Variant, stage_variants, translate
 
 MAX_PHRASE_CHARS = 280
+
+
+LOCAL_HOSTS = {"127.0.0.1", "::1", "localhost"}
+
+
+def presenter_only(request: Request) -> None:
+    """The service listens on the LAN so the phone can vote, but only the laptop drives the show.
+
+    Starting rounds, resetting, toggling Wi-Fi and reading the full state (model names, cost,
+    references) are restricted to requests from the laptop itself; the presenter view runs
+    there. The phone gets the blind validator stream and the verdict endpoint, nothing else.
+    """
+    host = request.client.host if request.client else ""
+    if host not in LOCAL_HOSTS:
+        raise HTTPException(403, "Solo desde la laptop del presentador.")
 
 
 class StaticOnline:
@@ -83,6 +98,9 @@ class Service:
         self.validator_url = public_url(settings.public_url, settings.port) + "/validar/"
         self.online = True
         self.tasks: set[asyncio.Task] = set()
+        self.index_warning = index_mismatch(self.retriever, settings.processed_dir) if not settings.mock_ai else None
+        if self.index_warning:
+            print(f"!! {self.index_warning}")
 
     async def refresh_online(self) -> bool:
         online = await self.connectivity.is_online()
@@ -107,6 +125,7 @@ class Service:
             "validator_url": self.validator_url,
             "deck_size": len(self.deck.items),
             "mock": self.settings.mock_ai,
+            "index_warning": self.index_warning,
         }
 
     def validator_state(self) -> dict[str, Any]:
@@ -114,11 +133,13 @@ class Service:
         return {"round": current.blind() if current else None}
 
     def publish(self) -> None:
-        self.events.publish("state", self.state())
-        self.events.publish("validator", self.validator_state())
+        self.events.publish(PRESENTER, "state", self.state())
+        self.events.publish(VALIDATOR, "validator", self.validator_state())
 
     async def run_round(self, round_id: str) -> None:
         round_ = self.store.get(round_id)
+        if round_ is None:  # reset before the task started
+            return
         online = await self.refresh_online()
         david, goliath = await asyncio.gather(
             translate(self.david, round_.source_text, round_.direction, retriever=self.retriever,
@@ -126,7 +147,8 @@ class Service:
             translate(self.goliath, round_.source_text, round_.direction, retriever=None,
                       online=online, reference=round_.reference),
         )
-        self.store.set_results(round_id, {"david": david.to_dict(), "goliath": goliath.to_dict()})
+        if self.store.set_results(round_id, {"david": david.to_dict(), "goliath": goliath.to_dict()}) is None:
+            return  # reset while translating: the results belong to a round that no longer exists
         self.publish()
 
     def start_round(self, body: NewRound) -> dict[str, Any]:
@@ -182,6 +204,19 @@ def _mock_retriever(settings: Settings) -> Retriever:
     return Retriever(path, embedder=HashingEmbedder())
 
 
+def index_mismatch(retriever: Retriever | None, processed: Path) -> str | None:
+    """The index must come from the same dataset version the evals and the model card describe."""
+    from .deck import latest_dataset
+
+    dataset = latest_dataset(processed)
+    if retriever is None or dataset is None:
+        return None
+    if retriever.dataset_version != dataset.name:
+        return (f"el índice de recuperación es del dataset {retriever.dataset_version}, pero LATEST es "
+                f"{dataset.name}: corre `make index`")
+    return None
+
+
 def _load_retriever(settings: Settings) -> Retriever | None:
     try:
         return Retriever(settings.rag_index)
@@ -224,7 +259,9 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
     async def health() -> dict[str, Any]:
         return {"ok": True, "online": svc.online, "retrieval": svc.retriever is not None, "mock": settings.mock_ai}
 
-    @app.get("/api/state")
+    local = [Depends(presenter_only)]
+
+    @app.get("/api/state", dependencies=local)
     async def state() -> dict[str, Any]:
         return svc.state()
 
@@ -233,16 +270,18 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
         return svc.validator_state()
 
     @app.get("/api/events")
-    async def events(view: Literal["presenter", "validator"] = "presenter") -> StreamingResponse:
+    async def events(request: Request, view: Literal["presenter", "validator"] = "presenter") -> StreamingResponse:
         import json
 
-        first_event = "state" if view == "presenter" else "validator"
-        first_data = svc.state() if view == "presenter" else svc.validator_state()
+        if view == PRESENTER:
+            presenter_only(request)
+        first_event = "state" if view == PRESENTER else "validator"
+        first_data = svc.state() if view == PRESENTER else svc.validator_state()
         first = f"event: {first_event}\ndata: {json.dumps(first_data, ensure_ascii=False)}\n\n"
-        return StreamingResponse(svc.events.stream(first), media_type="text/event-stream",
+        return StreamingResponse(svc.events.stream(view, first), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
-    @app.post("/api/rounds")
+    @app.post("/api/rounds", dependencies=local)
     async def new_round(body: NewRound) -> dict[str, Any]:
         return svc.start_round(body)
 
@@ -250,11 +289,11 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
     async def verdict(round_id: str, body: Verdict) -> dict[str, Any]:
         return svc.vote(round_id, body)
 
-    @app.get("/api/suggestions")
+    @app.get("/api/suggestions", dependencies=local)
     async def suggestions(direction: Literal["es-quc", "quc-es"] = "es-quc") -> list[dict]:
         return svc.deck.suggestions(direction)
 
-    @app.post("/api/connectivity")
+    @app.post("/api/connectivity", dependencies=local)
     async def connectivity(body: ConnectivityToggle) -> dict[str, Any]:
         """Rehearsal switch: simulate Wi-Fi off for Goliath without touching the OS."""
         svc.connectivity.force_offline = body.force_offline
@@ -264,7 +303,7 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
         svc.publish()
         return {"online": svc.online, "force_offline": body.force_offline}
 
-    @app.post("/api/reset")
+    @app.post("/api/reset", dependencies=local)
     async def reset() -> dict[str, Any]:
         svc.reset()
         return {"ok": True}

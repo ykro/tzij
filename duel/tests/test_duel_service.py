@@ -58,14 +58,85 @@ async def test_live_round_blind_verdicts(service):
         order = service.store.current.blind_order
         r = await client.post(f"/api/rounds/{round_id}/verdicts", json={"slot": 0, "verdict": "correcta", "voter": "phone-1"})
         assert r.status_code == 200
-        # Same voter changes their mind: one verdict per voter and translation.
-        await client.post(f"/api/rounds/{round_id}/verdicts", json={"slot": 0, "verdict": "aceptable", "voter": "phone-1"})
+        # One verdict per translation: a second one (same or another phone) is refused.
+        again = await client.post(f"/api/rounds/{round_id}/verdicts", json={"slot": 0, "verdict": "aceptable", "voter": "phone-2"})
+        assert again.status_code == 409
         await client.post(f"/api/rounds/{round_id}/verdicts", json={"slot": 1, "verdict": "incorrecta", "voter": "phone-1"})
         state = (await client.get("/api/state")).json()
     tallies = state["round"]["tallies"]
-    assert tallies[order[0]] == {"correcta": 0, "aceptable": 1, "incorrecta": 0}
+    assert tallies[order[0]] == {"correcta": 1, "aceptable": 0, "incorrecta": 0}
     assert tallies[order[1]] == {"correcta": 0, "aceptable": 0, "incorrecta": 1}
-    assert state["scoreboard"][order[0]]["verdicts"]["aceptable"] == 1
+    assert state["scoreboard"][order[0]]["verdicts"]["correcta"] == 1
+
+
+async def test_votes_only_on_the_current_live_round(service):
+    async with await _client(service) as client:
+        await client.post("/api/rounds", json={"kind": "en_vivo", "direction": "es-quc", "text": "Hola"})
+        await _finish(service)
+        old = service.store.current.id
+        await client.post("/api/rounds", json={"kind": "evaluacion", "direction": "es-quc"})
+        await _finish(service)
+        current = service.store.current.id
+        stale = await client.post(f"/api/rounds/{old}/verdicts", json={"slot": 0, "verdict": "correcta", "voter": "phone-1"})
+        assert stale.status_code == 409
+        evaluation = await client.post(f"/api/rounds/{current}/verdicts", json={"slot": 0, "verdict": "correcta", "voter": "phone-1"})
+        assert evaluation.status_code == 409
+
+
+async def _lan_client(service):
+    app = create_app(service.settings, service)
+    transport = httpx.ASGITransport(app=app, client=("192.168.1.50", 50123))
+    return httpx.AsyncClient(transport=transport, base_url="http://test")
+
+
+async def test_control_endpoints_are_laptop_only(service):
+    async with await _lan_client(service) as phone:
+        for method, path, body in (
+            ("post", "/api/rounds", {"kind": "en_vivo", "text": "hola"}),
+            ("post", "/api/reset", {}),
+            ("post", "/api/connectivity", {"force_offline": True}),
+            ("get", "/api/state", None),
+            ("get", "/api/suggestions", None),
+            ("get", "/api/events?view=presenter", None),
+        ):
+            res = await getattr(phone, method)(path, **({"json": body} if body is not None else {}))
+            assert res.status_code == 403, path
+        assert (await phone.get("/api/validator")).status_code == 200
+        assert (await phone.get("/api/health")).status_code == 200
+
+
+async def test_phone_can_vote_from_the_lan(service):
+    async with await _client(service) as laptop:
+        await laptop.post("/api/rounds", json={"kind": "en_vivo", "direction": "es-quc", "text": "Hola"})
+        await _finish(service)
+    async with await _lan_client(service) as phone:
+        rid = service.store.current.id
+        res = await phone.post(f"/api/rounds/{rid}/verdicts", json={"slot": 1, "verdict": "aceptable", "voter": "phone-1"})
+        assert res.status_code == 200
+
+
+async def test_validator_stream_is_blind(service):
+    """Everything the phones receive, over a whole round, carries no names, costs or reference."""
+    received: list[str] = []
+    stream = service.events.stream("validator")
+
+    async def listen():
+        async for message in stream:
+            received.append(message)
+
+    listener = asyncio.create_task(listen())
+    await asyncio.sleep(0.02)
+    from tzij_duel.main import NewRound
+
+    service.start_round(NewRound(kind="evaluacion", direction="es-quc"))
+    await _finish(service)
+    await asyncio.sleep(0.05)
+    listener.cancel()
+    blob = "\n".join(received).lower()
+    assert received and "event: validator" in blob and "event: state" not in blob
+    reference = service.store.current.reference.lower()
+    for secret in ("david", "goliath", "gemma-test", "gemini-test", "latency", "cost_usd", "chrf", reference):
+        assert secret not in blob
 
 
 async def test_blind_order_varies_between_rounds(service):
@@ -140,7 +211,7 @@ async def test_connectivity_probe_detects_no_route():
 async def test_verdict_reaches_presenter_stream_under_a_second(service):
     round_ = service.store.create(kind="en_vivo", direction="es-quc", source_text="hola")
     service.store.set_results(round_.id, {"david": {"status": "ok", "text": "x"}, "goliath": {"status": "ok", "text": "y"}})
-    stream = service.events.stream()
+    stream = service.events.stream("presenter")
     received = asyncio.Queue()
 
     async def listen():
@@ -202,3 +273,27 @@ async def test_mock_mode_needs_no_ollama_and_shows_only_licensed_kiche(tmp_path,
     result = service.store.current.results["david"]
     assert result["status"] == "ok" and result["text"] in licensed | {"…"}
     assert service.store.current.reference_meta["source_name"] == "bloom_kiche"
+
+
+def test_no_winner_without_a_rival(service):
+    round_ = service.store.create(kind="evaluacion", direction="es-quc", source_text="x", reference="y")
+    service.store.set_results(round_.id, {"david": {"status": "ok", "chrf": 12.0},
+                                          "goliath": {"status": "offline", "chrf": None}})
+    assert service.store.scoreboard()["evaluation_wins"] == {"david": 0, "goliath": 0, "empate": 0}
+
+
+async def test_reset_during_an_in_flight_round(service):
+    from tzij_duel.main import NewRound
+
+    service.start_round(NewRound(kind="evaluacion", direction="es-quc"))
+    service.reset()  # the round task is still translating
+    await _finish(service)
+    assert service.store.rounds == []
+
+
+def test_index_dataset_mismatch_is_reported(service, settings):
+    from tzij_duel.main import index_mismatch
+
+    assert service.retriever.dataset_version == "fixture"
+    warning = index_mismatch(service.retriever, settings.processed_dir)
+    assert warning and "make index" in warning

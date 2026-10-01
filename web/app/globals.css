@@ -1032,6 +1032,12 @@ input {
   cursor: progress;
 }
 
+/* After a verdict, the other two options fade: one verdict per translation. */
+.verdict:disabled:not([aria-pressed="true"]) {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .phone__kind {
   margin: -8px 0 16px;
   font-size: 15px;
