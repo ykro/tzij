@@ -1,6 +1,6 @@
-# Evaluación humana a ciegas — plantilla
+# Evaluación humana a ciegas — plantilla (opcional)
 
-Se llena **antes de cada evento** con una persona hablante nativa de K'iche'. chrF++ mide
+**Opcional.** El demo y `make eval` no dependen de ella. Si hay una persona hablante nativa de K'iche' disponible, sirve para complementar chrF++. chrF++ mide
 parecido de caracteres con una referencia; esta evaluación mide si la traducción *sirve*.
 
 ## Cómo se prepara

@@ -25,14 +25,14 @@ Tzij ("palabra" en K'iche') traduce entre español y K'iche' (ISO 639-3 `quc`), 
 | **Recuperación vs fine-tune, decidido por `make eval`.** Los seis tipos de variante (base, base + recuperación, fine-tune, fine-tune + recuperación, Gemini, Gemini + recuperación) sobre las mismas 600 frases. Gana la mejor variante local, aunque no sea la que costó más trabajo. | [`evals/run_eval.py`](evals/run_eval.py), [`duel/tzij_duel/variants.py`](duel/tzij_duel/variants.py), [`evals/report.md`](evals/report.md) |
 | **Fertilidad de tokens.** En el tokenizador de Gemma, una palabra K'iche' cuesta 2.64 tokens y una española 1.41. La misma oración ocupa **1.92×** tokens en K'iche'. | [`evals/fertility.py`](evals/fertility.py), [`evals/fertility.md`](evals/fertility.md) |
 | **Offline por diseño.** Modelo, embeddings, índice, servicio y vistas viven en la laptop. Las tipografías se descargan al compilar. Un sondeo TCP de 0.8 s decide si Goliath está en línea antes de llamarlo. | [`duel/duel_core/connectivity.py`](duel/duel_core/connectivity.py), [`rag/embedder.py`](rag/embedder.py), [`web/next.config.ts`](web/next.config.ts), [`duel/tzij_duel/main.py`](duel/tzij_duel/main.py) |
-| **Validación con hablantes nativos.** El conjunto de prueba queda `pending_native_review` hasta que una persona lo revisa. En vivo, el veredicto lo da una persona desde su teléfono, a ciegas. Antes de cada evento se llena una plantilla de evaluación humana. | [`pipeline/review.py`](pipeline/review.py), [`pipeline/apply_review.py`](pipeline/apply_review.py), [`web/app/validar/page.tsx`](web/app/validar/page.tsx), [`evals/human_eval.md`](evals/human_eval.md) |
+| **Validación automática; hablantes nativos opcionales.** Nadie tiene que revisar nada para que el demo funcione: cada par de prueba se valida solo (split por fuente, limpieza, proporción de longitud 0.5–2.0, el lado español parece español, nada repetido de train) y queda `auto_validated`. La revisión nativa y la vista del validador en el teléfono son extras opcionales. | [`pipeline/validate_test.py`](pipeline/validate_test.py), [`pipeline/review.py`](pipeline/review.py) (opcional), [`web/app/validar/page.tsx`](web/app/validar/page.tsx) (opcional), [`evals/human_eval.md`](evals/human_eval.md) (opcional) |
 
 ## Arquitectura
 
 ![Arquitectura: laptop sin internet frente a Google Cloud](docs/diagrams/architecture.png)
 
 - **En la laptop, dentro del límite sin internet:** el servicio de duelo (FastAPI en `:8787`) sirve la API, el flujo de eventos (SSE) y las dos vistas compiladas (`/presentador/` y `/validar/`). David corre en Ollama (`gemma4:e4b`). El índice es un archivo SQLite con `sqlite-vec` y vectores de EmbeddingGemma.
-- **En la LAN:** el teléfono de la persona validadora abre el QR que muestra la vista del presentador y vota desde ahí.
+- **En la LAN (opcional):** si hay una persona validadora, su teléfono abre el QR de la vista del presentador y vota desde ahí. El demo completo funciona sin ella: las rondas de evaluación se califican solas con chrF++.
 - **En Google Cloud:** Goliath (`gemini-3.8-flash` en Vertex AI, `global`) y dos Cloud Run Jobs, uno para los datos y otro para el fine-tune en GPU. Sus salidas quedan en Cloud Storage. La laptop solo baja datasets y modelos mientras se prepara, no durante la charla.
 
 Fuente de los diagramas: [`docs/diagrams/`](docs/diagrams/) (HTML, SVG y PNG).
@@ -66,7 +66,7 @@ Para ensayar sin la nube ni GPU: `make up MOCK_AI=1`. Las variables se pasan **d
 | `make data-cloud` | Corre el mismo pipeline como Cloud Run Job (`infra/10-data-job.sh`) y escribe un dataset versionado en `gs://…-tzij-data/datasets/`. |
 | `make data-pull` | Baja el último dataset que produjo el job. |
 | `make index` | Construye `rag/index/tzij.sqlite` solo con el split `train`, usando EmbeddingGemma vía Ollama. |
-| `make review-test` | Exporta el conjunto de prueba a `data/review/test_review_<versión>.csv` para la revisión nativa. |
+| `make review-test` | (Opcional) Exporta el conjunto de prueba a `data/review/test_review_<versión>.csv` para una revisión nativa. |
 | `make apply-review REVIEW_CSV=…` | Aplica los veredictos (`ok` / `fix` / `reject`) al conjunto de prueba. |
 | `make fertility` | Mide la fertilidad de tokens de K'iche' vs español y escribe `evals/fertility.md`. |
 | `make datasheet` | Vuelve a generar `data/DATASHEET.md` desde el último manifest. |

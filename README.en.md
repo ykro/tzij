@@ -25,7 +25,7 @@ Tzij ("word" in K'iche') translates between Spanish and K'iche' (ISO 639-3 `quc`
 | **Retrieval vs fine-tuning, decided by `make eval`.** All six variant types (base, base + retrieval, fine-tuned, fine-tuned + retrieval, Gemini, Gemini + retrieval) run on the same 600 sentences. The best local variant wins, even if it isn't the one that took the most work. | [`evals/run_eval.py`](evals/run_eval.py), [`duel/tzij_duel/variants.py`](duel/tzij_duel/variants.py), [`evals/report.md`](evals/report.md) |
 | **Token fertility.** In Gemma's tokenizer a K'iche' word costs 2.64 tokens and a Spanish word 1.41. The same sentence takes **1.92×** as many tokens in K'iche'. | [`evals/fertility.py`](evals/fertility.py), [`evals/fertility.md`](evals/fertility.md) |
 | **Offline by design.** Model, embeddings, index, service and views all live on the laptop. Fonts are downloaded at build time. A 0.8 s TCP probe decides whether Goliath is online before calling it. | [`duel/duel_core/connectivity.py`](duel/duel_core/connectivity.py), [`rag/embedder.py`](rag/embedder.py), [`web/next.config.ts`](web/next.config.ts), [`duel/tzij_duel/main.py`](duel/tzij_duel/main.py) |
-| **Native-speaker validation.** The test set stays `pending_native_review` until a person reviews it. In live rounds a person gives the verdict from their phone, blind. A human-evaluation template is filled before each event. | [`pipeline/review.py`](pipeline/review.py), [`pipeline/apply_review.py`](pipeline/apply_review.py), [`web/app/validar/page.tsx`](web/app/validar/page.tsx), [`evals/human_eval.md`](evals/human_eval.md) |
+| **Automatic validation; native speakers optional.** Nobody has to review anything for the demo to work: each test pair is validated automatically (source-level split, cleaning, a 0.5–2.0 length ratio, the Spanish side looks Spanish, nothing repeated from train) and becomes `auto_validated`. Native review and the validator phone view are optional extras. | [`pipeline/validate_test.py`](pipeline/validate_test.py), [`pipeline/review.py`](pipeline/review.py) (optional), [`web/app/validar/page.tsx`](web/app/validar/page.tsx) (optional), [`evals/human_eval.md`](evals/human_eval.md) (optional) |
 
 ## Architecture
 
@@ -34,7 +34,7 @@ Tzij ("word" in K'iche') translates between Spanish and K'iche' (ISO 639-3 `quc`
 *The diagrams are labeled in Spanish, like the UI.*
 
 - **On the laptop, inside the offline boundary:** the duel service (FastAPI on `:8787`) serves the API, the event stream (SSE) and both built views (`/presentador/` and `/validar/`). David runs in Ollama (`gemma4:e4b`). The index is a SQLite file with `sqlite-vec` and EmbeddingGemma vectors.
-- **On the LAN:** the validator's phone opens the QR code shown on the presenter view and votes from there.
+- **On the LAN (optional):** if there is a validator, their phone opens the QR code on the presenter view and votes from there. The whole demo works without one: evaluation rounds are scored automatically with chrF++.
 - **On Google Cloud:** Goliath (`gemini-3.8-flash` on Vertex AI, `global`) and two Cloud Run Jobs, one for the data and one for the GPU fine-tune. Their outputs land in Cloud Storage. The laptop only downloads datasets and models while preparing, never during the talk.
 
 Diagram sources: [`docs/diagrams/`](docs/diagrams/) (HTML, SVG and PNG).
@@ -68,7 +68,7 @@ To rehearse without the cloud or a GPU: `make up MOCK_AI=1`. Pass variables **af
 | `make data-cloud` | Runs the same pipeline as a Cloud Run Job (`infra/10-data-job.sh`) and writes a versioned dataset to `gs://…-tzij-data/datasets/`. |
 | `make data-pull` | Downloads the latest dataset the job produced. |
 | `make index` | Builds `rag/index/tzij.sqlite` from the `train` split only, with EmbeddingGemma via Ollama. |
-| `make review-test` | Exports the test set to `data/review/test_review_<version>.csv` for native review. |
+| `make review-test` | (Optional) Exports the test set to `data/review/test_review_<version>.csv` for a native review. |
 | `make apply-review REVIEW_CSV=…` | Applies the verdicts (`ok` / `fix` / `reject`) to the test set. |
 | `make fertility` | Measures K'iche' vs Spanish token fertility and writes `evals/fertility.md`. |
 | `make datasheet` | Regenerates `data/DATASHEET.md` from the latest manifest. |

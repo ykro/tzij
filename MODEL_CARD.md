@@ -74,9 +74,11 @@ drop reasons are in `data/DATASHEET.md` (generated). Dataset `20260930-220035`:
   and cost per 1,000 translations: `evals/report.md`.
 - Token fertility: K'iche' costs 2.64 Gemma 4 E4B tokens per word vs 1.41 for Spanish
   (`evals/fertility.md`).
-- Test references are `pending_native_review` until a native speaker validates them
-  (`make review-test`, `make apply-review`); report scores are provisional until then.
-- Blind human rating template (adequacy and fluency, 50 items per model): `evals/human_eval.md`.
+- Test references are validated automatically (`pipeline/validate_test.py`: source-level split,
+  cleaning, 0.5–2.0 length ratio, Spanish side looks Spanish, no overlap with train) and marked
+  `auto_validated`; no human step is required. A native-speaker review (`make review-test`,
+  `make apply-review`) is optional and upgrades pairs to `validated`.
+- Optional blind human rating template (adequacy and fluency, 50 items per model): `evals/human_eval.md`.
 
 ## Intended use
 
@@ -105,5 +107,5 @@ translations and can be wrong in ways a non-speaker cannot detect.
 
 K'iche' data belongs to its speakers and institutions. Sources that require authorization
 (ALMG publications beyond the permitted examples, PLFM, SIL dictionaries) are listed as
-"needs permission" and are not used. The validator view puts a native speaker, not a
-metric, in charge of live verdicts.
+"needs permission" and are not used. The optional validator view lets a native speaker, not a
+metric, judge live rounds when one is present; the demo never depends on it.

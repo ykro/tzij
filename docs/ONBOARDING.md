@@ -11,8 +11,8 @@ Contenido:
 5. [Google Cloud: preparación única y scripts `infra/`](#5-google-cloud-preparación-única-y-scripts-infra)
 6. [Datos, índice, entrenamiento y evaluación](#6-datos-índice-entrenamiento-y-evaluación)
 7. [Correr el duelo (y sin internet)](#7-correr-el-duelo-y-sin-internet)
-8. [El validador: emulador Android y LAN real](#8-el-validador-emulador-android-y-lan-real)
-9. [Revisión con hablantes nativos](#9-revisión-con-hablantes-nativos)
+8. [El validador (opcional): emulador Android y LAN real](#8-el-validador-opcional-emulador-android-y-lan-real)
+9. [Revisión con hablantes nativos (opcional)](#9-revisión-con-hablantes-nativos-opcional)
 10. [Pruebas y ensayo](#10-pruebas-y-ensayo)
 11. [Recorrido por el código: una traducción](#11-recorrido-por-el-código-una-traducción)
 12. [Solución de problemas](#12-solución-de-problemas)
@@ -62,7 +62,7 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 | `OLLAMA_NUM_CTX` | `4096` | Contexto de Gemma en Ollama |
 | `DUEL_PORT`, `PUBLIC_URL` | `8787`, vacío | Puerto del servicio; URL fija del QR (vacío = IP de la LAN detectada) |
 | `FORCE_OFFLINE` | `0` | `1` simula "sin Wi-Fi" para Goliath sin tocar el sistema operativo |
-| `REQUIRE_VALIDATED_TEST` | `0` | `1` limita las rondas de evaluación a pares validados por una persona nativa |
+| `REQUIRE_VALIDATED_TEST` | `0` | Opcional: `1` limita las rondas de evaluación a pares que además revisó una persona nativa |
 | `MOCK_AI` | `0` | `1` evita la nube y la GPU (pruebas y ensayos) |
 
 `.env` solo pone valores por defecto: lo que pases por la línea de comandos o el entorno gana (`MOCK_AI=1 make up` y `make up MOCK_AI=1` hacen lo mismo). El `Makefile` convierte cada `CLAVE=valor` de `.env` en `CLAVE ?= valor` (archivo `.env.mk`, ignorado por git).
@@ -216,7 +216,7 @@ make up            # o `make up MOCK_AI=1` para ensayar sin nube ni GPU
 
 - Presentador: `http://127.0.0.1:8787/presentador/` (1920×1080). Atajos: `/` escribir una frase en vivo, `E` frase de evaluación, `D` cambiar dirección, `M` ficha del modelo, `Esc` cerrar. La barra de comandos incluye frases sugeridas de los datos, el interruptor "Simular sin Wi-Fi (ensayo)" y "Reiniciar marcador".
 - **Rondas de evaluación:** frases de prueba de Bloom (2 a 14 palabras, nunca de BOUQuET) con su referencia; se califican con chrF++.
-- **Rondas en vivo:** cualquier frase; las califica la persona validadora.
+- **Rondas en vivo (opcionales):** cualquier frase; las califica una persona validadora si la hay. Sin validador, usa rondas de evaluación.
 - `make reset` borra rondas y veredictos (`duel/state/rounds.json`).
 
 **Sin internet.** Todo lo que usa David está en la laptop. El servicio comprueba la conectividad cada 3 s con una conexión TCP de 0.8 s a `aiplatform.googleapis.com:443`. Sin red, la pastilla cambia a "Sin conexión", Goliath muestra "Sin conexión" en vez de llamar a Gemini, y David traduce igual. Dos formas de probarlo:
@@ -226,7 +226,7 @@ make up            # o `make up MOCK_AI=1` para ensayar sin nube ni GPU
 
 Requisito previo: `make web` **con** internet al menos una vez, porque `next/font` descarga las tipografías al compilar. Después las vistas no piden nada a internet.
 
-## 8. El validador: emulador Android y LAN real
+## 8. El validador (opcional): emulador Android y LAN real
 
 ### Emulador Android (`10.0.2.2`)
 
@@ -250,7 +250,9 @@ make emulator ANDROID_SERIAL=emulator-5554 BASE_URL=http://127.0.0.1:8787
 
 Las redes de eventos suelen aislar a los clientes entre sí (*client isolation*). Si el teléfono no carga la página, usa tu propia red.
 
-## 9. Revisión con hablantes nativos
+## 9. Revisión con hablantes nativos (opcional)
+
+Nada de esta sección es requisito: el conjunto de prueba ya llega `auto_validated` desde el pipeline (`pipeline/validate_test.py`) y el demo corre completo sin intervención humana.
 
 ### Conjunto de prueba
 
@@ -345,7 +347,7 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 - [ ] Dataset y modelos al día: `make data-pull`, `make index`, `ollama list` (con `gemma4:e4b` y `embeddinggemma`).
 - [ ] `LOCAL_MODEL_TAG` coincide con la mejor variante local de `evals/report.md`.
 - [ ] Precios de Gemini en `.env` vigentes para la fecha de la charla. Desde el 1 de enero de 2027: `GEMINI_INPUT_USD_PER_M=1.50`, `GEMINI_OUTPUT_USD_PER_M=7.50`.
-- [ ] Revisión nativa aplicada (`make review-test` / `make apply-review`) y `evals/human_eval.md` lleno para este evento. Si hay pares validados, decide si usar `REQUIRE_VALIDATED_TEST=1`.
+- [ ] (Opcional) Si hubo revisión nativa, aplicarla con `make apply-review`. No es requisito: el conjunto de prueba ya está `auto_validated`.
 - [ ] `make web` con internet (tipografías) y `make emulator` en verde (voto en menos de 1 s).
 
 **El día, con internet**
@@ -354,7 +356,7 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 - [ ] Energía conectada; suspensión desactivada (`caffeinate -dims` en una terminal); No Molestar activado; pantalla a 1920×1080.
 - [ ] `make up`. Sin avisos `!!`. La pastilla dice "En línea".
 - [ ] Una ronda de evaluación (`E`) y una en vivo (`/`): David y Goliath responden y se ven latencia y costo.
-- [ ] El teléfono de la persona validadora escanea el QR, vota, y el voto aparece en la pantalla.
+- [ ] (Opcional, solo si hay validador) El teléfono escanea el QR, vota, y el voto aparece en la pantalla.
 
 **Prueba con el Wi-Fi apagado (obligatoria)**
 
@@ -362,7 +364,7 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 - [ ] Ronda de evaluación: David traduce con latencia normal y Goliath muestra "Sin conexión". Ninguna pantalla se queda colgada.
 - [ ] Ronda en vivo con una frase en español: David responde.
 - [ ] Recarga `/presentador/`: carga completa, con tipografías, sin internet.
-- [ ] Si el teléfono va a votar durante el segmento sin internet, comprueba que la LAN sigue en pie (router o hotspot sin salida a internet). Si no, usa el interruptor "Simular sin Wi-Fi", que deja la LAN intacta.
+- [ ] (Opcional) Si el teléfono va a votar durante el segmento sin internet, comprueba que la LAN sigue en pie (router o hotspot sin salida a internet). Si no, usa el interruptor "Simular sin Wi-Fi", que deja la LAN intacta.
 - [ ] Vuelve a encender el Wi-Fi y comprueba que la pastilla regresa a "En línea".
 
 **Justo antes de empezar**
