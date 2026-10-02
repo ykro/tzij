@@ -1,15 +1,15 @@
 """Run the LoRA fine-tune in the cloud, wait, and record how long it took and what it cost.
 
-    python train/submit_job.py --app genlingo --tag genlingo-2027-03 --data data/train/chat.jsonl
+    python train/submit_job.py --app tzij --tag tzij-2026-10 --data data/train/chat.jsonl
 
-Default runtime: a **Cloud Run Job with one NVIDIA L4** (infra/03-train-job.sh). Serverless,
-billed per second while the task runs, and the same container image as everything else: nothing
-stays up between monthly retrains. Alternative: `TRAIN_RUNTIME=vertex` submits the same container
-as a Vertex AI Custom Job.
+Default runtime: two **Cloud Run Jobs** from the same image (infra/03-train-job.sh): `<app>-train`
+with one NVIDIA L4 trains the LoRA adapter, then `<app>-finish` (CPU only) merges it and writes the
+GGUFs. Serverless, billed per second while each task runs: nothing stays up between monthly
+retrains. Alternative: `TRAIN_RUNTIME=vertex` runs everything as one Vertex AI Custom Job.
 
 Steps: upload the chat JSONL to the staging bucket (same region as the GPU), build/reuse the
-training image (Cloud Build, cached by content hash), run it, poll until it finishes, then write
-train/runs/<tag>.json with duration, machine and cost. That file is what the talk shows:
+training image (Cloud Build, cached by content hash), run the jobs, poll until they finish, then
+write train/runs/<tag>.json with duration, machine and cost per stage and in total. That file is what the talk shows:
 "retraining David this month took N minutes and cost $X".
 
 Only needs the gcloud CLI (no SDK), so it runs anywhere gcloud is authenticated.
@@ -39,7 +39,7 @@ CLOUD_RUN_RATES = {
     "vcpu": float(os.environ.get("CLOUD_RUN_VCPU_USD_PER_S", "0.000018")),
     "gib": float(os.environ.get("CLOUD_RUN_GIB_USD_PER_S", "0.000002")),
 }
-CLOUD_RUN_SHAPE = {"vcpu": 8, "gib": 32}  # must match infra/03-train-job.sh
+CLOUD_RUN_SHAPE = {"vcpu": 8, "gib": 32}  # both jobs; must match infra/03-train-job.sh
 
 
 def sh(*cmd: str, capture: bool = True) -> str:
@@ -66,35 +66,26 @@ def train_args(args, data_uri: str, work_dir: str | None = None) -> list[str]:
         f"--weights-uri={env('GEMMA_WEIGHTS_URI')}",
         f"--output-uri={env('MODELS_BUCKET')}",
         f"--ollama-renderer={env('OLLAMA_RENDERER')}",
+        f"--quant={args.quant}",  # used when the same run also converts (Vertex, Colab); ignored with ADAPTER_ONLY
     ]
     if work_dir:
         out.append(f"--work-dir={work_dir}")
     return out + list(args.extra)
 
 
-# ---- Cloud Run Job (default) -------------------------------------------------------------------
-def cloud_run_cost(duration_s: float) -> float:
-    per_s = CLOUD_RUN_RATES["gpu_l4"] + CLOUD_RUN_SHAPE["vcpu"] * CLOUD_RUN_RATES["vcpu"] + CLOUD_RUN_SHAPE["gib"] * CLOUD_RUN_RATES["gib"]
-    return duration_s * per_s
+# ---- Cloud Run Jobs (default) ------------------------------------------------------------------
+def cloud_run_cost(duration_s: float, gpu: bool = True) -> float:
+    per_s = CLOUD_RUN_SHAPE["vcpu"] * CLOUD_RUN_RATES["vcpu"] + CLOUD_RUN_SHAPE["gib"] * CLOUD_RUN_RATES["gib"]
+    return duration_s * (per_s + (CLOUD_RUN_RATES["gpu_l4"] if gpu else 0.0))
 
 
-def run_cloud_run(args, image: str, data_uri: str, region: str, run: dict, out: Path) -> dict:
-    job = f"{args.app}-train"
-    print(f"==> Cloud Run Job {job} ({region}, 1x L4)", flush=True)
-    subprocess.run(["bash", str(REPO / "infra" / "03-train-job.sh")], check=True, stdout=subprocess.DEVNULL, env={**os.environ, "IMAGE": image})
-    # Bulky files live on the Cloud Storage volume (Cloud Run's own filesystem is in memory).
-    work_dir = f"/mnt/work/{args.app}/runs/{args.tag}"
+def execute(job: str, region: str, job_args: list[str], gpu: bool) -> dict:
+    """Start one execution of a Cloud Run Job, poll until it ends, return state, timing and cost."""
     execution = sh(
         "gcloud", "run", "jobs", "execute", job, f"--region={region}", "--async",
-        f"--args={','.join(train_args(args, data_uri, work_dir))}", "--format=value(metadata.name)",
+        f"--args={','.join(job_args)}", "--format=value(metadata.name)",
     )
-    print(f"==> execution {execution}", flush=True)
-    run.update(runtime="cloud-run-job", job=job, execution=execution,
-               machine=f"Cloud Run Job: 1x NVIDIA L4 (no zonal redundancy), {CLOUD_RUN_SHAPE['vcpu']} vCPU, {CLOUD_RUN_SHAPE['gib']} GiB",
-               rates_usd_per_s=CLOUD_RUN_RATES)
-    out.write_text(json.dumps(run, indent=2) + "\n")
-    if args.no_wait:
-        return run
+    print(f"==> {job}: execution {execution}", flush=True)
     last = None
     while True:
         ex = json.loads(sh("gcloud", "run", "jobs", "executions", "describe", execution, f"--region={region}", "--format=json"))
@@ -102,23 +93,75 @@ def run_cloud_run(args, image: str, data_uri: str, region: str, run: dict, out: 
         cond = {c["type"]: c for c in st.get("conditions", [])}.get("Completed", {})
         state = "SUCCEEDED" if st.get("succeededCount") else "FAILED" if st.get("failedCount") or cond.get("status") == "False" else "RUNNING" if st.get("runningCount") else "PENDING"
         if state != last:
-            print(f"    {time.strftime('%H:%M:%S')} {state}", flush=True)
+            print(f"    {time.strftime('%H:%M:%S')} {job} {state}", flush=True)
             last = state
         if state in {"SUCCEEDED", "FAILED"} and st.get("completionTime"):
             break
         time.sleep(30)
     start, end = parse_time(st.get("startTime")), parse_time(st.get("completionTime"))
     duration_s = (end - start).total_seconds() if start and end else None
+    return {
+        "job": job, "execution": execution, "state": state,
+        "start_time": st.get("startTime"), "end_time": st.get("completionTime"),
+        # An instance is billed for its whole lifecycle ≈ execution start -> completion.
+        "duration_s": round(duration_s, 1) if duration_s else None,
+        "estimated_cost_usd": round(cloud_run_cost(duration_s, gpu), 3) if duration_s else None,
+        "error": cond.get("message") if state == "FAILED" else None,
+    }
+
+
+def run_cloud_run(args, image: str, data_uri: str, region: str, run: dict, out: Path) -> dict:
+    """GPU job trains the adapter; CPU job merges and converts it (see infra/03-train-job.sh)."""
+    print(f"==> Cloud Run Jobs {args.app}-train (1x L4) + {args.app}-finish (CPU) in {region}", flush=True)
+    subprocess.run(["bash", str(REPO / "infra" / "03-train-job.sh")], check=True, stdout=subprocess.DEVNULL, env={**os.environ, "IMAGE": image})
+    # Bulky files live on the Cloud Storage volume (Cloud Run's own filesystem is in memory).
+    work_dir = f"/mnt/work/{args.app}/runs/{args.tag}"
+    run.update(runtime="cloud-run-jobs", quant=args.quant,
+               machine=f"Cloud Run Jobs: 1x NVIDIA L4 + {CLOUD_RUN_SHAPE['vcpu']} vCPU/{CLOUD_RUN_SHAPE['gib']} GiB (train), "
+                       f"{CLOUD_RUN_SHAPE['vcpu']} vCPU/{CLOUD_RUN_SHAPE['gib']} GiB (merge + GGUF)",
+               rates_usd_per_s=CLOUD_RUN_RATES, stages={})
+    out.write_text(json.dumps(run, indent=2) + "\n")
+    if args.no_wait:
+        print("    --no-wait: only the training job is started; finish later with `make train-finish`", flush=True)
+        run["stages"]["train"] = {"job": f"{args.app}-train", "execution": sh(
+            "gcloud", "run", "jobs", "execute", f"{args.app}-train", f"--region={region}", "--async",
+            f"--args={','.join(train_args(args, data_uri, work_dir))}", "--format=value(metadata.name)")}
+        return run
+
+    stages = run["stages"]
+    stages["train"] = execute(f"{args.app}-train", region, train_args(args, data_uri, work_dir), gpu=True)
+    out.write_text(json.dumps(run, indent=2) + "\n")
+    finish_here = os.environ.get("TRAIN_FINISH", "cloud") != "local"
+    if stages["train"]["state"] == "SUCCEEDED" and finish_here:
+        stages["finish"] = execute(f"{args.app}-finish", region, finish_args(args, work_dir), gpu=False)
+    elif not finish_here:
+        # tzij: Gemma 4 E4B's merged checkpoint (16 GB) doesn't fit the CPU job's 32 GiB either;
+        # the adapter waits in the staging bucket for `make train-finish` on the laptop.
+        run["finish"] = "laptop (make train-finish)"
+    done = [s for s in stages.values() if s.get("duration_s")]
+    failed = next((s for s in stages.values() if s["state"] != "SUCCEEDED"), None)
     run.update(
-        state=f"JOB_STATE_{state}",
-        start_time=st.get("startTime"),
-        end_time=st.get("completionTime"),
-        # The GPU instance is billed for its whole lifecycle ≈ execution start -> completion.
-        duration_s=round(duration_s, 1) if duration_s else None,
-        estimated_cost_usd=round(cloud_run_cost(duration_s), 2) if duration_s else None,
-        error=cond.get("message") if state == "FAILED" else None,
+        state="JOB_STATE_FAILED" if failed else "JOB_STATE_SUCCEEDED",
+        start_time=stages["train"]["start_time"],
+        end_time=(stages.get("finish") or stages["train"])["end_time"],
+        duration_s=round(sum(s["duration_s"] for s in done), 1) if done else None,
+        estimated_cost_usd=round(sum(s["estimated_cost_usd"] for s in done), 2) if done else None,
+        error=f"{failed['job']}: {failed['error']}" if failed else None,
     )
     return run
+
+
+def finish_args(args, work_dir: str) -> list[str]:
+    out = [
+        f"--tag={args.tag}",
+        f"--adapter-uri={work_dir}/adapter",
+        f"--base-model={env('GEMMA_BASE_MODEL')}",
+        f"--weights-uri={env('GEMMA_WEIGHTS_URI')}",
+        f"--output-uri={env('MODELS_BUCKET')}",
+        f"--ollama-renderer={env('OLLAMA_RENDERER')}",
+        f"--quant={args.quant}",
+    ]
+    return out + (["--keep-f16"] if args.keep_f16 else [])
 
 
 # ---- Vertex AI Custom Job (alternative) --------------------------------------------------------
@@ -187,6 +230,10 @@ def main() -> None:
     ap.add_argument("--tag", required=True)
     ap.add_argument("--data", required=True, help="local chat JSONL")
     ap.add_argument("--no-wait", action="store_true")
+    ap.add_argument("--quant", default=os.environ.get("QUANT"), required=not os.environ.get("QUANT"),
+                    help="GGUF quantization of the finished model (env QUANT, e.g. Q5_K_M)")
+    ap.add_argument("--keep-f16", action="store_true", default=os.environ.get("KEEP_F16", "1") == "1",
+                    help="also publish the f16 GGUF (the uncompressed reference for the compression eval)")
     ap.add_argument("extra", nargs="*", help="extra args for train_lora.py (after --)")
     args = ap.parse_args()
 
@@ -213,11 +260,15 @@ def main() -> None:
         "base_model": env("GEMMA_BASE_MODEL"),
         "weights_uri": env("GEMMA_WEIGHTS_URI"),
         "data_uri": data_uri,
-        "data_date": (m.group(0) if (m := re.search(r"\d{4}-\d{2}$", args.tag)) else None),
+        "data_date": (m.group(0) if (m := re.search(r"\d{4}-\d{2}", args.tag)) else None),
         "examples": n_examples,
         "output_uri": f"{env('MODELS_BUCKET').rstrip('/')}/{args.tag}/",
         "state": "PENDING",
     }
+    meta_path = Path(args.data).with_name(Path(args.data).stem + ".meta.json")
+    if meta_path.exists():  # how the data was prompted: the duel prompts this David the same way
+        meta = json.loads(meta_path.read_text())
+        run.update(prompt_style=meta.get("prompt_style"), prompt_version=meta.get("prompt_version"))
     if runtime == "vertex":
         run = run_vertex(args, image, data_uri, region, project, run, out)
     else:

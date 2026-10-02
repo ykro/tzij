@@ -3,7 +3,7 @@
 # the build inputs, so an unchanged recipe is never rebuilt. Prints the image URI.
 source "$(dirname "$0")/env.sh"
 TRAIN_DIR="$(cd "$INFRA_DIR/../train" && pwd)"
-HASH="$(cat "$TRAIN_DIR/Dockerfile" "$TRAIN_DIR/requirements.txt" "$TRAIN_DIR/train_lora.py" | shasum -a 256 | cut -c1-12)"
+HASH="$(cat "$TRAIN_DIR/Dockerfile" "$TRAIN_DIR/requirements.txt" "$TRAIN_DIR/train_lora.py" "$TRAIN_DIR/finish.py" | shasum -a 256 | cut -c1-12)"
 IMAGE="${AR}/${APP}-train:${HASH}"
 if exists gcloud artifacts docker images describe "$IMAGE"; then
   echo "$IMAGE"; exit 0

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Service account for the Vertex AI training job, with access only to what training needs:
+# Service account for the training job (Cloud Run GPU job), with access only to what training needs:
 # read the training data (staging bucket), write models (models bucket), pull the image.
-# Base weights come from Hugging Face (hf://google) with the hf-token secret, cached in the staging bucket.
+# Base weights come from Hugging Face; the HF token (if any) is read from Secret Manager `hf-token`.
 source "$(dirname "$0")/env.sh"
 
 SA="${APP}-train"
