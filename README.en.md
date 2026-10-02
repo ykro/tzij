@@ -1,6 +1,6 @@
 # Tzij — a Spanish ↔ K'iche' translator that works without internet
 
-[Versión en español](README.md) · [Onboarding (Spanish)](docs/ONBOARDING.md) · [Model card](MODEL_CARD.md) · [Sources](data/SOURCES.md) · [Evaluation report](evals/report.md)
+[Versión en español](README.md) · [Onboarding (Spanish)](docs/ONBOARDING.md) · [Logbook (Spanish)](docs/BITACORA.md) · [Demo script (Spanish)](docs/DEMO.md) · [Model card](MODEL_CARD.md) · [Sources](data/SOURCES.md) · [Evaluation report](evals/report.md)
 
 Demo for the talk **"David vs. Goliath: cómo un modelo pequeño le gana a un modelo frontier"** ("David vs. Goliath: how a small model beats a frontier model").
 

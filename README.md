@@ -1,6 +1,6 @@
 # Tzij — traductor español ↔ K'iche' que funciona sin internet
 
-[English version](README.en.md) · [Onboarding](docs/ONBOARDING.md) · [Model card](MODEL_CARD.md) · [Fuentes](data/SOURCES.md) · [Reporte de evaluación](evals/report.md)
+[English version](README.en.md) · [Onboarding](docs/ONBOARDING.md) · [Bitácora](docs/BITACORA.md) · [Guion de la demo](docs/DEMO.md) · [Model card](MODEL_CARD.md) · [Fuentes](data/SOURCES.md) · [Reporte de evaluación](evals/report.md)
 
 Demo de la charla **"David vs. Goliath: cómo un modelo pequeño le gana a un modelo frontier"**.
 
