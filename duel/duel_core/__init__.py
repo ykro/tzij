@@ -9,6 +9,7 @@ from .connectivity import Connectivity
 from .cost import Price, cost_usd
 from .duel import Contender, ContenderResult, run_duel
 from .gemini_client import GeminiClient
+from .llama_client import LlamaServerClient
 from .metrics import chrf_pp, corpus_chrf_pp
 from .mock import MockClient
 from .ollama_client import OllamaClient
@@ -22,6 +23,7 @@ __all__ = [
     "Contender",
     "ContenderResult",
     "GeminiClient",
+    "LlamaServerClient",
     "Message",
     "MockClient",
     "ModelClient",

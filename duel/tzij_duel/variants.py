@@ -51,6 +51,10 @@ class Variant:
     # Dictionary-guided decoding (constraints.py): "" off, "prompt+select" or "select".
     constrained: str = ""
     max_constraints: int = 3
+    # Multi-prompt MBR: each sample gets a different context (shuffled/subsampled retrieval).
+    multi_prompt: bool = False
+    # Logit bias for the required dictionary forms (needs a client with `with_bias`, i.e. llama-server).
+    bias: float = 0.0
 
 
 def normalize_output(text: str, direction: str) -> str:
@@ -72,7 +76,7 @@ async def translate(
     k = k or variant.k
     source_lang = DIRECTIONS[direction][0]
     text = normalize_kiche(text) if source_lang == "quc" else normalize_spanish(text)
-    context, retrieval_ms, required = "", 0.0, []
+    context, retrieval_ms, required, contexts = "", 0.0, [], []
     if variant.uses_rag:
         if retriever is None:
             return ContenderResult(variant.name, variant.model, "error", error="índice de recuperación no disponible")
@@ -82,14 +86,18 @@ async def translate(
         except Exception as exc:  # Ollama embeddings down: David can't use its data
             return ContenderResult(variant.name, variant.model, "error", error=f"recuperación: {exc}"[:200])
         retrieval_ms = (time.perf_counter() - t0) * 1000
-        context = found.as_prompt_context()
+        contexts = found.variants(variant.mbr) if variant.multi_prompt and variant.mbr else [found.as_prompt_context()]
+        context = contexts[0]
         if variant.constrained:
             required = dict_guide.constraints_from(found, variant.max_constraints)
             if "prompt" in variant.constrained and required:
-                context = f"{context}\n{dict_guide.prompt_block(required)}"
+                block = dict_guide.prompt_block(required)
+                contexts = [f"{c}\n{block}" for c in contexts]
+                context = contexts[0]
     messages = translation_messages(text, direction, context)
     if variant.mbr and variant.sampler is not None:
-        result = await _mbr(variant, messages, online, direction, required)
+        per_sample = [translation_messages(text, direction, c) for c in contexts] if len(contexts) > 1 else None
+        result = await _mbr(variant, messages, online, direction, required, per_sample)
     else:
         contender = Contender(variant.name, variant.client, variant.model, variant.price, variant.requires_network)
         result = (await run_duel([contender], messages, online=online))[variant.name]
@@ -102,7 +110,7 @@ async def translate(
 
 
 async def _mbr(variant: Variant, messages, online: bool, direction: str,
-               required: list | None = None) -> ContenderResult:
+               required: list | None = None, per_sample: list | None = None) -> ContenderResult:
     """Minimum Bayes risk decoding: N samples, keep the one that agrees most with the others.
 
     Each candidate is scored by its average chrF++ against the other candidates; the winner is
@@ -110,9 +118,14 @@ async def _mbr(variant: Variant, messages, online: bool, direction: str,
     can't batch), so latency is reported for the whole thing.
     """
     t0 = time.perf_counter()
-    contenders = [Contender(f"{variant.name}#{i}", variant.sampler, variant.model, variant.price, variant.requires_network)
+    sampler = variant.sampler
+    if variant.bias and required and hasattr(sampler, "with_bias"):
+        forms = {alt for _, alts in required for alt in alts}
+        sampler = sampler.with_bias([(f, variant.bias) for f in forms] + [(" " + f, variant.bias) for f in forms])
+    contenders = [Contender(f"{variant.name}#{i}", sampler, variant.model, variant.price, variant.requires_network)
                   for i in range(variant.mbr)]
-    runs = await asyncio.gather(*(run_duel([c], messages, online=online) for c in contenders))
+    prompts = [per_sample[i % len(per_sample)] for i in range(variant.mbr)] if per_sample else [messages] * variant.mbr
+    runs = await asyncio.gather(*(run_duel([c], m, online=online) for c, m in zip(contenders, prompts)))
     samples = [r[c.name] for r, c in zip(runs, contenders)]
     ok = [s for s in samples if s.status == "ok" and s.text]
     if not ok:
@@ -216,6 +229,21 @@ def eval_variants(s: Settings) -> list[Variant]:
                                         ollama, tag, Price.free(), True, False, retrieval="hybrid", k=s.rag_k,
                                         mbr=s.mbr_samples, sampler=sampler, constrained=s.constrained_mode,
                                         max_constraints=s.max_constraints))
+    if s.llama_server_url and not s.mock_ai:
+        # llama-server serves one GGUF: LLAMA_SERVER_MODEL names it (a tag from the lists above).
+        from duel_core import LlamaServerClient
+
+        tag = s.llama_server_model
+        eps = LlamaServerClient(s.llama_server_url, temperature=s.llama_temperature, min_p=s.llama_min_p)
+        n = s.llama_mbr_samples
+        variants.append(Variant(f"{tag}+hybrid+mbr{n}mp@llama", f"{tag} + híbrida + MBR multi-prompt", eps, tag,
+                                Price.free(), True, False, retrieval="hybrid", k=s.rag_k, mbr=n, sampler=eps,
+                                multi_prompt=True))
+        if s.constrained_mode:
+            variants.append(Variant(f"{tag}+hybrid+mbr{n}mp+bias{s.llama_bias:g}@llama", f"{tag} + MBR multi-prompt + sesgo",
+                                    eps, tag, Price.free(), True, False, retrieval="hybrid", k=s.rag_k, mbr=n,
+                                    sampler=eps, multi_prompt=True, constrained=s.constrained_mode,
+                                    max_constraints=s.max_constraints, bias=s.llama_bias))
     if s.gemini_model:
         variants.append(Variant(s.gemini_model, s.gemini_model, gemini, s.gemini_model, gemini_price(s), False, True))
         variants.append(Variant(f"{s.gemini_model}+rag", f"{s.gemini_model} + recuperación", gemini,

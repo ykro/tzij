@@ -57,6 +57,25 @@ class RetrievalResult:
         return "\n".join(lines)
 
 
+    def variants(self, n: int, seed: int = 2027) -> list[str]:
+        """n prompt contexts for multi-prompt MBR: the original first, then the same material with
+        the examples shuffled and, every other one, one example and one glossary entry left out."""
+        import random
+
+        out = [self.as_prompt_context()]
+        for i in range(1, n):
+            rng = random.Random(seed + i)
+            examples, glossary = list(self.examples), list(self.glossary)
+            rng.shuffle(examples)
+            if i % 2 == 0:
+                if len(examples) > 1:
+                    examples.pop(rng.randrange(len(examples)))
+                if len(glossary) > 1:
+                    glossary.pop(rng.randrange(len(glossary)))
+            out.append(RetrievalResult(self.query, self.direction, examples, glossary).as_prompt_context())
+        return out
+
+
 RRF_K = 60  # reciprocal rank fusion constant (Cormack et al. 2009); 60 is the usual choice
 
 
