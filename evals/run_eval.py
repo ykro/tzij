@@ -47,7 +47,9 @@ def load_test(dataset: Path, limit: int | None, per_source: int | None = None, s
     """
     records = [json.loads(line) for line in (dataset / f"{split}.jsonl").read_text(encoding="utf-8").splitlines()]
     # auto_rejected pairs failed pipeline/validate_test.py; they never count.
-    records = [r for r in records if r["kind"] == "sentence" and r["status"] not in ("rejected", "auto_rejected")]
+    # Niche v2 keeps its short UI terms (kind=lexicon) too: the slice is the whole held-out product.
+    records = [r for r in records if (r["kind"] == "sentence" or split == "test_niche2")
+               and r["status"] not in ("rejected", "auto_rejected")]
     if per_source:
         groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
         for r in records:
@@ -347,7 +349,7 @@ def main() -> None:
     parser.add_argument("--run", default="", help="resume an existing run id")
     parser.add_argument("--cloud-concurrency", type=int, default=8)
     parser.add_argument("--out", default="")
-    parser.add_argument("--split", choices=["test", "dev"], default="test",
+    parser.add_argument("--split", choices=["test", "dev", "test_niche2"], default="test",
                         help="dev = tuning and stop decisions between data rounds; test = final numbers only")
     asyncio.run(main_async(parser.parse_args()))
 
