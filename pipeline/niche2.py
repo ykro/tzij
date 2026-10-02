@@ -84,6 +84,23 @@ def held_out_product(dataset: Path) -> str:
     return min(sorted(counts), key=lambda p: abs(counts[p] - TARGET_PAIRS))
 
 
+def recap_religious(train: list[dict]) -> tuple[list[dict], int]:
+    """Removing secular pairs pushes the religious share over the 30% cap: drop religious sentence
+    pairs again with the pipeline's own rule (pipeline/split.py: stable hash order)."""
+    import hashlib
+    import math
+
+    from pipeline.split import RELIGIOUS_CAP
+
+    sentences = [r for r in train if r["kind"] == "sentence" and r["direction"] == "es-quc"]
+    secular = sum(r["domain"] != "religious" for r in sentences)
+    budget = math.floor(secular * RELIGIOUS_CAP / (1 - RELIGIOUS_CAP))
+    religious = sorted({r["pair_id"] for r in sentences if r["domain"] == "religious"},
+                       key=lambda pid: hashlib.sha1(pid.encode()).hexdigest())
+    drop = set(religious[budget:])
+    return [r for r in train if r["pair_id"] not in drop], len(drop)
+
+
 def _contains(text_tokens: list[str], phrase: list[str]) -> bool:
     n = len(phrase)
     return n > 0 and any(text_tokens[i:i + n] == phrase for i in range(len(text_tokens) - n + 1))
@@ -128,6 +145,7 @@ def build(dataset: Path) -> dict:
             dup += 1
             continue
         kept.append(r)
+    kept, religious_dropped = recap_religious(kept)
     out = dataset.parent / f"{dataset.name}-niche2"
     if out.exists():
         shutil.rmtree(out)
@@ -137,7 +155,8 @@ def build(dataset: Path) -> dict:
     (out / f"{SPLIT}.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in test), encoding="utf-8")
     manifest = json.loads((out / "manifest.json").read_text())
     summary = {"product": product, "product_counts": dict(product_counts(dataset)), "test_pairs_es_quc": len(test),
-               "train_records_removed": len(train) - len(kept), "duplicates_removed": dup, "tmx": TMX_URL}
+               "train_records_removed": len(train) - len(kept), "duplicates_removed": dup,
+               "religious_pairs_dropped_for_cap": religious_dropped, "tmx": TMX_URL}
     manifest.update(version=out.name, derived_from=dataset.name, niche2=summary)
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
     terms = terms_for(test, kept, index)
