@@ -1,0 +1,351 @@
+{
+ "dataset": "20261002-022500-niche2",
+ "definition": "evals/niche.md (niche v2)",
+ "terms": {
+  "pontoon_mozilla-f80461e7056f-es-quc": [],
+  "pontoon_mozilla-afe88c520778-es-quc": [],
+  "pontoon_mozilla-003a8dcca908-es-quc": [],
+  "pontoon_mozilla-2e33570a227b-es-quc": [],
+  "pontoon_mozilla-863046c5adf6-es-quc": [],
+  "pontoon_mozilla-dac3a0eb777e-es-quc": [
+   [
+    "otro",
+    "jun chik"
+   ]
+  ],
+  "pontoon_mozilla-03041b6e9f88-es-quc": [],
+  "pontoon_mozilla-4457ec17f43a-es-quc": [],
+  "pontoon_mozilla-02551492259d-es-quc": [],
+  "pontoon_mozilla-0c376d43ea23-es-quc": [],
+  "pontoon_mozilla-d7f3f8957cce-es-quc": [],
+  "pontoon_mozilla-a3d3129ff829-es-quc": [],
+  "pontoon_mozilla-3855ecf5251d-es-quc": [
+   [
+    "ese",
+    "le"
+   ],
+   [
+    "nombre",
+    "b'i'aj"
+   ]
+  ],
+  "pontoon_mozilla-1058ba879510-es-quc": [
+   [
+    "solo",
+    "xew"
+   ]
+  ],
+  "pontoon_mozilla-34cf6e898eff-es-quc": [
+   [
+    "solo",
+    "xew"
+   ]
+  ],
+  "pontoon_mozilla-9e6feb0080b4-es-quc": [],
+  "pontoon_mozilla-53ea35b4a3c1-es-quc": [],
+  "pontoon_mozilla-294f8ec551f4-es-quc": [],
+  "pontoon_mozilla-42abc9a87755-es-quc": [],
+  "pontoon_mozilla-29011c25d1ce-es-quc": [],
+  "pontoon_mozilla-9345f5da0a1b-es-quc": [],
+  "pontoon_mozilla-3d573dedb23b-es-quc": [],
+  "pontoon_mozilla-715e8c77e54a-es-quc": [],
+  "pontoon_mozilla-43351c2cd1d4-es-quc": [],
+  "pontoon_mozilla-85d5554afbcb-es-quc": [],
+  "pontoon_mozilla-b7c59d2a9e89-es-quc": [],
+  "pontoon_mozilla-7e3a91713ee8-es-quc": [],
+  "pontoon_mozilla-48bb8a988a87-es-quc": [
+   [
+    "contenido",
+    "upam chak"
+   ]
+  ],
+  "pontoon_mozilla-d9e4a2fc46ce-es-quc": [
+   [
+    "sitio",
+    "wokk'olib'al"
+   ]
+  ],
+  "pontoon_mozilla-8dd7d231bdb8-es-quc": [],
+  "pontoon_mozilla-6db0d7aee66d-es-quc": [],
+  "pontoon_mozilla-751a28622d23-es-quc": [],
+  "pontoon_mozilla-4f2d8f02a805-es-quc": [],
+  "pontoon_mozilla-e03ee422d670-es-quc": [],
+  "pontoon_mozilla-d5e69b9b20ab-es-quc": [],
+  "pontoon_mozilla-021edc90ed79-es-quc": [],
+  "pontoon_mozilla-566828d37f87-es-quc": [],
+  "pontoon_mozilla-c650ff425093-es-quc": [],
+  "pontoon_mozilla-c38c60c06b25-es-quc": [
+   [
+    "nombre",
+    "b'i'"
+   ]
+  ],
+  "pontoon_mozilla-941a570c3893-es-quc": [],
+  "pontoon_mozilla-65d6dc94fa1b-es-quc": [],
+  "pontoon_mozilla-24287b826355-es-quc": [],
+  "pontoon_mozilla-73817c3c9ea6-es-quc": [],
+  "pontoon_mozilla-a9906816206a-es-quc": [],
+  "pontoon_mozilla-d04743c19067-es-quc": [],
+  "pontoon_mozilla-f7842a1775d3-es-quc": [],
+  "pontoon_mozilla-b7f667e898d6-es-quc": [],
+  "pontoon_mozilla-af9e0152df56-es-quc": [
+   [
+    "rápido",
+    "aninaq"
+   ]
+  ],
+  "pontoon_mozilla-d1238b07b67a-es-quc": [],
+  "pontoon_mozilla-1f3e33a73c52-es-quc": [
+   [
+    "encontrar",
+    "riq"
+   ]
+  ],
+  "pontoon_mozilla-d3396d345864-es-quc": [
+   [
+    "encontrar",
+    "riq"
+   ]
+  ],
+  "pontoon_mozilla-eb1e0a06f328-es-quc": [
+   [
+    "resultado",
+    "wachinem"
+   ]
+  ],
+  "pontoon_mozilla-d5984e7c6e61-es-quc": [
+   [
+    "resultado",
+    "wachinem"
+   ]
+  ],
+  "pontoon_mozilla-c628245cdfde-es-quc": [],
+  "pontoon_mozilla-4a4ff82ad902-es-quc": [],
+  "pontoon_mozilla-c723ad8beb28-es-quc": [],
+  "pontoon_mozilla-1f4ba575885a-es-quc": [],
+  "pontoon_mozilla-d13c27da806d-es-quc": [],
+  "pontoon_mozilla-c60d2a412e0e-es-quc": [],
+  "pontoon_mozilla-5d669b262c45-es-quc": [],
+  "pontoon_mozilla-44d89d9b7927-es-quc": [],
+  "pontoon_mozilla-ab7694d1bd24-es-quc": [
+   [
+    "información",
+    "q'alajisanem"
+   ]
+  ],
+  "pontoon_mozilla-926e1779434d-es-quc": [],
+  "pontoon_mozilla-5ad1c2059e11-es-quc": [],
+  "pontoon_mozilla-44d82b150635-es-quc": [],
+  "pontoon_mozilla-6ba49ce583eb-es-quc": [],
+  "pontoon_mozilla-f5350033e136-es-quc": [
+   [
+    "botón",
+    "pitz'b'al"
+   ],
+   [
+    "más",
+    "nik'aj chik"
+   ]
+  ],
+  "pontoon_mozilla-abf884fbe271-es-quc": [],
+  "pontoon_mozilla-c28075ce760c-es-quc": [],
+  "pontoon_mozilla-e79fbec570fc-es-quc": [],
+  "pontoon_mozilla-2cab9ec721fe-es-quc": [],
+  "pontoon_mozilla-589e4c816d94-es-quc": [
+   [
+    "gracias",
+    "tyox"
+   ]
+  ],
+  "pontoon_mozilla-cda593c954cd-es-quc": [
+   [
+    "número",
+    "ajilab'al"
+   ]
+  ],
+  "pontoon_mozilla-4507485a332e-es-quc": [
+   [
+    "bien",
+    "utz"
+   ],
+   [
+    "tengo",
+    "k'o"
+   ]
+  ],
+  "pontoon_mozilla-7b63d0563d76-es-quc": [],
+  "pontoon_mozilla-e4ffe8ead024-es-quc": [],
+  "pontoon_mozilla-828df76fe04f-es-quc": [],
+  "pontoon_mozilla-7d89f59f4786-es-quc": [],
+  "pontoon_mozilla-b7d6ac900954-es-quc": [],
+  "pontoon_mozilla-0cee6d7221d8-es-quc": [
+   [
+    "rápido",
+    "aninaq"
+   ]
+  ],
+  "pontoon_mozilla-7af86884ec55-es-quc": [],
+  "pontoon_mozilla-d51a872fad60-es-quc": [],
+  "pontoon_mozilla-ee046e05b132-es-quc": [],
+  "pontoon_mozilla-f0f71612f854-es-quc": [],
+  "pontoon_mozilla-8313895384a0-es-quc": [],
+  "pontoon_mozilla-fde0216b0f7a-es-quc": [
+   [
+    "sitio",
+    "wokk'olib'al"
+   ]
+  ],
+  "pontoon_mozilla-14352a394b4d-es-quc": [],
+  "pontoon_mozilla-571842f850b0-es-quc": [],
+  "pontoon_mozilla-dd4a9a1f4635-es-quc": [],
+  "pontoon_mozilla-27c28425664b-es-quc": [],
+  "pontoon_mozilla-3443c0ed2ab0-es-quc": [
+   [
+    "sitio",
+    "wokk'olib'al"
+   ]
+  ],
+  "pontoon_mozilla-60610ef5c3e4-es-quc": [],
+  "pontoon_mozilla-2b721f73a324-es-quc": [],
+  "pontoon_mozilla-c835b06135dc-es-quc": [],
+  "pontoon_mozilla-48f31feaed39-es-quc": [],
+  "pontoon_mozilla-27e5e5a4a948-es-quc": [],
+  "pontoon_mozilla-1f17e97c836e-es-quc": [],
+  "pontoon_mozilla-92bea5cc2d18-es-quc": [
+   [
+    "nombre",
+    "b'i'"
+   ]
+  ],
+  "pontoon_mozilla-51ddca8e2623-es-quc": [
+   [
+    "buscar",
+    "tzukuj"
+   ]
+  ],
+  "pontoon_mozilla-d5d050731d9e-es-quc": [
+   [
+    "buscar",
+    "tzukuj"
+   ]
+  ],
+  "pontoon_mozilla-bedd3741ce0b-es-quc": [
+   [
+    "buscar",
+    "tzukuj"
+   ]
+  ],
+  "pontoon_mozilla-77d8b4a6d155-es-quc": [
+   [
+    "buscar",
+    "tzukuj"
+   ]
+  ],
+  "pontoon_mozilla-116e56b9d936-es-quc": [],
+  "pontoon_mozilla-6d8e3a243fbe-es-quc": [
+   [
+    "usar",
+    "ukojik"
+   ]
+  ],
+  "pontoon_mozilla-1d10bb84af00-es-quc": [],
+  "pontoon_mozilla-2a49f590beb2-es-quc": [],
+  "pontoon_mozilla-3717c1ecf8d2-es-quc": [],
+  "pontoon_mozilla-5c1276a7d1aa-es-quc": [],
+  "pontoon_mozilla-fd68a3549c8c-es-quc": [],
+  "pontoon_mozilla-a5f8c301bee1-es-quc": [
+   [
+    "enviar",
+    "utaqik"
+   ]
+  ],
+  "pontoon_mozilla-34889869e320-es-quc": [],
+  "pontoon_mozilla-a2a3cc0aa634-es-quc": [
+   [
+    "como",
+    "pacha'"
+   ]
+  ],
+  "pontoon_mozilla-5686b9cbec27-es-quc": [],
+  "pontoon_mozilla-2a2fc8acbe36-es-quc": [],
+  "pontoon_mozilla-f745b620a86f-es-quc": [],
+  "pontoon_mozilla-33a4382da64b-es-quc": [
+   [
+    "directo",
+    "suk'"
+   ]
+  ],
+  "pontoon_mozilla-198ae0d4b1a5-es-quc": [
+   [
+    "directo",
+    "suk'"
+   ]
+  ],
+  "pontoon_mozilla-f9fa9311fd3e-es-quc": [
+   [
+    "sitio",
+    "wokk'olib'al"
+   ]
+  ],
+  "pontoon_mozilla-3519df4afb86-es-quc": [],
+  "pontoon_mozilla-6044400035e3-es-quc": [],
+  "pontoon_mozilla-061021bd3c0c-es-quc": [],
+  "pontoon_mozilla-0f0f499dbfaa-es-quc": [],
+  "pontoon_mozilla-f4b3fe77007e-es-quc": [],
+  "pontoon_mozilla-bcb7002f8aaa-es-quc": [
+   [
+    "sistema",
+    "wokchakub'al"
+   ]
+  ],
+  "pontoon_mozilla-9c0ae7571ed8-es-quc": [],
+  "pontoon_mozilla-979cd6b85765-es-quc": [],
+  "pontoon_mozilla-95cf9d4a2aaa-es-quc": [],
+  "pontoon_mozilla-8fdd371b8353-es-quc": [],
+  "pontoon_mozilla-4253de854b96-es-quc": [
+   [
+    "algunos",
+    "jujun"
+   ]
+  ],
+  "pontoon_mozilla-10e9059edb71-es-quc": [
+   [
+    "algunos",
+    "jujun"
+   ],
+   [
+    "podría",
+    "wene"
+   ]
+  ],
+  "pontoon_mozilla-9c66279dcf8d-es-quc": [],
+  "pontoon_mozilla-de0c4e2ebf3c-es-quc": [],
+  "pontoon_mozilla-168669c1f38c-es-quc": [],
+  "pontoon_mozilla-9b03788b8c24-es-quc": [],
+  "pontoon_mozilla-cd54c423a4b2-es-quc": [],
+  "pontoon_mozilla-c577b87dbda1-es-quc": [],
+  "pontoon_mozilla-76eaaf4bf8ff-es-quc": [
+   [
+    "contenido",
+    "upam chak"
+   ]
+  ],
+  "pontoon_mozilla-6281dee182d9-es-quc": [],
+  "pontoon_mozilla-6c049f425e03-es-quc": [],
+  "pontoon_mozilla-1d867649e313-es-quc": [
+   [
+    "favor",
+    "toq'ob"
+   ]
+  ],
+  "pontoon_mozilla-7712d8b559de-es-quc": [],
+  "pontoon_mozilla-3ea516e9b71a-es-quc": [
+   [
+    "lista",
+    "cholajil"
+   ]
+  ],
+  "pontoon_mozilla-c62d67b2200c-es-quc": [],
+  "pontoon_mozilla-74ff46e8b77e-es-quc": []
+ }
+}
