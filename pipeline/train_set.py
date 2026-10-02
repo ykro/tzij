@@ -28,17 +28,21 @@ from tzij_duel.prompts import translation_messages  # noqa: E402
 
 OUT = REPO / "data" / "train" / "chat.jsonl"
 OUT_RAFT = REPO / "data" / "train" / "chat-raft.jsonl"
+OUT_RAFT_BT = REPO / "data" / "train" / "chat-raft-bt.jsonl"
+BACK_TRANSLATED = REPO / "data" / "train" / "back_translated_gemini.jsonl"
 
 
-def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6) -> dict:
+def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra: list[dict] | None = None) -> dict:
     records = [json.loads(line) for line in (dataset_dir / "train.jsonl").read_text(encoding="utf-8").splitlines()]
     sentences = [r for r in records if r["kind"] == "sentence" and r["split"] == "train"]
+    # Back-translated pairs (Gemini Spanish -> human K'iche') only teach Spanish -> K'iche'.
+    back_translated = [r for r in (extra or []) if r["direction"] == "es-quc"]
     religious = sum(r["domain"] == "religious" for r in sentences) / max(len(sentences), 1)
     if religious > RELIGIOUS_CAP + 1e-9:
         raise SystemExit(f"religious share {religious:.1%} exceeds the {RELIGIOUS_CAP:.0%} cap")
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8") as fh:
-        for r in sentences:
+        for r in sentences + back_translated:
             context = ""
             if retriever is not None:
                 found = retriever.retrieve(r["source_text"], r["direction"], k,
@@ -46,8 +50,11 @@ def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6) -> dic
                 context = found.as_prompt_context()
             messages = translation_messages(r["source_text"], r["direction"], context)
             messages.append({"role": "assistant", "content": r["target_text"]})
-            fh.write(json.dumps({"messages": messages, "id": r["id"]}, ensure_ascii=False) + "\n")
-    return {"examples": len(sentences), "religious_share": round(religious, 4), "out": str(out.relative_to(REPO))}
+            fh.write(json.dumps({"messages": messages, "id": r["id"], "origin": r.get("origin", "web")},
+                                ensure_ascii=False) + "\n")
+    return {"examples": len(sentences) + len(back_translated), "web_pairs": len(sentences),
+            "back_translated": len(back_translated), "religious_share_of_web": round(religious, 4),
+            "out": str(out.relative_to(REPO))}
 
 
 def raft_retriever(dataset_version: str):
@@ -59,7 +66,8 @@ def raft_retriever(dataset_version: str):
 
     s = get_settings()
     embedder = CachedEmbedder(OllamaEmbedder(), REPO / "rag" / ".cache" / "embeddings.sqlite")
-    retriever = Retriever(s.rag_index, embedder=embedder)
+    # Same retrieval settings as David at inference (RAG_MODE / RAG_K / RAG_ORDER / RAG_FUZZY).
+    retriever = Retriever(s.rag_index, embedder=embedder, mode=s.rag_mode, order=s.rag_order, fuzzy=s.rag_fuzzy)
     if retriever.dataset_version != dataset_version:
         raise SystemExit(f"index is from {retriever.dataset_version}, dataset is {dataset_version}: run `make index`")
     return retriever, s.rag_k
@@ -70,6 +78,10 @@ if __name__ == "__main__":
     version = (processed / "LATEST").read_text().strip()
     if "--raft" in sys.argv:
         retriever, k = raft_retriever(version)
-        print({"dataset": version, "k": k, **build(processed / version, OUT_RAFT, retriever, k)})
+        extra, out = None, OUT_RAFT
+        if "--bt" in sys.argv:
+            extra = [json.loads(line) for line in BACK_TRANSLATED.read_text(encoding="utf-8").splitlines()]
+            out = OUT_RAFT_BT
+        print({"dataset": version, "k": k, **build(processed / version, out, retriever, k, extra)})
     else:
         print({"dataset": version, **build(processed / version)})

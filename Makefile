@@ -13,7 +13,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help deploy tune-retrieval train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help deploy tune-retrieval train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -63,6 +63,15 @@ train-data: ## Render the train split (sentences, both directions) as chat JSONL
 
 train-data-raft: ## Train split with retrieved context in every prompt (RAFT) -> data/train/chat-raft.jsonl
 	$(UV) run python -m pipeline.train_set --raft
+
+train-data-raft-bt: ## RAFT data plus Gemini back-translated pairs (es->quc only) -> data/train/chat-raft-bt.jsonl
+	$(UV) run python -m pipeline.train_set --raft --bt
+
+monolingual: ## Licensed monolingual K'iche' (train-side sources only) -> data/monolingual/quc.jsonl
+	$(UV) run python -m pipeline.monolingual
+
+back-translate: ## Gemini Spanish for the monolingual K'iche' (one-time, cost recorded) -> data/train/back_translated_gemini.jsonl
+	$(UV) run python -m pipeline.back_translate
 
 train: ## LoRA fine-tune as a Cloud Run GPU Job (L4), record time and cost: make train TAG=tzij-2026-09 [TRAIN_ARGS="--epochs=1.5"]
 	@test -n "$(TAG)" || (echo "usage: make train TAG=tzij-YYYY-MM" && exit 1)

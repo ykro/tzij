@@ -175,6 +175,11 @@ def train_and_merge(args, base_dir: Path, data_path: Path, work: Path) -> dict:
     dtype = torch.bfloat16 if device != "cpu" else torch.float32
     tokenizer = AutoTokenizer.from_pretrained(base_dir)
     dataset = load_dataset(data_path, tokenizer)
+    if args.shard:
+        # Cloud Run GPU tasks stop at 1 h: long (retrieval-augmented) data is trained in chunks,
+        # one job per shard, each continuing from the previous adapter (--init-adapter).
+        index, count = (int(x) for x in args.shard.split("/"))
+        dataset = dataset.shuffle(seed=args.seed).shard(num_shards=count, index=index)
     log(f"{len(dataset)} training examples, device={device}")
 
     model = AutoModelForCausalLM.from_pretrained(base_dir, dtype=dtype, attn_implementation="eager")
@@ -206,7 +211,15 @@ def train_and_merge(args, base_dir: Path, data_path: Path, work: Path) -> dict:
         report_to="none",
         seed=args.seed,
     )
-    trainer = SFTTrainer(model=model, args=cfg, train_dataset=dataset, processing_class=tokenizer, peft_config=lora)
+    peft_config = lora
+    if args.init_adapter:
+        from peft import PeftModel
+
+        adapter_dir = fetch(args.init_adapter, work / "init_adapter")
+        model = PeftModel.from_pretrained(model, adapter_dir, is_trainable=True)
+        peft_config = None  # keep training the existing adapter instead of starting a new one
+        log(f"continuing from adapter {args.init_adapter}")
+    trainer = SFTTrainer(model=model, args=cfg, train_dataset=dataset, processing_class=tokenizer, peft_config=peft_config)
     trainable, total = trainer.model.get_nb_trainable_parameters()
     log(f"trainable params: {trainable / 1e6:.1f}M of {total / 1e9:.2f}B ({100 * trainable / total:.2f}%)")
     t0 = time.time()
@@ -317,6 +330,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--epochs", type=float, default=3)
     ap.add_argument("--max-steps", type=int, default=-1)
+    ap.add_argument("--shard", default="", help="i/n: train only on shard i of n (shuffled with --seed)")
+    ap.add_argument("--init-adapter", default="", help="gs:// or local LoRA adapter to continue training from")
     ap.add_argument("--batch-size", type=int, default=8)
     ap.add_argument("--grad-accum", type=int, default=2)
     ap.add_argument("--max-length", type=int, default=256)
