@@ -27,7 +27,7 @@ Versiones con las que se verificó el proyecto (30 de septiembre de 2026):
 | Herramienta | Versión | Para qué |
 | --- | --- | --- |
 | macOS en Apple Silicon | — | La laptop del escenario. `make train-local` usa MPS y `train/setup_llama_cpp.sh` baja el `llama-quantize` precompilado para macOS arm64. |
-| RAM | `make train-finish` se probó en una Mac de 64 GB | El merge de E4B en bf16 más la conversión a GGUF. Para el duelo basta con lo que necesita Ollama para `gemma4:e4b` (6.6 GB) y `embeddinggemma`. |
+| RAM | `make train-finish` se probó en una Mac de 64 GB | El merge de E4B en bf16 más la conversión a GGUF. Para el duelo basta con lo que necesita Ollama para David (~5.3 GB) y `embeddinggemma`. |
 | Python | 3.12 (`.python-version`; `pyproject.toml` pide `>=3.12,<3.13`) | Pipeline, índice, servicio y evals |
 | uv | 0.8.22 | Entornos y dependencias de Python. Nunca `pip` global. |
 | Node.js / npm | 24.21.0 / 12.0.2 | Vistas en Next.js 16.3.8 y pruebas (vitest, Playwright 1.63.0) |
@@ -36,7 +36,7 @@ Versiones con las que se verificó el proyecto (30 de septiembre de 2026):
 | Android SDK (`adb`, emulador) | `adb` 1.0.41 | Solo para `make emulator` |
 | Cuenta de Hugging Face | — | Aceptar los términos de BOUQuET; su token va a Secret Manager |
 
-Espacio en disco aproximado: unos 17 GB para los modelos de Ollama (`gemma4:e4b` 6.6 GB, `gemma4:e2b-it-qat` 4.3 GB, `tzij-2026-09` 5.3 GB, `embeddinggemma` 621 MB) y espacio temporal para `make train-finish` en `models/.work/`: pesos base (~16 GB), modelo fusionado (~16 GB, se borra al convertir), GGUF f16 (~16 GB, se borra al final) y Q4_K_M (~5 GB).
+Espacio en disco aproximado: unos 17 GB para los modelos de Ollama (`gemma4:e4b` 6.6 GB, cada fine-tune `tzij-2026-10-*` 5.3 GB, `embeddinggemma` 621 MB) y espacio temporal para `make train-finish` en `models/.work/`: pesos base (~16 GB, compartidos entre tags), modelo fusionado (~16 GB, se reutiliza si ya existe), GGUF intermedio Q8_0 (~8 GB con `GGUF_OUTTYPE=q8_0`, se borra al final) y Q4_K_M (~5 GB).
 
 ## 2. Instalación local
 
@@ -53,12 +53,14 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 | --- | --- | --- |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Goliath |
 | `GEMINI_INPUT_USD_PER_M` / `GEMINI_OUTPUT_USD_PER_M` | `0.75` / `3.75` | Costo mostrado en pantalla. Desde el 1 de enero de 2027 la tarifa de lista sube a `1.50` / `7.50` (ver el comentario en `.env.example`). |
-| `LOCAL_MODEL_TAG` | `gemma4:e4b` | David (siempre con recuperación) |
-| `BASE_MODEL_TAGS` | `gemma4:e2b-it-qat,gemma4:e4b` | Modelos base que compara `make eval` |
-| `FINETUNED_MODEL_TAGS` | `tzij-2026-09` | Modelos con fine-tune que compara `make eval` |
+| `LOCAL_MODEL_TAG` | `tzij-2026-10-raft-bt-s3` | David (siempre con recuperación) |
+| `BASE_MODEL_TAGS` | `gemma4:e4b` | Modelos base que compara `make eval` |
+| `FINETUNED_MODEL_TAGS` | `tzij-2026-10-raft-bt-s3,tzij-2026-10-raft-bt-s0,tzij-2026-10-raft-s0` | Modelos con fine-tune que compara `make eval` |
 | `GEMMA_BASE_MODEL` | `gemma-4-E4B-it` | Checkpoint base del fine-tune y tokenizador de `make fertility` |
 | `EMBEDDING_MODEL` | `embeddinggemma` | Embeddings del índice. El índice y las consultas tienen que usar el mismo. |
 | `RAG_INDEX`, `RAG_K` | `rag/index/tzij.sqlite`, `6` | Índice y cuántos ejemplos y entradas de glosario recibe David |
+| `RAG_MODE`, `RAG_ORDER`, `RAG_FUZZY` | `hybrid`, `best_last`, `1` | Búsqueda híbrida BM25 + vectores (o `vector`), ejemplo más cercano al final, glosario difuso. Ajustados con `make tune-retrieval` en dev. |
+| `MBR_ON_STAGE`, `MBR_SAMPLES` | `1`, `4` | Decodificación MBR en el escenario (`0` = una sola muestra, p50 ~1.7 s en vez de ~4 s) |
 | `OLLAMA_NUM_CTX` | `4096` | Contexto de Gemma en Ollama |
 | `DUEL_PORT`, `PUBLIC_URL` | `8787`, vacío | Puerto del servicio; URL fija del QR (vacío = IP de la LAN detectada) |
 | `FORCE_OFFLINE` | `0` | `1` simula "sin Wi-Fi" para Goliath sin tocar el sistema operativo |
@@ -70,10 +72,9 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 ## 3. Modelos de Ollama
 
 ```bash
-ollama pull gemma4:e4b          # David
+make pull-model TAG=tzij-2026-10-raft-bt-s3   # David (ver §6.5)
 ollama pull embeddinggemma      # embeddings del índice (también offline, en el escenario)
-ollama pull gemma4:e2b-it-qat   # solo para `make eval`
-make pull-model TAG=tzij-2026-09   # el fine-tune, solo para `make eval` (ver §6.5)
+ollama pull gemma4:e4b          # base, para `make eval` y como David de respaldo
 ollama list
 ```
 
@@ -180,6 +181,18 @@ Mide tokens por palabra con el `tokenizer.json` de `google/<GEMMA_BASE_MODEL>` y
 make train TAG=tzij-2026-09 TRAIN_ARGS="--epochs=1"
 ```
 
+El David actual se entrenó con RAFT + retrotraducción, en 4 trozos de 1/4 de época para no pasar el límite de 1 h:
+
+```bash
+make monolingual && make back-translate   # una vez: 405 oraciones → 399 pares, $0.12
+make train-data-raft-bt                   # 5,579 ejemplos con contexto recuperado
+A="--epochs=1 --batch-size=2 --grad-accum=8 --max-length=1024"
+make train TAG=tzij-2026-10-raft-bt-s0 TRAIN_DATA=data/train/chat-raft-bt.jsonl TRAIN_ARGS="$A --shard=0/4"
+make train TAG=tzij-2026-10-raft-bt-s1 TRAIN_DATA=data/train/chat-raft-bt.jsonl \
+  TRAIN_ARGS="$A --shard=1/4 --init-adapter=gs://…-train-eu/tzij/runs/tzij-2026-10-raft-bt-s0/adapter"
+# … igual para s2 y s3; después make train-finish TAG=tzij-2026-10-raft-bt-s3
+```
+
 1. `make train-data` convierte las oraciones de `train` (ambas direcciones) en JSONL de chat con el mismo prompt del duelo, sin contexto de recuperación, y vuelve a comprobar el tope religioso. Salen 5,180 ejemplos.
 2. `train/submit_job.py` sube el JSONL a `gs://…-train-eu/tzij/data/<tag>/`, construye o reutiliza la imagen (`02`), actualiza el job (`03`), lo ejecuta con `--epochs`, etc., espera y escribe `train/runs/<tag>.json` con duración, máquina y costo estimado.
 3. Dentro del job, `train/train_lora.py` baja los pesos (`GEMMA_WEIGHTS_URI=hf://google`, con caché en el bucket), entrena la LoRA (r=16, alpha=32, lr 2e-4, solo el decodificador de texto) y guarda el adapter en el volumen.
@@ -189,8 +202,8 @@ Límites que hay que respetar: **1 h por tarea de GPU** en Cloud Run (por eso se
 ### 6.5 `make train-finish` y `make pull-model`
 
 ```bash
-make train-finish TAG=tzij-2026-09   # adapter del bucket → merge → GGUF f16 → Q4_K_M → gs://…-tzij-models/<tag>/
-make pull-model  TAG=tzij-2026-09    # baja Modelfile + GGUF + metrics.json a models/<tag>/ y hace `ollama create`
+make train-finish TAG=tzij-2026-10-raft-bt-s3   # adapter del bucket → merge → GGUF Q8_0 → Q4_K_M → gs://…-tzij-models/<tag>/
+make pull-model  TAG=tzij-2026-10-raft-bt-s3    # baja Modelfile + GGUF + metrics.json a models/<tag>/ y hace `ollama create`
 ```
 
 `train-finish` usa `uv run --python 3.12 --with-requirements train/requirements.txt --with torch` (un entorno aparte del proyecto) y descarga llama.cpp `b11292` a `train/.llama.cpp/`. El GGUF Q4_K_M resultante pesa unos 5.3 GB. El `Modelfile` usa el renderer y el parser de `gemma4`, así que el modelo ajustado se pide igual que su base.
@@ -202,8 +215,8 @@ Si no hay GPU en la nube: `make train-local TAG=… [TRAIN_ARGS="--epochs=1"]` c
 ```bash
 make eval                                             # todas las variantes, 150 pares por fuente y dirección
 make eval EVAL_ARGS="--limit 20"                      # prueba rápida
-make eval EVAL_ARGS="--only gemma4:e4b+rag"           # una variante
-make eval EVAL_ARGS="--run full-20260930 --only tzij-2026-09,tzij-2026-09+rag"  # agrega variantes a una corrida
+make eval EVAL_ARGS="--only gemma4:e4b+hybrid"        # una variante
+make eval EVAL_ARGS="--run final-20261002 --only tzij-2026-10-raft-bt-s3+hybrid+mbr4"  # agrega variantes a una corrida
 ```
 
 Necesita internet y ADC para las variantes de Gemini, y en Ollama todos los tags de `BASE_MODEL_TAGS` y `FINETUNED_MODEL_TAGS`. Las predicciones se guardan en `evals/runs/<run>/<variante>.jsonl`, así que una corrida interrumpida se retoma con `--run`. El reporte incluye todas las variantes que tengan resultados en esa corrida y dice cuál debe subir al escenario: la mejor variante local. Ese tag va en `LOCAL_MODEL_TAG`.
@@ -321,7 +334,7 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 | La vista del presentador dice "Solo desde la laptop del presentador" o las rondas responden 403 | Se abrió con la IP de la LAN en vez de `127.0.0.1` | Abre `http://127.0.0.1:8787/presentador/` en la laptop; el teléfono usa el QR |
 | El teléfono dice "Esta traducción ya tiene veredicto" | Una traducción acepta un solo veredicto por ronda | Es lo esperado; espera la siguiente ronda en vivo |
 | `!! el índice de recuperación es del dataset …` al arrancar, o `make eval` se niega a correr | El índice se construyó con otra versión del dataset | `make index` |
-| `!! David (gemma4:e4b) no está en Ollama` al hacer `make up` | El modelo no está descargado | `ollama pull gemma4:e4b` (o `make pull-model TAG=…` si es un fine-tune) |
+| `!! David (tzij-2026-10-raft-bt-s3) no está en Ollama` al hacer `make up` | El modelo no está descargado | `make pull-model TAG=tzij-2026-10-raft-bt-s3` (o `LOCAL_MODEL_TAG=gemma4:e4b` y `ollama pull gemma4:e4b`) |
 | David responde "índice de recuperación no disponible" | Falta `rag/index/tzij.sqlite`, o el servicio lo desactivó al arrancar (`!! retrieval disabled` en la consola) | `make index`; reinicia `make up` |
 | `index built with 'X' but queries use 'Y'` | El índice se construyó con otro `EMBEDDING_MODEL` | `make index` con el modelo de `.env` |
 | David responde `recuperación: …` | Ollama no responde a `/api/embed` (EmbeddingGemma no está o Ollama se cayó) | `ollama pull embeddinggemma`; `curl 127.0.0.1:11434/api/version` |
@@ -344,7 +357,7 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 **La semana anterior**
 
 - [ ] `git pull`, `uv sync`, `make test` en verde.
-- [ ] Dataset y modelos al día: `make data-pull`, `make index`, `ollama list` (con `gemma4:e4b` y `embeddinggemma`).
+- [ ] Dataset y modelos al día: `make data-pull`, `make index`, `ollama list` (con `LOCAL_MODEL_TAG` y `embeddinggemma`).
 - [ ] `LOCAL_MODEL_TAG` coincide con la mejor variante local de `evals/report.md`.
 - [ ] Precios de Gemini en `.env` vigentes para la fecha de la charla. Desde el 1 de enero de 2027: `GEMINI_INPUT_USD_PER_M=1.50`, `GEMINI_OUTPUT_USD_PER_M=7.50`.
 - [ ] (Opcional) Si hubo revisión nativa, aplicarla con `make apply-review`. No es requisito: el conjunto de prueba ya está `auto_validated`.
