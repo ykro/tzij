@@ -241,20 +241,18 @@ def render(results: dict[str, dict], variants: list[Variant], records: list[dict
             delta = best["chrf"] - goliath[1]["chrf"]
             lines.append(f"Against Goliath (`{goliath[0].name}`, {goliath[1]['chrf']:.1f}): "
                          f"**{'+' if delta >= 0 else ''}{delta:.1f} chrF++** for David.")
-        finetuned = {v.name: sc for v, sc in local if v.model in s.finetuned_model_tags}
+        finetuned = [(v, sc) for v, sc in local if v.model in s.finetuned_model_tags]
         base = {v.name: sc for v, sc in local if v.model in s.base_model_tags}
         if finetuned and base:
-            def best(group: dict, rag: bool):
-                items = [(n, sc) for n, sc in group.items() if n.endswith("+rag") == rag]
-                return max(items, key=lambda x: x[1]["chrf"]) if items else None
-            lines.append("")
-            lines.append("**Fine-tuning, honestly:**")
-            for rag, label in ((False, "without retrieval"), (True, "with retrieval")):
-                ft, b = best(finetuned, rag), best(base, rag)
-                if ft and b:
-                    delta = ft[1]["chrf"] - b[1]["chrf"]
-                    lines.append(f"- {label}: `{ft[0]}` {ft[1]['chrf']:.1f} vs best base `{b[0]}` {b[1]['chrf']:.1f} "
-                                 f"(**{'+' if delta >= 0 else ''}{delta:.1f}**).")
+            lines += ["", "**Fine-tuning, honestly** (same retrieval and decoding, fine-tuned vs base):"]
+            for v, sc in finetuned:
+                suffix = v.name[len(v.model):]
+                matches = [(n, b) for n, b in base.items() if n.endswith(suffix) and n[: len(n) - len(suffix)] in s.base_model_tags]
+                if not matches:
+                    continue
+                name, b = max(matches, key=lambda x: x[1]["chrf"])
+                delta = sc["chrf"] - b["chrf"]
+                lines.append(f"- `{v.name}` {sc['chrf']:.1f} vs `{name}` {b['chrf']:.1f} (**{'+' if delta >= 0 else ''}{delta:.1f}**)")
         lines.append("")
 
     lines += ["## By test source (chrF++, both directions)", "",
