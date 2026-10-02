@@ -48,6 +48,9 @@ export function formatCount(n: number | null | undefined): string {
 
 export function modelName(tag: string | null | undefined): string {
   if (!tag) return "—";
+  // Our fine-tunes are published as tzij-YYYY-MM[-recipe]: show the base and that it was tuned.
+  const tuned = tag.match(/^tzij-(\d{4})-(\d{2})/);
+  if (tuned) return `Gemma 4 E4B ajustado ${tuned[2]}/${tuned[1]}`;
   return tag
     .replace(/^gemma(\d)[:-]?/i, "Gemma $1 ")
     .replace(/^gemini-/i, "Gemini ")

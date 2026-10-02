@@ -19,5 +19,6 @@ describe("K'iche' display", () => {
     expect(formatCost(0.00312)).toBe("$0.0031");
     expect(modelName("gemma4:e2b-it-qat")).toBe("Gemma 4 E2B");
     expect(modelName("gemini-3.8-flash")).toBe("Gemini 3.8 Flash");
+    expect(modelName("tzij-2026-10-raft-bt-s3")).toBe("Gemma 4 E4B ajustado 10/2026");
   });
 });
