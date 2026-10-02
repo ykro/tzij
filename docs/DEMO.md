@@ -17,6 +17,10 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
   ollama list            # tzij-2026-10-raft-bt-s3 y embeddinggemma
   ```
 
+- [ ] **Ronda de especialidad solo con un David limpio.** `S` usa Firefox Focus, el producto que
+  se apartó como nicho. `LOCAL_MODEL_TAG` tiene que ser un modelo que no entrenó con Focus: la base
+  `gemma4:e4b` o un fine-tune hecho sin ese producto. `tzij-2026-10-raft-bt-s3` sí lo vio, así que
+  con él no hay ronda de especialidad.
 - [ ] **Levantar todo y precalentar David.** `make up` carga David y EmbeddingGemma por 30 min (`keep_alive`)
   y avisa con `!!` si falta algo.
 
