@@ -13,7 +13,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help demo-screens deploy tune-retrieval niche synthetic train-data-raft-bt-syn train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help llama-server demo-screens deploy tune-retrieval niche synthetic train-data-raft-bt-syn train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -102,6 +102,11 @@ train-finish: ## Merge + GGUF a cloud-trained adapter on this Mac and publish it
 pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-09
 	@test -n "$(TAG)" || (echo "usage: make pull-model TAG=tzij-YYYY-MM" && exit 1)
 	MODELS_BUCKET=$(MODELS_BUCKET) train/pull_model.sh $(TAG)
+
+llama-server: ## llama.cpp server for the "@llama" eval variants (logit bias, 8 parallel slots) on LLAMA_SERVER_MODEL's GGUF from Ollama
+	@test -n "$(LLAMA_SERVER_MODEL)" || (echo "usage: make llama-server LLAMA_SERVER_MODEL=<ollama tag>" && exit 1)
+	GGUF="$$(ollama show --modelfile $(LLAMA_SERVER_MODEL) | sed -n 's/^FROM //p' | head -1)"; \
+	  train/.llama.cpp/bin/llama-server -m "$$GGUF" --jinja --parallel 8 -c 32768 -ngl 99 --port $${LLAMA_PORT:-8089}
 
 web: ## Build the presenter and validator views (static export; needs internet once for fonts)
 	cd web && npm ci --silent && npm run build
