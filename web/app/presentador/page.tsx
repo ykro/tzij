@@ -8,7 +8,7 @@ import { ModelCardPanel, ModelCardStrip } from "@/components/presenter/ModelCard
 import { Scoreboard } from "@/components/presenter/Scoreboard";
 import { Side } from "@/components/presenter/Side";
 import { phraseSize } from "@/components/presenter/sizing";
-import { directionLabel, displayKiche, displaySource, roundKindLabel } from "@/lib/kiche";
+import { directionLabel, displayKiche, displaySource, referenceLabel, roundKindLabel } from "@/lib/kiche";
 import type { Direction, PresenterState } from "@/lib/types";
 import { postJSON, useEventState } from "@/lib/useEventState";
 
@@ -106,7 +106,7 @@ export default function Presenter() {
           </p>
           {reference && (
             <p className="phrase__reference">
-              <b>Referencia</b> ({round.reference_meta?.source_name === "bloom_kiche" ? "Bloom Library, MINEDUC" : round.reference_meta?.source_name}):{" "}
+              <b>Referencia</b> ({referenceLabel(round.reference_meta?.source_name)}):{" "}
               <span className={round.direction === "es-quc" ? "kiche" : undefined}>
                 {round.direction === "es-quc" ? displayKiche(reference) : reference}
               </span>

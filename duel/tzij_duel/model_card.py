@@ -22,6 +22,8 @@ SOURCE_LABELS = {
     "gatitos": "Léxico GATITOS (Google)",
     "panlex": "PanLex",
     "wiktionary_es": "Wikcionario",
+    "cldr_quc": "Nombres de Unicode CLDR en Kʼicheʼ",
+    "floresmayas_quc": "Glosario FLORES-Mayas",
 }
 
 MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",

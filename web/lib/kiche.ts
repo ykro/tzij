@@ -66,3 +66,12 @@ export function roundKindLabel(round: Pick<Round, "kind" | "reference_meta">): s
   if (round.kind === "en_vivo") return "En vivo";
   return round.reference_meta?.specialty ? SPECIALTY_LABEL : "Evaluación";
 }
+
+const REFERENCE_LABELS: Record<string, string> = {
+  bloom_kiche: "Bloom Library, MINEDUC",
+  pontoon_mozilla: "Firefox Focus en Kʼicheʼ, Mozilla Pontoon",
+};
+
+export function referenceLabel(sourceName: string | undefined): string {
+  return (sourceName && REFERENCE_LABELS[sourceName]) || sourceName || "";
+}

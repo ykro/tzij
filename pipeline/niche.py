@@ -218,12 +218,39 @@ def build(dataset: Path) -> dict:
                "terminology_added": term_stats}
     manifest.update(version=version, derived_from=dataset.name, niche=summary)
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+    refresh_manifest(out)
     (dataset.parent / "LATEST").write_text(version + "\n")
     frozen = {"dataset": version, "definition": "evals/niche.md",
               "terms": {r["id"]: terms[r["id"]] for r in held}}
     TERMS.write_text(json.dumps(frozen, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     return {**summary, "version": version, "kinds": dict(Counter(r["kind"] for r in niche)),
             "pairs_with_terms": sum(bool(v) for v in terms.values()), "terms": sum(len(v) for v in terms.values())}
+
+
+def refresh_manifest(out: Path) -> dict:
+    """Counts in the manifest follow the files (the model card on stage reads them)."""
+    from pipeline.sources import cldr, floresmayas
+
+    manifest = json.loads((out / "manifest.json").read_text())
+    by_source: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    by_split: dict[str, int] = {}
+    for split in ("train", "dev", "test", "test_niche"):
+        path = out / f"{split}.jsonl"
+        if not path.exists():
+            continue
+        rows = [r for r in _read(path) if r["direction"] == "es-quc"]
+        by_split[split] = len(rows)
+        for r in rows:
+            by_source[r["source_name"]][split] += 1
+    known = {s["name"] for s in manifest["sources"]}
+    for src in (cldr.SOURCE, floresmayas.SOURCE):
+        if src.name not in known:
+            manifest["sources"].append({"name": src.name, "title": src.title, "owner": src.owner, "url": src.url,
+                                        "license": src.license, "role": src.role})
+    manifest["pairs_by_source"] = {k: dict(v) for k, v in by_source.items()}
+    manifest["pairs_by_split"] = by_split
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+    return manifest
 
 
 def niche_dataset(processed: Path) -> Path | None:
