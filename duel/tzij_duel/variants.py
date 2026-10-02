@@ -115,7 +115,7 @@ async def _mbr(variant: Variant, messages, online: bool, direction: str,
     sampler = variant.sampler
     if variant.bias and required and hasattr(sampler, "with_bias"):
         forms = {alt for _, alts in required for alt in alts}
-        sampler = sampler.with_bias([(f, variant.bias) for f in forms] + [(" " + f, variant.bias) for f in forms])
+        sampler = sampler.with_bias([(f, variant.bias) for f in forms])
     contenders = [Contender(f"{variant.name}#{i}", sampler, variant.model, variant.price, variant.requires_network)
                   for i in range(variant.mbr)]
     prompts = [per_sample[i % len(per_sample)] for i in range(variant.mbr)] if per_sample else [messages] * variant.mbr

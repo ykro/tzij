@@ -24,7 +24,7 @@ def test_constraints_only_exact_content_words_in_the_input():
     assert C.constraints_from(_found(), max_constraints=1) == [("maíz", ["ixim"])]
 
 
-def test_llama_server_client_sends_logit_bias_as_strings():
+def test_llama_server_client_biases_the_first_token_of_each_form():
     import json
 
     import httpx
@@ -34,15 +34,18 @@ def test_llama_server_client_sends_logit_bias_as_strings():
     seen = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        seen.update(json.loads(request.content))
+        body = json.loads(request.content)
+        if request.url.path == "/tokenize":
+            return httpx.Response(200, json={"tokens": {"ixim": [11, 12], " ixim": [21, 22]}[body["content"]]})
+        seen.update(body)
         return httpx.Response(200, json={"choices": [{"message": {"content": "Kutij ixim."}}],
                                          "usage": {"prompt_tokens": 12, "completion_tokens": 4}})
 
     client = LlamaServerClient("http://llama.test", min_p=0.02, transport=httpx.MockTransport(handler))
-    biased = client.with_bias([("ixim", 2.0), (" ixim", 2.0)])
-    out = asyncio.run(biased.complete([{"role": "user", "content": "x"}], model="m"))
+    out = asyncio.run(client.with_bias([("ixim", 2.0)]).complete([{"role": "user", "content": "x"}], model="m"))
     assert out.text == "Kutij ixim." and out.output_tokens == 4
-    assert seen["logit_bias"] == [["ixim", 2.0], [" ixim", 2.0]] and seen["min_p"] == 0.02
+    assert sorted(seen["logit_bias"]) == [[11, 2.0], [21, 2.0]] and seen["min_p"] == 0.02
+    assert seen["chat_template_kwargs"] == {"enable_thinking": False}
     assert client.logit_bias == []  # the base client stays unbiased
 
 
