@@ -45,6 +45,11 @@ def main() -> None:
         if token:
             os.environ["HF_TOKEN"] = token
 
+    merged_dir = work / "merged"
+    if (merged_dir / "model.safetensors").exists():  # resumed after a failed conversion: no base needed
+        print("reusing merged checkpoint")
+        return finish_gguf(tag, out, merged_dir, metrics, publish_model, models, work)
+
     t0 = time.time()
     adapter = train_lora.fetch(f"{staging}/tzij/runs/{tag}/adapter", work / "adapter")
     base_dir = train_lora.base_weights(base_model, weights_uri, work_root / "base")  # shared across tags
@@ -57,19 +62,25 @@ def main() -> None:
 
     model = AutoModelForCausalLM.from_pretrained(base_dir, dtype=torch.bfloat16, low_cpu_mem_usage=True)
     merged = PeftModel.from_pretrained(model, adapter).merge_and_unload()
-    merged_dir = work / "merged"
     merged.save_pretrained(merged_dir, safe_serialization=True)
     for f in base_dir.iterdir():  # tokenizer, chat template, processor config (same rule as train_lora)
         if f.is_file() and not f.name.endswith(train_lora.WEIGHT_SUFFIXES) and f.name not in {"config.json", "model.safetensors.index.json"}:
             shutil.copy2(f, merged_dir / f.name)
     del model, merged
     metrics["merge_s"] = round(time.time() - t0, 1)
+    finish_gguf(tag, out, merged_dir, metrics, publish_model, models, work)
+
+
+def finish_gguf(tag: str, out: Path, merged_dir: Path, metrics: dict, publish_model: bool, models: str, work: Path) -> None:
 
     llama_cpp = Path(subprocess.run(["bash", str(HERE / "setup_llama_cpp.sh")], check=True,
                                     capture_output=True, text=True).stdout.strip().splitlines()[-1])
     os.environ["PATH"] = f"{llama_cpp / 'bin'}:{os.environ['PATH']}"  # prebuilt llama-quantize
-    metrics.update(train_lora.to_gguf(merged_dir, out, tag, llama_cpp, "Q4_K_M", drop_merged=True, outtype="f16"))
-    (out / f"{tag}-f16.gguf").unlink(missing_ok=True)  # the laptop only needs the quantized model
+    # q8_0 intermediate: half the disk of f16 (the merged checkpoint alone is 16 GB) and the same
+    # Q4_K_M at the end, quantized with --allow-requantize.
+    outtype = os.environ.get("GGUF_OUTTYPE", "q8_0")
+    metrics.update(train_lora.to_gguf(merged_dir, out, tag, llama_cpp, "Q4_K_M", drop_merged=True, outtype=outtype))
+    (out / f"{tag}-{outtype}.gguf").unlink(missing_ok=True)  # the laptop only needs the quantized model
     train_lora.write_modelfile(out, metrics["gguf_quant"], os.environ["OLLAMA_RENDERER"], 0.2)
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n")
     if publish_model:
