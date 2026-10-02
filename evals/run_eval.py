@@ -39,13 +39,13 @@ REPORT = REPO / "evals" / "report.md"
 DIRECTION_LABEL = {"es-quc": "español → K'iche'", "quc-es": "K'iche' → español"}
 
 
-def load_test(dataset: Path, limit: int | None, per_source: int | None = None) -> list[dict]:
+def load_test(dataset: Path, limit: int | None, per_source: int | None = None, split: str = "test") -> list[dict]:
     """Test sentences; optionally a stable sample of `per_source` pairs per source and direction.
 
     Sampling by a hash of the pair id keeps the same pairs in every run, so reports
     from different days compare the same sentences.
     """
-    records = [json.loads(line) for line in (dataset / "test.jsonl").read_text(encoding="utf-8").splitlines()]
+    records = [json.loads(line) for line in (dataset / f"{split}.jsonl").read_text(encoding="utf-8").splitlines()]
     # auto_rejected pairs failed pipeline/validate_test.py; they never count.
     records = [r for r in records if r["kind"] == "sentence" and r["status"] not in ("rejected", "auto_rejected")]
     if per_source:
@@ -297,7 +297,7 @@ async def main_async(args) -> None:
     dataset = latest_dataset(s.processed_dir)
     if dataset is None:
         raise SystemExit("No dataset: run `make data` (or `make data-pull`).")
-    records = load_test(dataset, args.limit, args.per_source or None)
+    records = load_test(dataset, args.limit, args.per_source or None, args.split)
     variants = [v for v in eval_variants(s) if not args.only or v.name in args.only.split(",")]
     retrievers: dict[str, Retriever] = {}
     if any(v.uses_rag for v in variants):
@@ -347,6 +347,8 @@ def main() -> None:
     parser.add_argument("--run", default="", help="resume an existing run id")
     parser.add_argument("--cloud-concurrency", type=int, default=8)
     parser.add_argument("--out", default="")
+    parser.add_argument("--split", choices=["test", "dev"], default="test",
+                        help="dev = tuning and stop decisions between data rounds; test = final numbers only")
     asyncio.run(main_async(parser.parse_args()))
 
 
