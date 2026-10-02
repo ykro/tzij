@@ -228,7 +228,8 @@ def index_mismatch(retriever: Retriever | None, processed: Path) -> str | None:
 
 def _load_retriever(settings: Settings) -> Retriever | None:
     try:
-        return Retriever(settings.rag_index, mode=settings.rag_mode, order=settings.rag_order, fuzzy=settings.rag_fuzzy)
+        return Retriever(settings.rag_index, mode=settings.rag_mode, order=settings.rag_order, fuzzy=settings.rag_fuzzy,
+                         trigram=settings.rag_trigram, select=settings.rag_select)
     except (FileNotFoundError, RuntimeError) as exc:
         print(f"!! retrieval disabled: {exc}")
         return None

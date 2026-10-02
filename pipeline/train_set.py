@@ -121,7 +121,8 @@ def raft_retriever(dataset_version: str):
     s = get_settings()
     embedder = CachedEmbedder(OllamaEmbedder(), REPO / "rag" / ".cache" / "embeddings.sqlite")
     # Same retrieval settings as David at inference (RAG_MODE / RAG_K / RAG_ORDER / RAG_FUZZY).
-    retriever = Retriever(s.rag_index, embedder=embedder, mode=s.rag_mode, order=s.rag_order, fuzzy=s.rag_fuzzy)
+    retriever = Retriever(s.rag_index, embedder=embedder, mode=s.rag_mode, order=s.rag_order, fuzzy=s.rag_fuzzy,
+                          trigram=s.rag_trigram, select=s.rag_select)
     if retriever.dataset_version != dataset_version:
         raise SystemExit(f"index is from {retriever.dataset_version}, dataset is {dataset_version}: run `make index`")
     return retriever, s.rag_k

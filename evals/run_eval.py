@@ -307,7 +307,8 @@ async def main_async(args) -> None:
             raise SystemExit("No retrieval index: run `make index`.")
         # "vector" = the original baseline; "hybrid" = BM25 + vectors + fuzzy glossary, tuned on dev.
         retrievers["vector"] = Retriever(s.rag_index)
-        retrievers["hybrid"] = Retriever(s.rag_index, mode="hybrid", order=s.rag_order, fuzzy=s.rag_fuzzy)
+        retrievers["hybrid"] = Retriever(s.rag_index, mode="hybrid", order=s.rag_order, fuzzy=s.rag_fuzzy,
+                                         trigram=s.rag_trigram, select=s.rag_select)
         retriever = retrievers["vector"]
         if retriever.dataset_version != dataset.name:
             # Retrieval from another dataset version could contain sentences that are now in test.

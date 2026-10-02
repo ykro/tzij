@@ -50,6 +50,8 @@ def build(records: list[dict], embedder: Embedder, index_path: Path, dataset_ver
         )
         db.execute("INSERT INTO entries_fts (rowid, source_text, direction, kind) VALUES (?, ?, ?, ?)",
                    (entry_id, match_key(record["source_text"]), record["direction"], record["kind"]))
+        db.execute("INSERT INTO entries_tri (rowid, source_text, direction, kind) VALUES (?, ?, ?, ?)",
+                   (entry_id, match_key(record["source_text"]), record["direction"], record["kind"]))
         if record["kind"] == "lexicon":
             db.execute("INSERT INTO glossary VALUES (?, ?, ?)",
                        (record["direction"], match_key(record["source_text"]), entry_id))

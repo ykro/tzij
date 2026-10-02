@@ -154,3 +154,22 @@ def test_best_last_order(tmp_path):
     first = Retriever(index, embedder=TrigramEmbedder()).retrieve("El perro duerme", "es-quc", k=2).examples
     last = Retriever(index, embedder=TrigramEmbedder(), order="best_last").retrieve("El perro duerme", "es-quc", k=2).examples
     assert [h.source_text for h in last] == [h.source_text for h in reversed(first)]
+
+
+def test_trigram_finds_roots_inside_words(tmp_path):
+    index = tmp_path / "index.sqlite"
+    build(_records(), TrigramEmbedder(), index, "fixture")
+    tri = Retriever(index, embedder=TrigramEmbedder(), mode="hybrid", trigram=True)
+    assert tri._tri_ids("kawar", "quc-es", "sentence", 5)  # substring of a longer K'iche' sentence
+    result = tri.retrieve("Le tz'i' kawar", "quc-es", k=2)
+    assert result.examples and result.examples[0].via == "hybrid"
+
+
+def test_coverage_selection_prefers_new_words():
+    from rag.retrieve import Hit, coverage_select
+
+    hits = [Hit("el perro come", "a", "sentence", "s", "d", 0.9, "hybrid"),
+            Hit("el perro duerme", "b", "sentence", "s", "d", 0.8, "hybrid"),
+            Hit("la casa grande", "c", "sentence", "s", "d", 0.1, "hybrid")]
+    chosen = coverage_select("el perro duerme en la casa", hits, 2)
+    assert [h.target_text for h in chosen] == ["b", "c"]  # "casa" beats a second "perro"

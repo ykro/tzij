@@ -76,6 +76,24 @@ class RetrievalResult:
         return out
 
 
+def _ngrams(text: str) -> set[str]:
+    words = [w for w in match_key(text).split() if len(w) > 1]
+    return set(words) | {" ".join(words[i:i + 2]) for i in range(len(words) - 1)}
+
+
+def coverage_select(query: str, hits: list[Hit], k: int) -> list[Hit]:
+    """Greedy n-gram coverage: each pick adds the example whose source covers the most words and
+    bigrams of the input not yet covered (ties: fusion score). Falls back to score order once
+    nothing new can be covered. Returned best (most coverage) first."""
+    need, chosen, pool = _ngrams(query), [], list(hits)
+    while pool and len(chosen) < k:
+        best = max(pool, key=lambda h: (len(_ngrams(h.source_text) & need), h.score))
+        chosen.append(best)
+        pool.remove(best)
+        need -= _ngrams(best.source_text)
+    return chosen
+
+
 RRF_K = 60  # reciprocal rank fusion constant (Cormack et al. 2009); 60 is the usual choice
 
 
@@ -84,10 +102,14 @@ class Retriever:
     mode="hybrid": BM25 (SQLite FTS5) and vectors, fused with reciprocal rank fusion. BM25 catches
     rare exact words (names, K'iche' roots) that embeddings blur; vectors catch paraphrases.
     fuzzy=True also looks up dictionary headwords one edit away (k'ak' vs k'aak', typos).
-    order="best_last" puts the most similar example right before the question."""
+    order="best_last" puts the most similar example right before the question.
+    trigram=True adds a third ranked list from a trigram index (substring matches: K'iche' roots inside
+    inflected words). select="coverage" picks examples greedily so together they cover the most
+    words and bigrams of the input, instead of the top-k by score."""
 
     def __init__(self, index_path: Path = DEFAULT_INDEX, embedder: Embedder | None = None,
-                 mode: str = "vector", order: str = "best_first", fuzzy: bool = False):
+                 mode: str = "vector", order: str = "best_first", fuzzy: bool = False,
+                 trigram: bool = False, select: str = "rank"):
         if not Path(index_path).exists():
             raise FileNotFoundError(f"retrieval index not found: {index_path} (run `make index`)")
         self.db = connect(index_path)
@@ -102,7 +124,10 @@ class Retriever:
         self.has_fts = bool(self.db.execute("SELECT 1 FROM sqlite_master WHERE name = 'entries_fts'").fetchone())
         if mode == "hybrid" and not self.has_fts:
             raise RuntimeError("index has no BM25 table (built before hybrid retrieval): rebuild with `make index`")
-        self.mode, self.order, self.fuzzy = mode, order, fuzzy
+        self.has_tri = bool(self.db.execute("SELECT 1 FROM sqlite_master WHERE name = 'entries_tri'").fetchone())
+        if trigram and not self.has_tri:
+            raise RuntimeError("index has no trigram table: rebuild with `make index`")
+        self.mode, self.order, self.fuzzy, self.trigram, self.select = mode, order, fuzzy, trigram, select
         self._headwords: dict[str, list[str]] = {}
         self._lock = threading.Lock()
 
@@ -129,6 +154,21 @@ class Retriever:
             return []
         return [r[0] for r in rows]
 
+    def _tri_ids(self, query: str, direction: str, kind: str, n: int) -> list[int]:
+        words = [w for w in match_key(query).split() if len(w) >= 3]
+        if not words:
+            return []
+        fts_query = " OR ".join('"' + w.replace('"', "") + '"' for w in words)
+        try:
+            rows = self.db.execute(
+                """SELECT rowid FROM entries_tri WHERE entries_tri MATCH ? AND direction = ? AND kind = ?
+                   ORDER BY bm25(entries_tri) LIMIT ?""",
+                (fts_query, direction, kind, n),
+            ).fetchall()
+        except sqlite3.Error:
+            return []
+        return [r[0] for r in rows]
+
     def _hits(self, ids: list[int], scores: dict[int, float], via: str) -> list[Hit]:
         if not ids:
             return []
@@ -149,8 +189,14 @@ class Retriever:
             fused[i] = fused.get(i, 0.0) + 1 / (RRF_K + rank + 1)
         for rank, i in enumerate(self._bm25_ids(query, direction, kind, n)):
             fused[i] = fused.get(i, 0.0) + 1 / (RRF_K + rank + 1)
-        ids = sorted(fused, key=fused.get, reverse=True)[:k]
-        return self._hits(ids, fused, "hybrid")
+        if self.trigram:
+            for rank, i in enumerate(self._tri_ids(query, direction, kind, n)):
+                fused[i] = fused.get(i, 0.0) + 1 / (RRF_K + rank + 1)
+        ranked = sorted(fused, key=fused.get, reverse=True)
+        if self.select == "coverage" and kind == "sentence":
+            hits = self._hits(ranked[:n], fused, "hybrid")
+            return coverage_select(query, hits, k)
+        return self._hits(ranked[:k], fused, "hybrid")
 
     # --- glossary ---------------------------------------------------------------------------------
     def _headwords_for(self, direction: str) -> list[str]:

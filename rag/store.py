@@ -6,6 +6,7 @@ Tables
   glossary    exact lookup of dictionary headwords (embeddings are weak on single words)
   vec_entries sqlite-vec virtual table: one vector per entry, filterable by direction and kind
   entries_fts FTS5 (BM25) over source texts, for hybrid keyword + vector retrieval
+  entries_tri FTS5 trigram over source texts: substring matches for inflected K'iche' words
 """
 
 from __future__ import annotations
@@ -28,6 +29,10 @@ CREATE INDEX IF NOT EXISTS glossary_lookup ON glossary (direction, headword);
 -- BM25 keyword search over the source side; apostrophes are part of K'iche' words (k'ak').
 CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
     source_text, direction UNINDEXED, kind UNINDEXED, tokenize = "unicode61 tokenchars ''''"
+);
+-- Trigram FTS5: substring matches, so K'iche' roots are found inside inflected words (nuja ~ ja).
+CREATE VIRTUAL TABLE IF NOT EXISTS entries_tri USING fts5(
+    source_text, direction UNINDEXED, kind UNINDEXED, tokenize = "trigram"
 );
 """
 
