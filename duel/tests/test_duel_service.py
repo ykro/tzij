@@ -299,20 +299,31 @@ def test_index_dataset_mismatch_is_reported(service, settings):
     assert warning and "make index" in warning
 
 
-async def test_specialty_round_draws_only_from_the_niche(service):
+async def test_specialty_round_draws_only_from_the_niche(service, tmp_path):
+    import json
+
     from tzij_duel.deck import Deck
 
-    service.deck = Deck(service.settings.processed_dir, niche={("t2", "es-quc")})
+    niche = tmp_path / "test_niche.jsonl"
+    niche.write_text(json.dumps({"id": "n1-es-quc", "pair_id": "n1", "direction": "es-quc",
+                                 "source_text": "Agregar otro motor de búsqueda", "target_text": "Chaya' jun chik ch'ich'",
+                                 "source_name": "pontoon_mozilla", "domain": "software", "kind": "sentence",
+                                 "status": "auto_validated", "url": "u", "license": "MPL-2.0"}) + "\n")
+    service.deck = Deck(service.settings.processed_dir, niche_file=niche)
     async with await _client(service) as client:
         state = (await client.get("/api/state")).json()
         assert state["niche_deck_size"] == 1
-        res = await client.post("/api/rounds", json={"kind": "evaluacion", "direction": "es-quc", "specialty": True})
+        # Specialty rounds are always Spanish -> K'iche' (what the niche measures).
+        res = await client.post("/api/rounds", json={"kind": "evaluacion", "direction": "quc-es", "specialty": True})
         assert res.status_code == 200
         await _finish(service)
         round_ = (await client.get("/api/state")).json()["round"]
-        assert round_["reference_meta"]["pair_id"] == "t2" and round_["reference_meta"]["specialty"] is True
+        assert round_["reference_meta"]["pair_id"] == "n1" and round_["reference_meta"]["specialty"] is True
+        assert round_["direction"] == "es-quc"
         again = await client.post("/api/rounds", json={"kind": "evaluacion", "direction": "es-quc", "specialty": True})
         assert again.status_code == 404 and "especialidad" in again.json()["detail"]
-        # Normal evaluation rounds still use the whole deck.
+        # Normal evaluation rounds never draw from the niche.
         normal = await client.post("/api/rounds", json={"kind": "evaluacion", "direction": "es-quc"})
         assert normal.status_code == 200
+        await _finish(service)
+        assert (await client.get("/api/state")).json()["round"]["reference_meta"]["pair_id"] != "n1"

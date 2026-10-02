@@ -20,7 +20,7 @@ sources feed only the back-translation step (`pipeline/monolingual.py` → `pipe
 Gemini writes the Spanish side once, the K'iche' side stays human-written, and the pairs are used
 only to train Spanish → K'iche', never for test or retrieval.
 
-## Used (12)
+## Used (14)
 
 | Source (pipeline name) | URL | Owner | License / terms | Size (raw) | Domain | Orthography | Date | Role |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -31,16 +31,33 @@ only to train Spanish → K'iche', never for test or retrieval.
 | UD K'iche'-IU treebank (`ud_kiche_iu`) | https://github.com/UniversalDependencies/UD_Kiche-IU | F. Tyers, R. Henderson (Indiana U.) | CC BY-SA 4.0. README: sentences used with permission of the Academia de Lenguas Mayas de Guatemala and Telma Can Pixabaj | 1,435 sentences, 980 with `text[spa]` (657 ALMG vocabulary examples, 288 UT course, a few Bible/legal/COVID) | Everyday (dictionary examples); small legal, health, religious | ALMG with lax vowels marked (`ä`); folded by `normalize.py` | 2021 (UD v2.8) | train |
 | COERLL "Chqeta'maj le qach'ab'al K'iche'!" (`coerll_kiche`) | https://tzij.coerll.utexas.edu/ | COERLL / LLILAS / AILLA, UT Austin | CC BY 4.0 (stated on the site). Lessons read via the public WordPress REST API | 46 lessons (Spanish edition); ~850 table rows (phrases + vocabulary) | Everyday / language learning | Near-ALMG, Nahualá variety | 2016–2026 | train |
 | Universal Declaration of Human Rights (`udhr_ohchr`) | https://github.com/eric-muller/udhr (XML); https://www.ohchr.org/en/human-rights/universal-declaration/universal-declaration-human-rights/about-universal-declaration-human-rights-translation-project | OHCHR; XML by the UDHR in Unicode project | OHCHR translation project: translations may be reproduced citing OHCHR as the source | 30 articles + title → 51 aligned paragraphs | Legal | Modern with `'` glottal | 2006 (XML) | train |
-| Mozilla Pontoon localizations (`pontoon_mozilla`) | https://huggingface.co/datasets/ayymen/Pontoon-Translations ; product labels from Pontoon's public K'iche' TMX https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx (no login) | Mozilla localization community; packaged by ayymen | MPL-2.0 (TMX: the same strings, used only to label each pair with its product for niche v2) | 1,014 en→quc strings; joined with en→es-MX (fallback es-ES) on the English source → 783 pairs after dropping placeholders/markup | Software UI | Modern, `‘` as glottal | 2024 snapshot | train |
+| Mozilla Pontoon localizations (`pontoon_mozilla`) | https://huggingface.co/datasets/ayymen/Pontoon-Translations ; product labels from Pontoon's public K'iche' TMX https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx (no login) | Mozilla localization community; packaged by ayymen | MPL-2.0 (TMX: the same strings, used only to label each pair with its product for the niche) | 1,014 en→quc strings; joined with en→es-MX (fallback es-ES) on the English source → 783 pairs after dropping placeholders/markup | Software UI | Modern, `‘` as glottal | 2024 snapshot | train |
 | New Testament, K'iche' of Totonicapán + Biblia Libre para el Mundo (`ebible_quctt`) | https://ebible.org/quctt/ ; corpus https://github.com/BibleNLP/ebible | Pioneer Bible Translators (quc); BLM (es) | quc: CC BY 4.0 (© 2022 Pioneer Bible Translators). es: public domain | 7,957 verses; capped to 30% of train sentences | **Religious** (never in test) | Modern ALMG with `ꞌ` saltillo | 2022 | train (capped) |
 | GATITOS lexicon (`gatitos`) | https://huggingface.co/datasets/google/smol | Google Research (SMOL/GATITOS) | CC BY 4.0 | 3,992 en→quc and en→es entries; joined on the English entry → 3,982 es–quc | Dictionary (general vocabulary) | Modern, `'` glottal | 2025 | train (lexicon only) |
 | PanLex (`panlex`) | https://panlex.org/ ; https://huggingface.co/datasets/cointegrated/panlex-meanings | PanLex / Long Now Foundation; packaged by cointegrated | CC0 1.0 | 4,141 quc expressions; 279 share a meaning with a Spanish (spa-000) expression | Dictionary | Mixed (some `ä`, `ʼ`) | 2025 packaging | train (lexicon only) |
 | Wikcionario / Spanish Wiktionary (`wiktionary_es`) | https://es.wiktionary.org/ via https://kaikki.org/eswiktionary/ | Wiktionary contributors; kaikki.org (wiktextract) | CC BY-SA 4.0 | 45 K'iche' translations on Spanish entries (1.4 GB dump streamed and filtered) | Dictionary | Mixed | 2026 dump | train (lexicon only) |
+| Unicode CLDR K'iche' emoji names (`cldr_quc`) | https://github.com/unicode-org/cldr (common/annotations/quc.xml, es.xml) | Unicode CLDR contributors (human vetters) | Unicode License V3 (repo LICENSE: "All other content in this repo is released under UNICODE LICENSE V3") | 1,228 quc names joined with Spanish on the code point; 1,164 kept after cleaning and dedupe | Everyday vocabulary (food, animals, objects, jobs, places) | Modern, `’` as glottal (normalized) | 2026 (main) | train (lexicon only: translation memory) |
+| FLORES-Mayas K'iche' glossary (`floresmayas_quc`) | https://github.com/transducens/floresmayas (flores_plus_translation_task/data/quc/vocab.json, pinned commit `16bc3364ef`) | Transducens (Universitat d'Alacant) with PLFM translators | Apache-2.0 (root LICENSE) | 389 terms with a K'iche' definition; 428 pairs (alternatives split on `/`), 407 kept | News/encyclopedic terms | Modern | 2026-02-13 | train (lexicon only). Derived from FLORES Spanish: **never use it with a FLORES-based test**. Only vocab.json is read; config/state files hold personal data |
 
 Notes on joins through English (Pontoon, GATITOS): both sides are independent *human*
 translations of the same English original — no machine translation is involved — but a
 sense can diverge ("spot" → "punto" / "k'olib'al" = place). GATITOS entries are therefore
 `kind=lexicon` (retrieval context, not counted as translation examples).
+
+Round-2 search (October 2): new candidates checked.
+- **Needs permission:** the PLFM K'iche'–Spanish dictionary digitized by Transducens
+  (`transducens/diccionarios_mayas`, 6,866 entries with example sentences; no license). Also the new
+  ALMG PDFs (`Sinonimos-Kiche.pdf`, `Texto-Avanzado-Kiche.pdf`, `Antecedentes-Historicos-Kiche.pdf`,
+  and `Vocabulario-Kiche.pdf` now at almg.org.gt/wp-content/uploads/2026/09/).
+- **Rejected:**
+  - StoryWeaver has 7 K'iche' books, but reading them requires a login.
+  - MADLAD-400 `quc` has the FineWeb-2 problems plus wrong-language text (Kaqchikel, other Mayan
+    Bibles).
+  - DoenetML's quc strings are machine-generated (its own file header says so).
+  - OPUS Mozilla-I10n duplicates Pontoon.
+  - Glot500-c, CulturaX and HPLT: no usable quc.
+  - Rosetta Swadesh (25 words, English) and Wikidata labels (names): negligible.
+- **Checked:** Common Voice now has a quc locale, but it has 0 sentences.
 
 Synthetic and back-translated training data are not sources: they are derived from the
 sources above. Back-translation (`origin=back_translated_gemini`, Spanish side only) is described in

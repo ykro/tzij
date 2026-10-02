@@ -56,7 +56,7 @@ await p.keyboard.press("e");
 await untilDone();
 await shot(p, "03-evaluacion-quc-es");
 
-// 4. Specialty round from the pre-registered niche (D back to es->quc, then S).
+// 4. Specialty round from the niche: Firefox Focus, translation memory (D back to es->quc, then S).
 await p.keyboard.press("d");
 await p.keyboard.press("s");
 await untilDone();

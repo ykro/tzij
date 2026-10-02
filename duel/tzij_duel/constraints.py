@@ -1,16 +1,10 @@
-"""Dictionary-guided decoding: make David *use* the dictionary translations it retrieved.
+"""Dictionary-guided decoding: push David toward the dictionary translations he retrieved.
 
-The niche evaluation showed that David often has the right word in his retrieved glossary and
-still doesn't write it. When hybrid retrieval finds an exact dictionary entry for a content
-word of the input, its translation becomes a constraint:
-
-  prompt   the required target forms are listed as "use these" in David's context;
-  select   among the MBR candidates, only those that satisfy the most constraints compete
-           (consensus chrF++ breaks the tie); if none satisfies any, plain MBR decides.
-
-Ollama has no logit bias, and its grammar support (`format`, a JSON schema) can't say "must
-contain this word", so token-level forcing isn't available. That's why it works by prompt +
-selection. Tuned on dev only (evals/constraints_tuning.md).
+When hybrid retrieval finds an exact dictionary entry for a content word of the input, its
+translation becomes a constraint, and llama-server (duel_core/llama_client.py) adds a logit bias
+to its tokens. Ollama has no logit bias, and its grammar support (`format`, a JSON schema) can't
+say "must contain this word", so this needs llama-server. Asking for the forms in the prompt, or
+filtering MBR candidates by them, gave nothing on dev and was removed.
 """
 
 from __future__ import annotations
@@ -51,26 +45,3 @@ def constraints_from(found: RetrievalResult, max_constraints: int = 3) -> list[t
             if alt not in grouped.setdefault(head, []):
                 grouped[head].append(alt)
     return [(h, alts) for h, alts in grouped.items() if alts][:max_constraints]
-
-
-def _satisfies(candidate: str, alternative: str, target_lang: str) -> bool:
-    cand = match_key(candidate)
-    if target_lang == "quc":
-        # K'iche' adds prefixes (nu-ja, u-chaq'): the dictionary form inside a word counts.
-        return all(tok in cand for tok in alternative.split())
-    words = cand.split()
-    # Spanish inflects the ending (comer -> come, comemos): match on the stem.
-    return all(any(w.startswith(tok[:max(4, len(tok) - 2)]) for w in words) for tok in alternative.split())
-
-
-def coverage(candidate: str, constraints: list[tuple[str, list[str]]], direction: str) -> int:
-    target_lang = "quc" if direction == "es-quc" else "es"
-    return sum(any(_satisfies(candidate, alt, target_lang) for alt in alts) for _, alts in constraints)
-
-
-def prompt_block(constraints: list[tuple[str, list[str]]]) -> str:
-    if not constraints:
-        return ""
-    lines = ["Traducciones obligatorias del diccionario (úsalas):"]
-    lines += [f"- {head} = {' / '.join(alts)}" for head, alts in constraints]
-    return "\n".join(lines)

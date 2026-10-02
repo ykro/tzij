@@ -1,20 +1,12 @@
-"""The pre-registered niche definition and the paired bootstrap comparison."""
+"""The niche: a Pontoon product held out as a translation-memory test (evals/niche.md)."""
 
-from collections import Counter
-
-from evals.niche_report import compare
-from pipeline.niche import NicheModel, tokens
+from evals.niche_report import compare, term_compare
+from pipeline.niche import products_of, recap_religious, terms_for, tokens
 
 
-def _model() -> NicheModel:
-    ngrams = Counter({("ja",): 50, ("ixim",): 0, ("uchaq'",): 3})
-    return NicheModel(
-        quc_ngrams=ngrams,
-        function_words={"quc": {"ri", "le", "are'"}, "spa": {"el", "la", "de", "con"}},
-        es_to_quc={"maíz": {("ixim",)}, "casa": {("ja",)}, "hermano": {("chaq'",), ("uchaq'",)}},
-        quc_words={"ixim", "ja"},
-        reference_sha="test",
-    )
+def _rec(pid, es, quc, kind="sentence", source="pontoon_mozilla", ref="", domain="software"):
+    return {"id": f"{pid}-es-quc", "pair_id": pid, "direction": "es-quc", "source_text": es, "target_text": quc,
+            "kind": kind, "source_name": source, "ref": ref, "domain": domain}
 
 
 def test_tokens_normalize_glottal_and_case():
@@ -22,20 +14,25 @@ def test_tokens_normalize_glottal_and_case():
     assert tokens("¿Dónde está el maíz?", "spa") == ["dónde", "está", "el", "maíz"]
 
 
-def test_kiche_word_rare_only_if_unattested():
-    m = _model()
-    assert m.niche_words("Kutij ixim ri ak'.", "quc-es") == ["ixim"]
-    assert m.niche_words("Le ja.", "quc-es") == []  # 50 times on the web: not rare
+def test_products_come_from_the_english_pivot():
+    index = {"Add search engine": {"focus-for-android"}}
+    assert products_of(_rec("p1", "Agregar", "Chaya'", ref="Add search engine"), index) == {"focus-for-android"}
+    assert products_of(_rec("p2", "x", "y", ref="unknown"), index) == set()
 
 
-def test_spanish_word_uses_its_most_frequent_rendering():
-    m = _model()
-    assert m.niche_words("El maíz con la casa.", "es-quc") == ["maíz"]
-    # one rendering (uchaq') occurs 3 times: with F_MAX=0 "hermano" is not rare, with 3 it is
-    assert m.niche_words("Mi hermano.", "es-quc", f_max=0) == []
-    assert m.niche_words("Mi hermano.", "es-quc", f_max=3) == ["hermano"]
-    assert m.is_member("El maíz.", "es-quc", n_min=1, f_max=0)
-    assert not m.is_member("El maíz.", "es-quc", n_min=2, f_max=0)
+def test_terms_need_the_spanish_in_the_source_and_the_kiche_in_the_reference():
+    train = [_rec("l1", "motor de búsqueda", "ch'ich' rech tzukub'al", kind="lexicon", source="gatitos"),
+             _rec("l2", "de", "rech", kind="lexicon", source="gatitos"),  # no content word
+             _rec("l3", "pestaña", "uxaq", kind="lexicon", source="gatitos")]  # not in the source
+    test = [_rec("t1", "Agregar otro motor de búsqueda", "Chaya' jun chik ch'ich' rech tzukub'al")]
+    assert terms_for(test, train, {}) == {"t1-es-quc": [["motor de búsqueda", "ch'ich' rech tzukub'al"]]}
+
+
+def test_religious_cap_is_reapplied():
+    train = [_rec(f"s{i}", "a", "b", domain="everyday") for i in range(7)]
+    train += [_rec(f"r{i}", "a", "b", domain="religious") for i in range(5)]
+    kept, dropped = recap_religious(train)
+    assert dropped == 2 and sum(r["domain"] == "religious" for r in kept) == 3  # 3 / 10 = 30%
 
 
 def _rows(texts, refs):
@@ -44,13 +41,14 @@ def _rows(texts, refs):
             for i, (t, r) in enumerate(zip(texts, refs))}
 
 
-def test_compare_verdicts():
-    refs = [f"le ak' kutij ixim {i}" for i in range(30)]
-    good = _rows(refs, refs)
-    bad = _rows(["jun jastaq"] * 30, refs)
+def test_compare_and_term_accuracy_verdicts():
+    refs = [f"chaya' jun chik ch'ich' {i}" for i in range(30)]
+    good, bad = _rows(refs, refs), _rows(["jun jastaq"] * 30, refs)
     ids = [str(i) for i in range(30)]
     c = compare(ids, good, bad, seed=1)
     assert c["verdict"] == "David" and c["ci"][0] > 0 and c["win_rate"] == 1.0
     assert compare(ids, bad, good, seed=1)["verdict"] == "Goliath"
-    tie = compare(ids, good, good, seed=1)
-    assert tie["verdict"] == "empate" and tie["ties"] == 30
+    assert compare(ids, good, good, seed=1)["verdict"] == "empate"
+    terms = {i: [["agregar", "chaya'"]] for i in ids}
+    t = term_compare(ids, good, bad, terms)
+    assert t["david"] == 1.0 and t["goliath"] == 0.0 and t["ci"][0] > 0

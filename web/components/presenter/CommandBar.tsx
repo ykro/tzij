@@ -97,7 +97,7 @@ export function CommandBar({ indexWarning, direction, onDirection, busy, forceOf
           Frase de evaluación
         </button>
         <button type="button" className="btn" disabled={disabled} onClick={() => start("evaluacion", undefined, true)}
-          title="Vocabulario de nuestros diccionarios, poco común en el Kʼicheʼ de la web (nicho pre-registrado)">
+          title="Firefox Focus en Kʼicheʼ: un producto que David no vio, con la memoria de traducción de los demás productos (nicho pre-registrado)">
           Ronda de especialidad<kbd>S</kbd>
         </button>
       </div>

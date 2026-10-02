@@ -7,9 +7,9 @@ decisiones se toman con el split dev; el conjunto de prueba se usa para el núme
 
 ![Bitácora de David: chrF++ por iteración contra Goliath](diagrams/bitacora.png)
 
-*chrF++ de David en toda la prueba (línea roja) y en el nicho pre-registrado v1 (línea azul).
-Goliath (Gemini 3.8 Flash, sin datos extra) está arriba, punteado. Fuente:
-[`diagrams/bitacora.py`](diagrams/bitacora.py), que lee las predicciones de `evals/runs/`.*
+*chrF++ de David en las 600 frases de prueba. Goliath (Gemini 3.8 Flash, sin datos extra) está
+arriba, punteado. Fuente: [`diagrams/bitacora.py`](diagrams/bitacora.py), que lee las predicciones
+de `evals/runs/`.*
 
 ## Resumen
 
@@ -21,11 +21,9 @@ Goliath (Gemini 3.8 Flash, sin datos extra) está arriba, punteado. Fuente:
 | 3 | 1 oct | Recuperación híbrida (BM25 + vectores, RRF) | 19.4 | +0.9 | $0 | Ajustada en dev |
 | 4 | 2 oct | RAFT + retrotraducción de Gemini | 18.3 | −1.1 | $0.12 + $3.09 | Sola no ayuda |
 | 5 | 2 oct | + MBR (4 muestras) | **21.5** | +3.2 | $0 | En escena |
-| — | 1 oct | Gemma de 12B | — | — | — | **Descartado** |
-| 6 | 2 oct | Nicho v1: vocabulario raro de nuestros diccionarios | 21.4 vs 37.3 | — | $0 | **Goliath gana** |
-| 7 | 2 oct | Nicho v2: memoria de traducción (Pontoon) | en curso | | | Pre-registrado |
-| 8 | 2 oct | Datos sintéticos anclados en el diccionario | en curso | | $2.09 | |
-| 9 | 2 oct | Decodificación guiada por el diccionario | en curso | | $0 | |
+| 6 | 2 oct | El nicho: memoria de traducción (Firefox Focus) | 30.2 vs 28.9 | +1.3 | $0 | **Empate en chrF++; David gana en terminología (78 % contra 46 %)** |
+| 7 | 2 oct | Datos sintéticos anclados en el diccionario | en curso | | $2.09 | |
+| 8 | 2 oct | Sesgo de logits hacia el diccionario (llama-server) | en curso | | $0 | |
 
 \* La iteración 2 se midió sobre el dataset del 30 de septiembre (las mismas fuentes de prueba,
 referencias aún sin validar). Ahí la base con recuperación sacaba 18.4.
@@ -100,31 +98,13 @@ Goliath: **36.9** en toda la prueba, $0.29 por cada 1,000 traducciones, y nada s
 - **Costo:** $0, pero el p50 sube de 1.7 a 4.0 s y el p95 a 14 s. Entra al escenario porque el
   p50 queda por debajo del límite de 5 s, y se apaga con `MBR_ON_STAGE=0`.
 
-## Callejón sin salida: un Gemma más grande (1 de octubre)
+## 6. El nicho: una memoria de traducción que Goliath no tiene (2 de octubre)
 
-Se planeó un Gemma de 12B como punto de control y se descartó antes de medirlo. La tesis de la
-charla es "modelo pequeño + datos": un David de 12B ya no es pequeño, y solo serviría para
-comparar. Se borró el modelo y todo su código. No hay números de 12B.
+Una primera definición del nicho, basada en palabras raras de nuestros diccionarios, no funcionó:
+Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la prueba.
 
-## 6. Nicho v1: vocabulario de nuestros diccionarios (2 de octubre)
-
-- **Qué:** el nicho se definió y se publicó en git **antes** de mirar resultados por oración
-  ([`evals/niche.md`](../evals/niche.md)). Entran las frases con al menos una palabra de
-  nuestros diccionarios cuya forma en Kʼicheʼ nunca aparece en un corpus de Kʼicheʼ de la web de
-  211,516 tokens. Los umbrales salieron de dev, sin usar ninguna salida de modelo.
-- **Resultado** (257 frases; [`evals/niche_results.md`](../evals/niche_results.md)):
-
-  | | David | Goliath | David − Goliath [IC 95 %] | David gana |
-  | --- | ---: | ---: | ---: | ---: |
-  | Nicho, ambas direcciones | 21.4 | 37.3 | **−15.9** [−17.0, −14.7] | 9 % |
-  | Fuera del nicho | 21.7 | 36.3 | −14.6 [−16.2, −12.9] | 15 % |
-  | Frases cortas (el corte más cercano) | 13.7 | 20.4 | −6.7 [−11.6, −2.3] | 32 % |
-
-- **Lectura honesta:** David **no** gana el nicho; ahí incluso pierde por un poco más. Una
-  explicación probable es que Goliath ya vio estos textos: los libros de Bloom están en la web
-  desde 2012.
-- **Lo que sí se ve en dev:** David gana donde nuestros datos son una memoria de traducción que
-  Goliath no tiene.
+- **Lo que mostró dev:** David gana donde nuestros datos son una memoria de traducción que Goliath
+  no tiene.
 
   | Dev, español → Kʼicheʼ | David | Gemini |
   | --- | ---: | ---: |
@@ -132,21 +112,30 @@ comparar. Se borró el modelo y todo su código. No hay números de 12B.
   | COERLL (curso) | 39.3 | 30.7 |
   | UD, ejemplos del diccionario de la ALMG (públicos en GitHub) | 36.3 | 45.0 |
 
-  De ahí sale el nicho v2.
+- **Qué:**
+  - se aparta un producto completo de Pontoon, Firefox Focus: 144 pares español → Kʼicheʼ;
+  - los demás productos de Mozilla se quedan como memoria de traducción;
+  - se mide chrF++ y la precisión exacta de terminología al estilo WMT (41 términos).
 
-## 7. Nicho v2: una memoria de traducción que Goliath no tiene (en curso)
+  La regla, el producto y los términos quedaron pre-registrados y publicados en git antes de
+  calcular nada ([`evals/niche.md`](../evals/niche.md)). Después se sumaron a la memoria dos
+  glosarios con licencia: los nombres de Unicode CLDR en Kʼicheʼ y el glosario de FLORES-Mayas.
+- **Resultado** (David = Gemma 4 E4B base + híbrida + MBR, que nunca vio Focus;
+  [`evals/niche_results.md`](../evals/niche_results.md)):
 
-- **Qué:** se aparta un producto completo de Pontoon (`focus-for-android`, Firefox Focus: 144
-  pares español → Kʼicheʼ) y los demás productos se quedan como memoria de traducción. Se mide
-  chrF++ y la precisión exacta de terminología al estilo WMT (41 términos). Quedó pre-registrado
-  y publicado en git antes de calcular nada en prueba.
-- **Contendientes válidos:**
-  - la base `gemma4:e4b` + híbrida + MBR, limpia por construcción;
-  - un fine-tune reentrenado desde cero sin ese producto.
+  | | David | Goliath | David − Goliath [IC 95 %] | Terminología, David | Terminología, Goliath |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | Índice pre-registrado | 29.7 | 28.9 | +0.9 [−2.8, +4.6] | 83 % | 46 % |
+  | + CLDR y FLORES-Mayas | 30.2 | 28.9 | +1.3 [−2.3, +5.3] | 78 % | 46 % |
 
-  `tzij-2026-10-raft-bt-s3` vio esos pares al entrenar y queda fuera.
+- **Lectura honesta:**
+  - en chrF++ es un **empate**: David va arriba, pero el intervalo incluye el cero;
+  - en terminología David **gana sin discusión** (+37 puntos [+17, +56]), porque usa los términos
+    de la memoria del producto y Goliath los inventa;
+  - es el primer corte donde David no va atrás.
+- **Costo:** $0.
 
-## 8. Datos sintéticos anclados en el diccionario (en curso)
+## 7. Datos sintéticos anclados en el diccionario (en curso)
 
 - **Qué:** Gemini escribe frases con cada entrada del diccionario, con un sesgo hacia frases
   cortas, que son el corte más cercano. Además, se intercambian sustantivos y verbos de las
@@ -164,27 +153,23 @@ comparar. Se borró el modelo y todo su código. No hay números de 12B.
     modelo, prompt y semilla).
 - **Entrenamiento:** el A/B (con y sin sintéticos, español → Kʼicheʼ ×1.5) está listo para la L4.
 
-## 9. Decodificación guiada por el diccionario (en curso)
+## 8. Sesgo de logits hacia el diccionario (en curso)
 
 - **Qué:** cuando la recuperación encuentra una traducción exacta del diccionario para una
-  palabra de contenido de la entrada, esa forma se vuelve una restricción.
-  - (a) Se pide en el prompt, y entre los candidatos de MBR solo compiten los que la usan; si
-    ninguno la usa, decide el MBR normal.
-  - (b) Con `llama-server` (llama.cpp), un sesgo de logits sobre esos tokens, con MBR de 8
-    muestras y prompts distintos (contextos barajados y submuestreados). Ollama no tiene sesgo
-    de logits.
-- **Estado:** el ajuste de (a) en dev está corriendo. El cliente de `llama-server` y el MBR
-  multi-prompt ya tienen pruebas; falta correrlos.
+  palabra de contenido de la entrada, `llama-server` (llama.cpp) le da un sesgo de logits a esos
+  tokens. Se combina con MBR de 8 muestras y prompts distintos (contextos barajados y
+  submuestreados). Ollama no tiene sesgo de logits.
+- **Estado:** el cliente y el MBR multi-prompt ya tienen pruebas; falta correrlos en la laptop.
 
 ## Dónde gana David hoy y dónde pierde
 
 - **Gana siempre:** costo ($0 contra $0.29 por cada 1,000 traducciones), privacidad (nada sale
   de la laptop) y disponibilidad (sin internet Goliath no produce nada).
-- **Gana en traducción, en dev:** español → Kʼicheʼ donde nuestros datos son memoria de
-  traducción (Pontoon, COERLL).
+- **Gana en terminología:** en el nicho (Firefox Focus con la memoria de traducción de los demás
+  productos) usa el término correcto el 78–83 % de las veces, contra el 46 % de Goliath. En chrF++
+  empata.
 - **Pierde:**
   - en general, por 15.4 puntos en la prueba;
-  - en el nicho de vocabulario raro (v1);
   - en Kʼicheʼ → español, donde Goliath escribe en un idioma que domina;
   - en todos los textos que probablemente ya están en la web (Bloom, UD).
 

@@ -1,30 +1,31 @@
-"""The pre-registered niche: sentences built on vocabulary from our licensed dictionaries
-that is rare in general web K'iche'.
+"""The niche (pre-registered in evals/niche.md): one whole Pontoon product held out as a
+translation-memory test, Spanish -> K'iche'.
 
-Definition (see evals/niche.md, written and committed before any per-sentence test result
-was looked at):
+Why: on dev, David beats Gemini where our data works as a translation memory (Pontoon es->quc
+48.3 vs 26.2; COERLL es->quc 39.3 vs 30.7) and loses where the text is probably on the open web
+(UD, Bloom). The Hugging Face snapshot of Pontoon has no product column, but Pontoon's public
+K'iche' translation memory (TMX, same MPL-2.0 strings) labels every string with its project.
 
-- A **content word** is a token of the source sentence (normalized with data/normalize.py,
-  then `match_key`) that is not among the `FUNCTION_TOP` most frequent word types of the
-  reference corpus of its language.
-- A content word is **in our dictionaries** when a single-word entry of the training
-  lexicon (`kind=lexicon` records of the train split: GATITOS, COERLL vocabulary, PanLex,
-  Pontoon terms, Wiktionary) has exactly that normalized key on the same-language side.
-- It is **rare in web K'iche'** when the K'iche' side occurs at most `F_MAX` times in the
-  web K'iche' reference corpus. For a K'iche' word that is the word itself; for a Spanish
-  word it is every K'iche' rendering the dictionary gives (the most frequent one decides,
-  so a word with one common rendering is not rare).
-- A sentence is **in the niche** when it has at least `N_MIN` distinct such words.
+    uv run python -m pipeline.niche products   # train pairs per product (no model output involved)
+    uv run python -m pipeline.niche build      # new dataset version (LATEST) + frozen terms
 
-Reference corpus ("general web K'iche'"): the whole Totonicapán New Testament (the most
-widely published K'iche' text on the web), the monolingual web K'iche' of
-`data/monolingual/quc.jsonl` (Wikipedia on Incubator, Space Scoop) and the K'iche' side of
-the Pontoon and UDHR pairs. Dictionaries, courses and test sources are left out of it on
-purpose: "rare on the web" must not be measured with the dictionary itself or the test set.
+Rule, fixed before any test computation:
+- Each Pontoon pair gets the set of products whose English string matches its English pivot.
+- The held-out product is the one whose count of unambiguous es->quc train pairs is closest to
+  150. Those pairs become the niche (`test_niche.jsonl`, es->quc only).
+- Every other train record of that product (also strings shared with other products) and every
+  train record repeating a held-out Spanish or K'iche' text leaves train, hence the retrieval index
+  and fine-tuning. The other products stay as translation memory. Dev is untouched. The 30%
+  religious cap is re-applied.
 
-The thresholds were chosen on dev only, without any model output (`python -m pipeline.niche
-grid`). The frozen member list (`evals/niche_members.json`) is what evaluation and the stage
-use, so new data or synthetic pairs never move the slice.
+The new version also adds two terminology sources to the translation memory (lexicon rows: index
+only, never trained): Unicode CLDR K'iche' names and the FLORES-Mayas glossary, deduplicated
+against dev, test and the niche.
+
+Terminology (WMT-style exact match): for each niche pair, the train entries that are a
+dictionary/glossary row (kind=lexicon) or come from Pontoon's own `terminology` project, with a
+Spanish side of 1-3 words (at least one content word) found in the source and a K'iche' side found
+in the reference. Frozen in evals/niche_terms.json.
 """
 
 from __future__ import annotations
@@ -32,171 +33,221 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import re
+import shutil
 import sys
+import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
-from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
+sys.path[:0] = [str(ROOT), str(ROOT / "duel")]
 
-from data.normalize import match_key, normalize  # noqa: E402
+from data.normalize import match_key, normalize, normalize_kiche  # noqa: E402
 
-FUNCTION_TOP = 150
-N_MIN = 1   # chosen on dev, see evals/niche.md
-F_MAX = 0   # chosen on dev, see evals/niche.md
-MAX_NGRAM = 4
-MEMBERS = ROOT / "evals" / "niche_members.json"
-REFERENCE_SOURCES = ("pontoon_mozilla", "udhr_ohchr")
+TARGET_PAIRS, SOURCE, PRODUCT = 150, "pontoon_mozilla", "focus-for-android"
+TMX_URL = "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx"
+TMX = ROOT / "data" / "raw" / "pontoon_mozilla" / "quc.all-projects.tmx"
+TERMS = ROOT / "evals" / "niche_terms.json"
+SPLIT = "test_niche"
+XML_LANG = "{http://www.w3.org/XML/1998/namespace}lang"
+SPANISH_STOP = {
+    "a", "al", "con", "de", "del", "el", "ella", "ellos", "en", "es", "esta", "este", "esto", "la", "las",
+    "le", "les", "lo", "los", "me", "mi", "mis", "muy", "no", "nos", "o", "para", "pero", "por", "que",
+    "se", "si", "sí", "su", "sus", "te", "tu", "tú", "un", "una", "y", "ya", "yo", "hay", "son", "está",
+}
 _WORD_RE = re.compile(r"[^\W\d_][\w']*", re.UNICODE)
 
 
 def tokens(text: str, lang: str) -> list[str]:
+    """Normalized word tokens ('spa' or 'quc')."""
     key = match_key(normalize(text, lang))
     return [t.strip("'") if lang == "spa" else t.lstrip("'") for t in _WORD_RE.findall(key)]
 
 
-@dataclass
-class NicheModel:
-    """Everything the definition needs, built once from frozen inputs."""
-
-    quc_ngrams: Counter
-    function_words: dict[str, set[str]]
-    es_to_quc: dict[str, set[tuple[str, ...]]]
-    quc_words: set[str]
-    reference_sha: str
-
-    def freq(self, quc_phrase: tuple[str, ...]) -> int:
-        return self.quc_ngrams.get(quc_phrase, 0)
-
-    def niche_words(self, text: str, direction: str, f_max: int = F_MAX) -> list[str]:
-        lang = "spa" if direction == "es-quc" else "quc"
-        out: list[str] = []
-        for w in dict.fromkeys(tokens(text, lang)):
-            if w in self.function_words[lang] or len(w) < 2:
-                continue
-            if lang == "quc":
-                if w in self.quc_words and self.freq((w,)) <= f_max:
-                    out.append(w)
-            else:
-                renderings = self.es_to_quc.get(w)
-                if renderings and max(self.freq(r) for r in renderings) <= f_max:
-                    out.append(w)
-        return out
-
-    def is_member(self, text: str, direction: str, n_min: int = N_MIN, f_max: int = F_MAX) -> bool:
-        return len(self.niche_words(text, direction, f_max)) >= n_min
+def _read(path: Path) -> list[dict]:
+    return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines()]
 
 
-def _reference_lines(dataset: Path) -> tuple[list[str], list[str]]:
-    quc, spa = [], []
-    raw = ROOT / "data" / "raw" / "ebible_quctt"
-    quc += [l for l in (raw / "quc-quctt.txt").read_text(encoding="utf-8").splitlines() if l.strip()]
-    spa += [l for l in (raw / "spa-spablm.txt").read_text(encoding="utf-8").splitlines() if l.strip()]
-    mono = ROOT / "data" / "monolingual" / "quc.jsonl"
-    for line in mono.read_text(encoding="utf-8").splitlines():
-        r = json.loads(line)
-        if r["source_name"] in ("incubator_quc", "spacescoop_quc"):
-            quc.append(r["quc"])
-    for split in ("train", "dev"):
-        for line in (dataset / f"{split}.jsonl").read_text(encoding="utf-8").splitlines():
-            r = json.loads(line)
-            if r["source_name"] in REFERENCE_SOURCES and r["kind"] == "sentence" and r["direction"] == "es-quc":
-                spa.append(r["source_text"])
-                quc.append(r["target_text"])
-    return quc, spa
+def product_index() -> dict[str, set[str]]:
+    """English string -> Pontoon projects that use it (from the public K'iche' TMX)."""
+    from pipeline.sources.base import download
+
+    if not TMX.exists():
+        download(TMX_URL, TMX)
+    index: dict[str, set[str]] = defaultdict(set)
+    for tu in ET.parse(TMX).iter("tu"):
+        project = tu.get("tuid", "").split(":", 1)[0]
+        for tuv in tu.iter("tuv"):
+            if tuv.get(XML_LANG) == "en-US":
+                english = (tuv.findtext("seg") or "").strip()
+                index[english].add(project)
+                index[english[:80]].add(project)  # records keep the English pivot cut at 80 chars
+    return index
 
 
-def build(dataset: Path) -> NicheModel:
-    quc_lines, spa_lines = _reference_lines(dataset)
-    digest = hashlib.sha256("\n".join(quc_lines).encode()).hexdigest()[:16]
-    ngrams: Counter = Counter()
-    quc_unigrams: Counter = Counter()
-    for line in quc_lines:
-        toks = tokens(line, "quc")
-        quc_unigrams.update(toks)
-        for n in range(1, MAX_NGRAM + 1):
-            ngrams.update(tuple(toks[i:i + n]) for i in range(len(toks) - n + 1))
-    spa_unigrams: Counter = Counter(t for line in spa_lines for t in tokens(line, "spa"))
-    function_words = {"quc": {w for w, _ in quc_unigrams.most_common(FUNCTION_TOP)},
-                      "spa": {w for w, _ in spa_unigrams.most_common(FUNCTION_TOP)}}
+def products_of(record: dict, index: dict[str, set[str]]) -> set[str]:
+    return index.get((record.get("ref") or "").strip(), set())
 
-    es_to_quc: dict[str, set[tuple[str, ...]]] = defaultdict(set)
-    quc_words: set[str] = set()
-    for line in (dataset / "train.jsonl").read_text(encoding="utf-8").splitlines():
-        r = json.loads(line)
-        if r["kind"] != "lexicon":
+
+def product_counts(dataset: Path) -> Counter:
+    index = product_index()
+    return Counter(next(iter(p)) for r in _read(dataset / "train.jsonl")
+                   if r["source_name"] == SOURCE and r["direction"] == "es-quc"
+                   and len(p := products_of(r, index)) == 1)
+
+
+def held_out_product(dataset: Path) -> str:
+    counts = product_counts(dataset)
+    return min(sorted(counts), key=lambda p: abs(counts[p] - TARGET_PAIRS))
+
+
+def _contains(text_tokens: list[str], phrase: list[str]) -> bool:
+    n = len(phrase)
+    return n > 0 and any(text_tokens[i:i + n] == phrase for i in range(len(text_tokens) - n + 1))
+
+
+def terms_for(test: list[dict], train: list[dict], index: dict[str, set[str]]) -> dict[str, list[list[str]]]:
+    entries = []
+    for r in train:
+        if r["direction"] != "es-quc" or r["source_name"] not in ORIGINAL_SOURCES:
             continue
-        es, quc = (r["source_text"], r["target_text"]) if r["direction"] == "es-quc" else (r["target_text"], r["source_text"])
-        es_t, quc_t = tokens(es, "spa"), tokens(quc, "quc")
-        if not es_t or not quc_t:
+        if not (r["kind"] == "lexicon" or (r["source_name"] == SOURCE and "terminology" in products_of(r, index))):
             continue
-        if len(es_t) == 1:
-            es_to_quc[es_t[0]].add(tuple(quc_t[:MAX_NGRAM]))
-        if len(quc_t) == 1:
-            quc_words.add(quc_t[0])
-    return NicheModel(ngrams, function_words, dict(es_to_quc), quc_words, digest)
-
-
-def _sentences(dataset: Path, split: str) -> list[dict]:
-    rows = [json.loads(l) for l in (dataset / f"{split}.jsonl").read_text(encoding="utf-8").splitlines()]
-    return [r for r in rows if r["kind"] == "sentence" and r["status"] not in ("rejected", "auto_rejected")]
-
-
-def grid(dataset: Path) -> list[dict]:
-    """Dev coverage for each candidate threshold pair. No model output is used."""
-    model = build(dataset)
-    dev = _sentences(dataset, "dev")
-    out = []
-    for n_min in (1, 2, 3):
-        for f_max in (0, 1, 2, 5, 10, 20):
-            row = {"n_min": n_min, "f_max": f_max}
-            for d in ("es-quc", "quc-es"):
-                sub = [r for r in dev if r["direction"] == d]
-                row[d] = sum(model.is_member(r["source_text"], d, n_min, f_max) for r in sub)
-                row[f"{d}_n"] = len(sub)
-            out.append(row)
+        es = tokens(r["source_text"], "spa")
+        quc = match_key(normalize_kiche(r["target_text"]))
+        content = [w for w in es if w not in SPANISH_STOP and len(w) >= 3]
+        if 1 <= len(es) <= 3 and content and quc and not any(ch in r["target_text"] for ch in "()/=[]"):
+            entries.append((es, quc))
+    out = {}
+    for t in test:
+        src, ref = tokens(t["source_text"], "spa"), match_key(normalize_kiche(t["target_text"]))
+        found: dict[str, str] = {}
+        for es, quc in entries:
+            if _contains(src, es) and quc in ref:
+                found.setdefault(" ".join(es), quc)
+        out[t["id"]] = [[k, v] for k, v in sorted(found.items())]
     return out
 
 
-def freeze(dataset: Path) -> dict:
-    """Write the member list of the test split with the chosen thresholds."""
-    model = build(dataset)
-    members = [[r["pair_id"], r["direction"]] for r in _sentences(dataset, "test")
-               if model.is_member(r["source_text"], r["direction"])]
-    payload = {"definition": "evals/niche.md", "dataset": dataset.name, "n_min": N_MIN, "f_max": F_MAX,
-               "function_top": FUNCTION_TOP, "reference_sha256_16": model.reference_sha,
-               "members": sorted(members)}
-    MEMBERS.write_text(json.dumps(payload, indent=1) + "\n", encoding="utf-8")
-    return payload
+# Terms were frozen (pre-registration) from the sources of dataset 20261002-022500 only.
+ORIGINAL_SOURCES = {"bloom_kiche", "bouquet", "ud_kiche_iu", "coerll_kiche", "udhr_ohchr", "pontoon_mozilla",
+                    "ebible_quctt", "gatitos", "panlex", "wiktionary_es"}
 
 
-def load_members(path: Path = MEMBERS) -> set[tuple[str, str]]:
-    if not path.exists():
-        return set()
-    return {(p, d) for p, d in json.loads(path.read_text(encoding="utf-8"))["members"]}
+def recap_religious(train: list[dict]) -> tuple[list[dict], int]:
+    """Removing secular pairs pushes the religious share over the 30% cap: drop religious sentence
+    pairs again with the pipeline's own rule (pipeline/split.py: stable hash order)."""
+    from pipeline.split import RELIGIOUS_CAP
+
+    sentences = [r for r in train if r["kind"] == "sentence" and r["direction"] == "es-quc"]
+    secular = sum(r["domain"] != "religious" for r in sentences)
+    budget = math.floor(secular * RELIGIOUS_CAP / (1 - RELIGIOUS_CAP))
+    religious = sorted({r["pair_id"] for r in sentences if r["domain"] == "religious"},
+                       key=lambda pid: hashlib.sha1(pid.encode()).hexdigest())
+    drop = set(religious[budget:])
+    return [r for r in train if r["pair_id"] not in drop], len(drop)
 
 
-def _latest(processed: Path) -> Path:
-    return processed / (processed / "LATEST").read_text().strip()
+def terminology_records(held_keys: set[str], train_keys: set[tuple[str, str]]) -> tuple[list[dict], dict]:
+    """CLDR + FLORES-Mayas as lexicon train records (translation memory only)."""
+    from pipeline.clean import clean
+    from pipeline.domains import tag_domain
+    from pipeline.sources import cldr, floresmayas
+
+    out, stats = [], {}
+    for source in (cldr.SOURCE, floresmayas.SOURCE):
+        raw = source.raw_dir(ROOT / "data" / "raw")
+        source.fetch(raw)
+        pairs = [p.normalized() for p in source.parse(raw)]
+        pairs, dropped = clean(pairs)
+        kept = 0
+        for p in map(tag_domain, pairs):
+            keys = (match_key(p.spa), match_key(p.quc))
+            if keys[0] in held_keys or keys[1] in held_keys or keys in train_keys:
+                continue
+            train_keys.add(keys)
+            out += p.to_records("train", "clean")
+            kept += 1
+        stats[source.name] = {"parsed": len(pairs) + len(dropped), "kept_pairs": kept}
+    return out, stats
 
 
-def cli() -> None:
+def build(dataset: Path) -> dict:
+    index = product_index()
+    product = held_out_product(dataset)
+    assert product == PRODUCT, f"rule picked {product}, pre-registered {PRODUCT}"
+    train = _read(dataset / "train.jsonl")
+    pontoon = [r for r in train if r["source_name"] == SOURCE]
+    held = [r for r in pontoon if r["direction"] == "es-quc" and products_of(r, index) == {product}]
+    touching = {r["pair_id"] for r in pontoon if product in products_of(r, index)}
+    keys = {match_key(r["source_text"]) for r in held} | {match_key(r["target_text"]) for r in held}
+    kept, dup = [], 0
+    for r in train:
+        if r["pair_id"] in touching:
+            continue
+        if match_key(r["source_text"]) in keys or match_key(r["target_text"]) in keys:
+            dup += 1
+            continue
+        kept.append(r)
+    kept, religious_dropped = recap_religious(kept)
+    terms = terms_for([{**r} for r in held], kept, index)  # frozen definition: original sources only
+
+    held_keys = set(keys)
+    for split in ("dev", "test"):
+        for r in _read(dataset / f"{split}.jsonl"):
+            held_keys |= {match_key(r["source_text"]), match_key(r["target_text"])}
+    train_keys = {(match_key(r["source_text"]), match_key(r["target_text"])) for r in kept if r["direction"] == "es-quc"}
+    terminology, term_stats = terminology_records(held_keys, train_keys)
+
+    version = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    out = dataset.parent / version
+    shutil.copytree(dataset, out)
+    for stale in out.glob("test_niche*.jsonl"):
+        stale.unlink()
+    rows = kept + terminology
+    (out / "train.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+    niche = [{**r, "split": SPLIT, "status": "auto_validated", "product": product} for r in held]
+    (out / f"{SPLIT}.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in niche), encoding="utf-8")
+    manifest = json.loads((out / "manifest.json").read_text())
+    summary = {"product": product, "product_counts": dict(product_counts(dataset)), "niche_pairs_es_quc": len(niche),
+               "train_records_removed": len(train) - len(kept), "duplicates_removed": dup,
+               "religious_pairs_dropped_for_cap": religious_dropped, "tmx": TMX_URL,
+               "terminology_added": term_stats}
+    manifest.update(version=version, derived_from=dataset.name, niche=summary)
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+    (dataset.parent / "LATEST").write_text(version + "\n")
+    frozen = {"dataset": version, "definition": "evals/niche.md",
+              "terms": {r["id"]: terms[r["id"]] for r in held}}
+    TERMS.write_text(json.dumps(frozen, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    return {**summary, "version": version, "kinds": dict(Counter(r["kind"] for r in niche)),
+            "pairs_with_terms": sum(bool(v) for v in terms.values()), "terms": sum(len(v) for v in terms.values())}
+
+
+def niche_dataset(processed: Path) -> Path | None:
+    """The latest dataset version that has a niche slice."""
+    pointer = processed / "LATEST"
+    if pointer.exists():
+        path = processed / pointer.read_text().strip()
+        if (path / f"{SPLIT}.jsonl").exists():
+            return path
+    return None
+
+
+def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("command", choices=["grid", "freeze"])
-    ap.add_argument("--dataset", type=Path, default=None)
+    ap.add_argument("command", choices=["products", "build"])
+    ap.add_argument("--dataset", type=Path, default=ROOT / "data" / "processed" / "20261002-022500")
     args = ap.parse_args()
-    dataset = args.dataset or _latest(ROOT / "data" / "processed")
-    if args.command == "grid":
-        print("| N_MIN | F_MAX | dev es→quc | dev quc→es |")
-        print("| ---: | ---: | ---: | ---: |")
-        for r in grid(dataset):
-            print(f"| {r['n_min']} | {r['f_max']} | {r['es-quc']}/{r['es-quc_n']} | {r['quc-es']}/{r['quc-es_n']} |")
+    if args.command == "products":
+        for p, n in product_counts(args.dataset).most_common():
+            print(n, p)
+        print("held out:", held_out_product(args.dataset))
     else:
-        p = freeze(dataset)
-        print(f"{len(p['members'])} test records in the niche -> {MEMBERS.relative_to(ROOT)}")
+        print(json.dumps(build(args.dataset), indent=1, ensure_ascii=False))
 
 
 if __name__ == "__main__":
-    cli()
+    main()

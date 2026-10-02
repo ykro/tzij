@@ -21,7 +21,6 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from duel_core import Connectivity, OllamaClient
-from pipeline.niche import load_members
 from rag.retrieve import Retriever
 
 from .deck import Deck
@@ -64,7 +63,8 @@ class NewRound(BaseModel):
     kind: Literal["evaluacion", "en_vivo"]
     direction: Literal["es-quc", "quc-es"] = "es-quc"
     text: str | None = Field(default=None, max_length=MAX_PHRASE_CHARS)
-    # Specialty round: an evaluation phrase from the pre-registered niche (evals/niche.md).
+    # Specialty round: a phrase from the niche (evals/niche.md: a Pontoon product held out as a
+    # translation-memory test). Always Spanish -> K'iche', the direction the niche measures.
     specialty: bool = False
 
 
@@ -93,9 +93,9 @@ class Service:
         )
         self.store = RoundStore(settings.state_path)
         self.deck = deck or (
-            Deck(None, test_file=MOCK_DATA / "deck.jsonl", niche=load_members(MOCK_DATA / "niche_members.json"))
+            Deck(None, test_file=MOCK_DATA / "deck.jsonl", niche_file=MOCK_DATA / "niche.jsonl")
             if settings.mock_ai
-            else Deck(settings.processed_dir, require_validated=settings.require_validated_test, niche=load_members())
+            else Deck(settings.processed_dir, require_validated=settings.require_validated_test)
         )
         self.events = Broadcaster()
         self.card = model_card(settings)
@@ -162,7 +162,8 @@ class Service:
         if body.kind == EVALUATION:
             used = {((r.reference_meta or {}).get("pair_id"), r.direction) for r in self.store.rounds}
             specialty = bool(getattr(body, "specialty", False))
-            item = self.deck.next(body.direction, used, niche=specialty)
+            direction = "es-quc" if specialty else body.direction
+            item = self.deck.next(direction, used, niche=specialty)
             if item is None:
                 what = "de especialidad" if specialty else "de evaluación"
                 raise HTTPException(404, f"No quedan frases {what} en esta dirección.")

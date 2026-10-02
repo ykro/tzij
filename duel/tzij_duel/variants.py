@@ -48,9 +48,7 @@ class Variant:
     k: int = 6  # examples and glossary entries in the context
     mbr: int = 0  # >0: sample this many candidates and keep the consensus one (MBR with chrF++)
     sampler: ModelClient | None = None  # client with sampling temperature, for MBR
-    # Dictionary-guided decoding (constraints.py): "" off, "prompt+select" or "select".
-    constrained: str = ""
-    max_constraints: int = 3
+    max_constraints: int = 3  # dictionary forms biased per input (constraints.py), when bias > 0
     # Multi-prompt MBR: each sample gets a different context (shuffled/subsampled retrieval).
     multi_prompt: bool = False
     # Logit bias for the required dictionary forms (needs a client with `with_bias`, i.e. llama-server).
@@ -88,12 +86,8 @@ async def translate(
         retrieval_ms = (time.perf_counter() - t0) * 1000
         contexts = found.variants(variant.mbr) if variant.multi_prompt and variant.mbr else [found.as_prompt_context()]
         context = contexts[0]
-        if variant.constrained:
+        if variant.bias:
             required = dict_guide.constraints_from(found, variant.max_constraints)
-            if "prompt" in variant.constrained and required:
-                block = dict_guide.prompt_block(required)
-                contexts = [f"{c}\n{block}" for c in contexts]
-                context = contexts[0]
     messages = translation_messages(text, direction, context)
     if variant.mbr and variant.sampler is not None:
         per_sample = [translation_messages(text, direction, c) for c in contexts] if len(contexts) > 1 else None
@@ -136,12 +130,7 @@ async def _mbr(variant: Variant, messages, online: bool, direction: str,
     def support(i: int) -> float:
         others = [chrf_pp(texts[i], texts[j]) for j in range(len(texts)) if j != i]
         return sum(others) / len(others) if others else 0.0
-    pool = list(range(len(texts)))
-    if required:  # dictionary-guided: only the candidates that use the most required words compete
-        covered = [dict_guide.coverage(t, required, direction) for t in texts]
-        if max(covered) > 0:
-            pool = [i for i in pool if covered[i] == max(covered)]
-    best = max(pool, key=support)
+    best = max(range(len(texts)), key=support)
     chosen = ok[best]
     chosen.name = variant.name
     chosen.latency_ms = round((time.perf_counter() - t0) * 1000, 1)
@@ -195,9 +184,7 @@ def stage_variants(s: Settings) -> tuple[Variant, Variant]:
     stage_mbr = s.mbr_samples if _env_flag("MBR_ON_STAGE") and not s.mock_ai else 0
     david = Variant("david", "David", david_client, s.david_model or "mock-gemma", Price.free(), True, False,
                     retrieval=s.rag_mode, k=s.rag_k, mbr=stage_mbr,
-                    sampler=ollama_client(s, temperature=0.7) if stage_mbr else None,
-                    constrained=s.constrained_mode if _env_flag("CONSTRAINED_ON_STAGE") else "",
-                    max_constraints=s.max_constraints)
+                    sampler=ollama_client(s, temperature=0.7) if stage_mbr else None)
     goliath = Variant("goliath", "Goliath", goliath_client, s.gemini_model or "mock-gemini", gemini_price(s), False, True)
     return david, goliath
 
@@ -223,12 +210,6 @@ def eval_variants(s: Settings) -> list[Variant]:
             variants.append(Variant(f"{tag}+hybrid+mbr{s.mbr_samples}", f"{tag} + híbrida + MBR", ollama, tag,
                                     Price.free(), True, False, retrieval="hybrid", k=s.rag_k,
                                     mbr=s.mbr_samples, sampler=sampler))
-            if s.constrained_mode:
-                suffix = "dict" if s.constrained_mode == "prompt+select" else "dictsel"
-                variants.append(Variant(f"{tag}+hybrid+mbr{s.mbr_samples}+{suffix}", f"{tag} + híbrida + MBR + diccionario",
-                                        ollama, tag, Price.free(), True, False, retrieval="hybrid", k=s.rag_k,
-                                        mbr=s.mbr_samples, sampler=sampler, constrained=s.constrained_mode,
-                                        max_constraints=s.max_constraints))
     if s.llama_server_url and not s.mock_ai:
         # llama-server serves one GGUF: LLAMA_SERVER_MODEL names it (a tag from the lists above).
         from duel_core import LlamaServerClient
@@ -239,11 +220,11 @@ def eval_variants(s: Settings) -> list[Variant]:
         variants.append(Variant(f"{tag}+hybrid+mbr{n}mp@llama", f"{tag} + híbrida + MBR multi-prompt", eps, tag,
                                 Price.free(), True, False, retrieval="hybrid", k=s.rag_k, mbr=n, sampler=eps,
                                 multi_prompt=True))
-        if s.constrained_mode:
+        if s.llama_bias:
             variants.append(Variant(f"{tag}+hybrid+mbr{n}mp+bias{s.llama_bias:g}@llama", f"{tag} + MBR multi-prompt + sesgo",
                                     eps, tag, Price.free(), True, False, retrieval="hybrid", k=s.rag_k, mbr=n,
-                                    sampler=eps, multi_prompt=True, constrained=s.constrained_mode,
-                                    max_constraints=s.max_constraints, bias=s.llama_bias))
+                                    sampler=eps, multi_prompt=True, max_constraints=s.max_constraints,
+                                    bias=s.llama_bias))
     if s.gemini_model:
         variants.append(Variant(s.gemini_model, s.gemini_model, gemini, s.gemini_model, gemini_price(s), False, True))
         variants.append(Variant(f"{s.gemini_model}+rag", f"{s.gemini_model} + recuperación", gemini,

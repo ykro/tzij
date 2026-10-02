@@ -47,7 +47,7 @@ def held_out_keys(dataset_dir: Path) -> set[str]:
 def synthetic_records(cap: float, base_examples: int, dataset_dir: Path) -> list[dict]:
     """Synthetic pairs (pipeline/synthetic.py) as train records in both directions, capped so they
     are at most `cap` of the final training examples. Stable selection: by hash of the pair id.
-    Pairs anchored on a dictionary entry that is no longer in train (e.g. held out for niche v2), or
+    Pairs anchored on a dictionary entry that is no longer in train (e.g. held out for the niche), or
     repeating any dev/test text, are dropped: synthetic data never reaches an evaluation slice."""
     import hashlib
 
@@ -75,7 +75,7 @@ def synthetic_records(cap: float, base_examples: int, dataset_dir: Path) -> list
 def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra: list[dict] | None = None,
           synthetic: float = 0.0, es_weight: float = 1.0) -> dict:
     """es_weight > 1 repeats a stable share of the Spanish -> K'iche' examples (1.5 = every one once,
-    half of them twice): the direction David is weakest in, and the one niche v2 measures."""
+    half of them twice): the direction David is weakest in, and the one the niche measures."""
     records = [json.loads(line) for line in (dataset_dir / "train.jsonl").read_text(encoding="utf-8").splitlines()]
     sentences = [r for r in records if r["kind"] == "sentence" and r["split"] == "train"]
     # Back-translated pairs (Gemini Spanish -> human K'iche') only teach Spanish -> K'iche'.

@@ -1,7 +1,6 @@
 """Synthetic training pairs grounded in our licensed data (make synthetic).
 
-Synthetic data became allowed for Tzij after David lost the pre-registered niche
-(evals/niche_results.md). The guardrails:
+Synthetic data is allowed for Tzij under these guardrails:
 
 - Training only. Synthetic pairs never enter test, dev, the niche slice or the retrieval
   index, and any pair whose Spanish or K'iche' repeats a dev/test sentence is dropped.

@@ -5,7 +5,8 @@ two sources contain the same pair, deduplication keeps the first one, so the
 most carefully curated sources come first.
 """
 
-from pipeline.sources import bloom, bouquet, coerll, ebible, gatitos, panlex, pontoon, ud_kiche, udhr, wiktionary
+from pipeline.sources import (bloom, bouquet, cldr, coerll, ebible, floresmayas, gatitos, panlex, pontoon, ud_kiche, udhr,
+                              wiktionary)
 from pipeline.sources.base import TEST, TRAIN, Source
 
 SOURCES: list[Source] = [
@@ -20,6 +21,8 @@ SOURCES: list[Source] = [
     gatitos.SOURCE,
     panlex.SOURCE,
     wiktionary.SOURCE,
+    cldr.SOURCE,  # terminology: translation memory (lexicon)
+    floresmayas.SOURCE,  # terminology; derived from FLORES Spanish, never with a FLORES-based test
 ]
 
 __all__ = ["SOURCES", "Source", "TEST", "TRAIN"]

@@ -52,8 +52,8 @@ datasheet: ## Re-render data/DATASHEET.md from the latest manifest
 tune-retrieval: ## Tune retrieval (mode, k, order, fuzzy) on the dev split only -> evals/tuning.md
 	$(UV) run python -m evals.tune_retrieval
 
-niche: ## David vs Goliath on the pre-registered niche + honest slices -> evals/niche_results.md: make niche RUN=final-20261002 DAVID=<variant>
-	@test -n "$(RUN)" -a -n "$(DAVID)" || (echo "usage: make niche RUN=<eval run> DAVID=<variant> [GOLIATH=gemini-3.8-flash]" && exit 1)
+niche: ## David vs Goliath on the niche (held-out Pontoon product, translation memory) -> evals/niche_results.md: make niche RUN=niche DAVID=<variant>
+	@test -n "$(RUN)" -a -n "$(DAVID)" || (echo "usage: make niche RUN=<eval run with --split test_niche> DAVID=<variant> [GOLIATH=gemini-3.8-flash]" && exit 1)
 	$(UV) run python evals/niche_report.py --run $(RUN) --david "$(DAVID)" --goliath "$(or $(GOLIATH),$(GEMINI_MODEL))"
 
 eval: ## Compare every available variant on the test set -> evals/report.md

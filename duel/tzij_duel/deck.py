@@ -47,19 +47,27 @@ def latest_dataset(processed: Path) -> Path | None:
 class Deck:
     def __init__(self, processed: Path | None, *, require_validated: bool = False, seed: int = 2027,
                  exclude_sources: tuple[str, ...] = ("bouquet",), test_file: Path | None = None,
-                 niche: set[tuple[str, str]] | None = None):
-        """`niche`: (pair_id, direction) of the frozen, pre-registered niche (evals/niche_members.json).
-        Specialty rounds draw only from it, in the same seeded order as the rest of the deck."""
+                 niche_file: Path | None = None):
+        """`niche_file`: the pre-registered niche (test_niche.jsonl: a Pontoon product held out as a
+        translation-memory test, evals/niche.md). Specialty rounds draw only from it, in a seeded order;
+        normal evaluation rounds never do."""
         # BOUQuET's terms allow evaluation but only private redistribution: `make eval` uses
         # it, the projector doesn't show it.
         self.items: list[DeckItem] = []
+        dataset = latest_dataset(processed) if processed else None
         if test_file is None:
-            dataset = latest_dataset(processed) if processed else None
             test_file = dataset / "test.jsonl" if dataset else None
-        if test_file and test_file.exists():
-            for line in test_file.read_text(encoding="utf-8").splitlines():
+        if niche_file is None and dataset is not None:
+            niche_file = dataset / "test_niche.jsonl"
+        files = [(test_file, False), (niche_file, True)]
+        for path, is_niche in files:
+            if not path or not path.exists():
+                continue
+            for line in path.read_text(encoding="utf-8").splitlines():
                 r = json.loads(line)
-                if r["kind"] != "sentence" or not (MIN_WORDS <= len(r["source_text"].split()) <= MAX_WORDS):
+                if not is_niche and r["kind"] != "sentence":
+                    continue
+                if not (MIN_WORDS <= len(r["source_text"].split()) <= MAX_WORDS):
                     continue
                 if r["source_text"].isupper() or r["target_text"].isupper():
                     continue  # book headings ("CHAB'ANA K'OB'AL CHI'J") read poorly on stage
@@ -68,15 +76,14 @@ class Deck:
                 if r["status"] not in USABLE or (require_validated and r["status"] != "validated"):
                     continue
                 self.items.append(DeckItem(r["pair_id"], r["direction"], r["source_text"], r["target_text"],
-                                           r["source_name"], r["url"], r["license"], r["status"], r["domain"],
-                                           (r["pair_id"], r["direction"]) in (niche or set())))
+                                           r["source_name"], r["url"], r["license"], r["status"], r["domain"], is_niche))
         random.Random(seed).shuffle(self.items)
         self._used: set[tuple[str, str]] = set()
 
     def next(self, direction: str, used: set[tuple[str, str]] | None = None, niche: bool = False) -> DeckItem | None:
         taken = self._used | (used or set())
         for item in self.items:
-            if niche and not item.niche:
+            if niche != item.niche:
                 continue
             if item.direction == direction and (item.pair_id, direction) not in taken:
                 self._used.add((item.pair_id, direction))
@@ -89,7 +96,7 @@ class Deck:
 
     def suggestions(self, direction: str, limit: int = 8) -> list[dict]:
         """Source phrases (from licensed data) the presenter can pick for a live round."""
-        out = [i for i in self.items if i.direction == direction][:limit]
+        out = [i for i in self.items if i.direction == direction and not i.niche][:limit]
         return [{"text": i.source_text, "source_name": i.source_name} for i in out]
 
     def reset(self) -> None:

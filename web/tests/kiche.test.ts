@@ -29,6 +29,6 @@ describe("round labels", () => {
     const meta = { source_name: "bloom_kiche", url: "", license: "", status: "auto_validated" };
     expect(roundKindLabel({ kind: "evaluacion", reference_meta: meta })).toBe("Evaluación");
     expect(roundKindLabel({ kind: "evaluacion", reference_meta: { ...meta, specialty: true } }))
-      .toBe("Ronda de especialidad: vocabulario de nuestros diccionarios");
+      .toBe("Ronda de especialidad: memoria de traducción (Firefox Focus)");
   });
 });

@@ -55,7 +55,7 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
 | Tecla | Qué hace |
 | --- | --- |
 | `E` | Frase de evaluación (del conjunto de prueba, con referencia y chrF++) |
-| `S` | Ronda de especialidad: vocabulario de nuestros diccionarios (nicho pre-registrado) |
+| `S` | Ronda de especialidad: memoria de traducción (Firefox Focus, siempre español → Kʼicheʼ) |
 | `D` | Cambia la dirección (español → Kʼicheʼ / Kʼicheʼ → español) |
 | `/` | Barra de comandos: escribir una frase en vivo, simular sin Wi-Fi, reiniciar |
 | `M` | Ficha del modelo |
@@ -112,9 +112,10 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
   S
   ```
 
-- **Idea:** "Estas frases usan palabras que están en nuestros diccionarios y casi no aparecen en
-  el Kʼicheʼ de la web. Definimos este nicho antes de ver los resultados. Spoiler honesto: aun
-  aquí Goliath gana en promedio, pero David acierta palabras que Goliath no conoce."
+  `D` vuelve a español → Kʼicheʼ (`S` siempre usa esa dirección).
+- **Idea:** "Firefox Focus en Kʼicheʼ. David nunca vio este producto, pero tiene la memoria de
+  traducción de los demás productos de Mozilla. Aquí empata con Goliath y usa el término correcto
+  el 78 % de las veces, contra el 46 % de Goliath. Lo definimos antes de ver los resultados."
 - **Tiempo:** 45 s.
 
 ## Paso 5 — En vivo, una frase corta

@@ -54,8 +54,7 @@ class Settings:
     rag_fuzzy: bool = field(default_factory=lambda: _env("RAG_FUZZY", "1") == "1")
     # MBR decoding: number of samples (0 = off). Eval variants "+mbrN" use it; on stage only if p50 <= 5 s.
     mbr_samples: int = field(default_factory=lambda: int(_env("MBR_SAMPLES", "0")))
-    # Dictionary-guided decoding: "" (off), "prompt+select" or "select"; on stage only with CONSTRAINED_ON_STAGE=1.
-    constrained_mode: str = field(default_factory=lambda: _env("CONSTRAINED_MODE", ""))
+    # Dictionary forms biased per input in the "+bias" llama-server variant (constraints.py).
     max_constraints: int = field(default_factory=lambda: int(_env("MAX_CONSTRAINTS", "3")))
     # llama.cpp llama-server (logit bias + parallel slots); eval variants "@llama" only when set.
     llama_server_url: str = field(default_factory=lambda: _env("LLAMA_SERVER_URL", ""))

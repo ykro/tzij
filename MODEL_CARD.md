@@ -39,6 +39,11 @@ The true picture, for the talk:
 - **Goliath is better at translating.** David trails by 15.4 chrF++ points overall and in every
   slice (length, direction, source, domain); it beats Goliath on 74 of 599 sentences (12%) and
   is within 5 points on 23%.
+- **Except where David holds a translation memory Goliath lacks.** In the pre-registered niche
+  (`evals/niche.md`): Firefox Focus, 144 es→quc pairs David never saw, with Mozilla's other
+  products and two terminology lists in his index. There they tie on chrF++ (30.2 vs 28.9, +1.3
+  [−2.3, +5.3]), and David uses the right term far more often (78% vs 46%, +32 [+13, +51]).
+  Results: `evals/niche_results.md`.
 - **Data is what moves David.** Retrieval from ~7,000 licensed dictionary entries and example
   pairs takes base E4B from 11.7 to 18.5; most of the gain is Spanish → K'iche' (7.5 → 18.2),
   the direction a model can't fake. Hybrid search adds +0.9.
@@ -66,6 +71,10 @@ drop reasons are in `data/DATASHEET.md` (generated). Dataset `20261002-022500`:
   examples and 104 bilingual stories, used with ALMG's permission), the UT Austin COERLL
   course, the UDHR, Mozilla Pontoon, the Totonicapán New Testament (capped at 30% of training
   sentences), and the GATITOS, PanLex and Wiktionary dictionaries. 115 dev pairs for tuning.
+- **Translation memory added for the niche** (lexicon rows, retrieval only, never trained): Unicode
+  CLDR K'iche' emoji names (Unicode License V3, 1,164 pairs) and the FLORES-Mayas glossary
+  (Apache-2.0, 407 pairs; never used with a FLORES-based test). Dataset `20261002-173447` holds
+  out the Pontoon product Firefox Focus as `test_niche.jsonl`.
 - **Held-out test:** 1,654 pairs per direction from MINEDUC children's books on Bloom
   Library and Meta's BOUQuET benchmark (evaluation only, per its terms). No test source is
   ever used for training or retrieval; train pairs repeating a test sentence are removed.

@@ -9,14 +9,11 @@
    "run": "final-20261002",
    "variant": "gemma4:e4b",
    "all": 11.7,
-   "niche": 11.4,
    "goliath_all": 36.9,
-   "goliath_niche": 37.3,
-   "niche_delta_ci": [
-    -27.2,
-    -24.7
-   ],
-   "niche_verdict": "Goliath"
+   "delta_ci": [
+    -26.1,
+    -24.1
+   ]
   },
   {
    "label": [
@@ -26,14 +23,11 @@
    "run": "final-20261002",
    "variant": "gemma4:e4b+rag",
    "all": 18.5,
-   "niche": 18.5,
    "goliath_all": 36.9,
-   "goliath_niche": 37.3,
-   "niche_delta_ci": [
-    -19.9,
-    -17.6
-   ],
-   "niche_verdict": "Goliath"
+   "delta_ci": [
+    -19.3,
+    -17.3
+   ]
   },
   {
    "label": [
@@ -43,14 +37,11 @@
    "run": "final-20261002",
    "variant": "gemma4:e4b+hybrid",
    "all": 19.4,
-   "niche": 19.2,
    "goliath_all": 36.9,
-   "goliath_niche": 37.3,
-   "niche_delta_ci": [
-    -19.3,
-    -16.8
-   ],
-   "niche_verdict": "Goliath"
+   "delta_ci": [
+    -18.5,
+    -16.5
+   ]
   },
   {
    "label": [
@@ -60,14 +51,11 @@
    "run": "final-20261002",
    "variant": "tzij-2026-10-raft-bt-s3+hybrid",
    "all": 18.3,
-   "niche": 17.3,
    "goliath_all": 36.9,
-   "goliath_niche": 37.3,
-   "niche_delta_ci": [
-    -21.3,
-    -18.5
-   ],
-   "niche_verdict": "Goliath"
+   "delta_ci": [
+    -19.6,
+    -17.4
+   ]
   },
   {
    "label": [
@@ -77,14 +65,11 @@
    "run": "final-20261002",
    "variant": "tzij-2026-10-raft-bt-s3+hybrid+mbr4",
    "all": 21.5,
-   "niche": 21.4,
    "goliath_all": 36.9,
-   "goliath_niche": 37.3,
-   "niche_delta_ci": [
-    -17.0,
-    -14.7
-   ],
-   "niche_verdict": "Goliath"
+   "delta_ci": [
+    -16.3,
+    -14.3
+   ]
   }
  ]
 }

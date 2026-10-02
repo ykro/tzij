@@ -60,7 +60,7 @@ export function modelName(tag: string | null | undefined): string {
     .trim();
 }
 
-export const SPECIALTY_LABEL = "Ronda de especialidad: vocabulario de nuestros diccionarios";
+export const SPECIALTY_LABEL = "Ronda de especialidad: memoria de traducción (Firefox Focus)";
 
 export function roundKindLabel(round: Pick<Round, "kind" | "reference_meta">): string {
   if (round.kind === "en_vivo") return "En vivo";

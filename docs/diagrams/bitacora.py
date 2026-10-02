@@ -1,5 +1,5 @@
-"""The BITÁCORA chart: David's chrF++ at each iteration, on the whole test sample and on the
-pre-registered niche, against Goliath. Reads the predictions eval runs already produced.
+"""The BITÁCORA chart: David's chrF++ at each iteration on the 600 test sentences, against Goliath.
+Reads the predictions eval runs already produced.
 
     uv run python docs/diagrams/bitacora.py      -> bitacora.svg, bitacora.html, bitacora.json
     (then render the PNG: cd web && node tests/render-diagram.mjs bitacora)
@@ -16,7 +16,6 @@ ROOT = HERE.parent.parent
 sys.path.insert(0, str(ROOT))
 
 from evals.niche_report import compare, load_rows, variant_file  # noqa: E402
-from pipeline.niche import load_members  # noqa: E402
 
 GOLIATH = ("final-20261002", "gemini-3.8-flash")
 # (label line 1, label line 2, run, variant). Same 600 test sentences in every run.
@@ -35,18 +34,14 @@ def numbers() -> dict:
     test = ROOT / "data" / "processed"
     test = test / (test / "LATEST").read_text().strip() / "test.jsonl"
     records = {r["id"]: r for r in map(json.loads, test.read_text(encoding="utf-8").splitlines())}
-    members = load_members()
     gol = load_rows(variant_file(ROOT / "evals" / "runs" / GOLIATH[0], GOLIATH[1]))
     out = {"goliath": GOLIATH[1], "steps": []}
     for l1, l2, run, variant in steps:
         dav = load_rows(variant_file(ROOT / "evals" / "runs" / run, variant))
         ids = sorted(set(dav) & set(gol) & set(records))
-        niche = [i for i in ids if (records[i]["pair_id"], records[i]["direction"]) in members]
-        a, n = compare(ids, dav, gol), compare(niche, dav, gol)
-        out["steps"].append({"label": [l1, l2], "run": run, "variant": variant,
-                             "all": round(a["david"], 1), "niche": round(n["david"], 1),
-                             "goliath_all": round(a["goliath"], 1), "goliath_niche": round(n["goliath"], 1),
-                             "niche_delta_ci": [round(x, 1) for x in n["ci"]], "niche_verdict": n["verdict"]})
+        a = compare(ids, dav, gol)
+        out["steps"].append({"label": [l1, l2], "run": run, "variant": variant, "all": round(a["david"], 1),
+                             "goliath_all": round(a["goliath"], 1), "delta_ci": [round(x, 1) for x in a["ci"]]})
     return out
 
 
@@ -57,11 +52,11 @@ def svg(data: dict) -> str:
     y = lambda v: bottom - (bottom - top) * v / 45  # noqa: E731
     xs = [left + pitch * (i + 0.5) for i in range(len(steps))]
     mono, sans = "'Geist Mono', monospace", "'Geist', sans-serif"
-    g_all, g_niche = steps[-1]["goliath_all"], steps[-1]["goliath_niche"]
+    g_all = steps[-1]["goliath_all"]
     parts = [f'<svg viewBox="0 0 {W} {H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t d">',
              '<title id="t">Bitácora de David: chrF++ por iteración</title>',
-             '<desc id="d">' + "; ".join(f"{s['label'][0]} {s['label'][1]}: {s['all']} en la prueba, {s['niche']} en el nicho"
-                                         for s in steps) + f"; Goliath {g_all} y {g_niche} en el nicho.</desc>",
+             '<desc id="d">' + "; ".join(f"{s['label'][0]} {s['label'][1]}: {s['all']}" for s in steps)
+             + f"; Goliath {g_all}.</desc>",
              f'<rect width="100%" height="100%" fill="#f5f5f5"/>']
     for v in (10, 20, 30, 40):
         parts.append(f'<line x1="{left}" y1="{y(v):.1f}" x2="{right}" y2="{y(v):.1f}" stroke="rgba(45,49,66,0.08)"/>')
@@ -70,11 +65,10 @@ def svg(data: dict) -> str:
     parts.append(f'<text transform="rotate(-90 24 220)" x="24" y="220" fill="#4f5d75" font-size="7" font-family="{mono}" '
                  f'letter-spacing="0.14em" text-anchor="middle">CHRF++ · 600 FRASES DE PRUEBA</text>')
     # Goliath reference lines
-    for val, dash, label in ((g_all, "6,4", f"Goliath {g_all}"), (g_niche, "2,3", f"Goliath en el nicho {g_niche}")):
-        parts.append(f'<line x1="{left}" y1="{y(val):.1f}" x2="{right}" y2="{y(val):.1f}" stroke="rgba(45,49,66,0.45)" stroke-dasharray="{dash}"/>')
-    parts.append(f'<text x="{right}" y="{y(max(g_all, g_niche)) - 8:.1f}" fill="#2d3142" font-size="9" font-family="{sans}" text-anchor="end">'
-                 f'Goliath (Gemini 3.8 Flash, nube): {g_all} · nicho {g_niche}</text>')
-    for key, color, width in (("niche", "#3e5c76", 1.5), ("all", "#8c2f39", 2.2)):
+    parts.append(f'<line x1="{left}" y1="{y(g_all):.1f}" x2="{right}" y2="{y(g_all):.1f}" stroke="rgba(45,49,66,0.45)" stroke-dasharray="6,4"/>')
+    parts.append(f'<text x="{right}" y="{y(g_all) - 8:.1f}" fill="#2d3142" font-size="9" font-family="{sans}" text-anchor="end">'
+                 f'Goliath (Gemini 3.8 Flash, nube): {g_all}</text>')
+    for key, color, width in (("all", "#8c2f39", 2.2),):
         pts = " ".join(f"{x:.1f},{y(s[key]):.1f}" for x, s in zip(xs, steps))
         parts.append(f'<polyline points="{pts}" fill="none" stroke="{color}" stroke-width="{width}"/>')
         for x, s in zip(xs, steps):
@@ -88,10 +82,8 @@ def svg(data: dict) -> str:
     ly = H - 30
     parts += [f'<line x1="40" y1="{ly - 16}" x2="960" y2="{ly - 16}" stroke="rgba(45,49,66,0.10)"/>',
               f'<line x1="40" y1="{ly}" x2="62" y2="{ly}" stroke="#8c2f39" stroke-width="2.2"/>',
-              f'<text x="68" y="{ly + 3}" fill="#4f5d75" font-size="8.5" font-family="{sans}">David, toda la prueba</text>',
-              f'<line x1="210" y1="{ly}" x2="232" y2="{ly}" stroke="#3e5c76" stroke-width="1.5"/>',
-              f'<text x="238" y="{ly + 3}" fill="#4f5d75" font-size="8.5" font-family="{sans}">David en el nicho pre-registrado (vocabulario de nuestros diccionarios)</text>',
-              f'<text x="960" y="{ly + 3}" fill="#7a8399" font-size="8" font-family="{mono}" text-anchor="end">docs/BITACORA.md · evals/niche.md</text>',
+              f'<text x="68" y="{ly + 3}" fill="#4f5d75" font-size="8.5" font-family="{sans}">David (laptop, sin internet), 600 frases de prueba</text>',
+              f'<text x="960" y="{ly + 3}" fill="#7a8399" font-size="8" font-family="{mono}" text-anchor="end">docs/BITACORA.md · evals/report.md</text>',
               "</svg>"]
     return "\n".join(parts)
 
@@ -114,7 +106,7 @@ def main() -> None:
     (HERE / "bitacora.svg").write_text('<?xml version="1.0" encoding="UTF-8"?>\n' + s + "\n", encoding="utf-8")
     (HERE / "bitacora.html").write_text(HTML.format(svg=s), encoding="utf-8")
     for st in data["steps"]:
-        print(st["label"], st["all"], st["niche"], st["niche_verdict"], st["niche_delta_ci"])
+        print(st["label"], st["all"], st["delta_ci"])
 
 
 if __name__ == "__main__":
