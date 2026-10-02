@@ -43,6 +43,10 @@ class Variant:
     price: Price
     uses_rag: bool
     requires_network: bool
+    retrieval: str = "vector"  # "vector" (EmbeddingGemma only) or "hybrid" (BM25 + vectors + fuzzy glossary)
+    k: int = 6  # examples and glossary entries in the context
+    mbr: int = 0  # >0: sample this many candidates and keep the consensus one (MBR with chrF++)
+    sampler: ModelClient | None = None  # client with sampling temperature, for MBR
 
 
 def normalize_output(text: str, direction: str) -> str:
@@ -59,8 +63,9 @@ async def translate(
     retriever: Retriever | None,
     online: bool,
     reference: str | None = None,
-    k: int = 6,
+    k: int | None = None,
 ) -> ContenderResult:
+    k = k or variant.k
     source_lang = DIRECTIONS[direction][0]
     text = normalize_kiche(text) if source_lang == "quc" else normalize_spanish(text)
     context, retrieval_ms = "", 0.0
@@ -75,14 +80,47 @@ async def translate(
         retrieval_ms = (time.perf_counter() - t0) * 1000
         context = found.as_prompt_context()
     messages = translation_messages(text, direction, context)
-    contender = Contender(variant.name, variant.client, variant.model, variant.price, variant.requires_network)
-    result = (await run_duel([contender], messages, online=online))[variant.name]
+    if variant.mbr and variant.sampler is not None:
+        result = await _mbr(variant, messages, online, direction)
+    else:
+        contender = Contender(variant.name, variant.client, variant.model, variant.price, variant.requires_network)
+        result = (await run_duel([contender], messages, online=online))[variant.name]
     if result.status == "ok":
         result.text = normalize_output(result.text, direction)
         result.latency_ms = round((result.latency_ms or 0) + retrieval_ms, 1)
         if reference is not None:
             result.chrf = round(chrf_pp(result.text, reference), 2)
     return result
+
+
+async def _mbr(variant: Variant, messages, online: bool, direction: str) -> ContenderResult:
+    """Minimum Bayes risk decoding: N samples, keep the one that agrees most with the others.
+
+    Each candidate is scored by its average chrF++ against the other candidates; the winner is
+    the "consensus" translation. It costs N generations (run in parallel; Ollama queues what it
+    can't batch), so latency is reported for the whole thing.
+    """
+    t0 = time.perf_counter()
+    contenders = [Contender(f"{variant.name}#{i}", variant.sampler, variant.model, variant.price, variant.requires_network)
+                  for i in range(variant.mbr)]
+    runs = await asyncio.gather(*(run_duel([c], messages, online=online) for c in contenders))
+    samples = [r[c.name] for r, c in zip(runs, contenders)]
+    ok = [s for s in samples if s.status == "ok" and s.text]
+    if not ok:
+        failed = samples[0]
+        failed.name = variant.name
+        return failed
+    texts = [normalize_output(s.text, direction) for s in ok]
+    def support(i: int) -> float:
+        others = [chrf_pp(texts[i], texts[j]) for j in range(len(texts)) if j != i]
+        return sum(others) / len(others) if others else 0.0
+    best = max(range(len(texts)), key=support)
+    chosen = ok[best]
+    chosen.name = variant.name
+    chosen.latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+    chosen.input_tokens = sum(s.input_tokens for s in ok)
+    chosen.output_tokens = sum(s.output_tokens for s in ok)
+    return chosen
 
 
 # --- mock mode (MOCK_AI=1): no network, no GPU, and no invented K'iche' -------------------------
@@ -103,10 +141,16 @@ def _mock_goliath(messages) -> str:
     return messages[-1]["content"].rsplit("\n", 1)[-1]
 
 
-def ollama_client(s: Settings) -> OllamaClient:
-    client = OllamaClient(s.ollama_url)
+def ollama_client(s: Settings, temperature: float = 0.2) -> OllamaClient:
+    client = OllamaClient(s.ollama_url, temperature=temperature)
     client.options["num_ctx"] = s.ollama_num_ctx
     return client
+
+
+def _env_flag(name: str) -> bool:
+    import os
+
+    return os.environ.get(name, "0").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def gemini_price(s: Settings) -> Price:
@@ -121,7 +165,10 @@ def stage_variants(s: Settings) -> tuple[Variant, Variant]:
     else:
         david_client = ollama_client(s)
         goliath_client = GeminiClient(s.project, s.location, thinking_level=s.gemini_thinking_level or None)
-    david = Variant("david", "David", david_client, s.david_model or "mock-gemma", Price.free(), True, False)
+    stage_mbr = s.mbr_samples if _env_flag("MBR_ON_STAGE") and not s.mock_ai else 0
+    david = Variant("david", "David", david_client, s.david_model or "mock-gemma", Price.free(), True, False,
+                    retrieval=s.rag_mode, k=s.rag_k, mbr=stage_mbr,
+                    sampler=ollama_client(s, temperature=0.7) if stage_mbr else None)
     goliath = Variant("goliath", "Goliath", goliath_client, s.gemini_model or "mock-gemini", gemini_price(s), False, True)
     return david, goliath
 
@@ -135,9 +182,18 @@ def eval_variants(s: Settings) -> list[Variant]:
         ollama = ollama_client(s)
         gemini = GeminiClient(s.project, s.location, thinking_level=s.gemini_thinking_level or None)
     variants: list[Variant] = []
+    sampler = ollama if s.mock_ai else ollama_client(s, temperature=0.7)
     for tag in s.base_model_tags + s.finetuned_model_tags:
         variants.append(Variant(tag, f"{tag}", ollama, tag, Price.free(), False, False))
+        # Baseline retrieval (vector, k=6, best first) keeps its name so old runs stay comparable.
         variants.append(Variant(f"{tag}+rag", f"{tag} + recuperación", ollama, tag, Price.free(), True, False))
+        hybrid = Variant(f"{tag}+hybrid", f"{tag} + recuperación híbrida", ollama, tag, Price.free(), True, False,
+                         retrieval="hybrid", k=s.rag_k)
+        variants.append(hybrid)
+        if s.mbr_samples:
+            variants.append(Variant(f"{tag}+hybrid+mbr{s.mbr_samples}", f"{tag} + híbrida + MBR", ollama, tag,
+                                    Price.free(), True, False, retrieval="hybrid", k=s.rag_k,
+                                    mbr=s.mbr_samples, sampler=sampler))
     if s.gemini_model:
         variants.append(Variant(s.gemini_model, s.gemini_model, gemini, s.gemini_model, gemini_price(s), False, True))
         variants.append(Variant(f"{s.gemini_model}+rag", f"{s.gemini_model} + recuperación", gemini,

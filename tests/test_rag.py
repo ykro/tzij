@@ -132,3 +132,25 @@ def test_exclude_keeps_the_answer_out_of_the_context(retriever):
                               exclude={"El perro duerme en la casa.", "Le tz'i' kawar pa le ja."})
     assert "Le tz'i' kawar pa le ja." not in raft.as_prompt_context()
     assert raft.examples  # the rest of the context is still there
+
+
+def test_hybrid_and_fuzzy(tmp_path):
+    index = tmp_path / "index.sqlite"
+    build(_records(), TrigramEmbedder(), index, "fixture")
+    hybrid = Retriever(index, embedder=TrigramEmbedder(), mode="hybrid", fuzzy=True)
+    result = hybrid.retrieve("El perro duerme", "es-quc", k=2)
+    assert result.examples[0].target_text == "Le tz'i' kawar pa le ja."
+    assert result.examples[0].via == "hybrid"
+    # "perros" is one edit away from the headword "perro": fuzzy glossary finds it.
+    fuzzy = hybrid.retrieve("Los perros", "es-quc", k=3)
+    assert any(h.via == "fuzzy" and h.target_text == "tz'i'" for h in fuzzy.glossary)
+    plain = Retriever(index, embedder=TrigramEmbedder())
+    assert not any(h.via == "fuzzy" for h in plain.retrieve("Los perros", "es-quc", k=3).glossary)
+
+
+def test_best_last_order(tmp_path):
+    index = tmp_path / "index.sqlite"
+    build(_records(), TrigramEmbedder(), index, "fixture")
+    first = Retriever(index, embedder=TrigramEmbedder()).retrieve("El perro duerme", "es-quc", k=2).examples
+    last = Retriever(index, embedder=TrigramEmbedder(), order="best_last").retrieve("El perro duerme", "es-quc", k=2).examples
+    assert [h.source_text for h in last] == [h.source_text for h in reversed(first)]

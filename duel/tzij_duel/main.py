@@ -143,7 +143,7 @@ class Service:
         online = await self.refresh_online()
         david, goliath = await asyncio.gather(
             translate(self.david, round_.source_text, round_.direction, retriever=self.retriever,
-                      online=online, reference=round_.reference, k=self.settings.rag_k),
+                      online=online, reference=round_.reference),
             translate(self.goliath, round_.source_text, round_.direction, retriever=None,
                       online=online, reference=round_.reference),
         )
@@ -219,7 +219,7 @@ def index_mismatch(retriever: Retriever | None, processed: Path) -> str | None:
 
 def _load_retriever(settings: Settings) -> Retriever | None:
     try:
-        return Retriever(settings.rag_index)
+        return Retriever(settings.rag_index, mode=settings.rag_mode, order=settings.rag_order, fuzzy=settings.rag_fuzzy)
     except (FileNotFoundError, RuntimeError) as exc:
         print(f"!! retrieval disabled: {exc}")
         return None

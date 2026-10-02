@@ -48,6 +48,12 @@ class Settings:
     ollama_num_ctx: int = field(default_factory=lambda: int(_env("OLLAMA_NUM_CTX", "4096")))
     rag_index: Path = field(default_factory=lambda: REPO_ROOT / _env("RAG_INDEX", "rag/index/tzij.sqlite"))
     rag_k: int = field(default_factory=lambda: int(_env("RAG_K", "6")))
+    # Retrieval for David (and the "+hybrid" eval variants): tuned on the dev split (evals/tuning.md).
+    rag_mode: str = field(default_factory=lambda: _env("RAG_MODE", "hybrid"))
+    rag_order: str = field(default_factory=lambda: _env("RAG_ORDER", "best_first"))
+    rag_fuzzy: bool = field(default_factory=lambda: _env("RAG_FUZZY", "1") == "1")
+    # MBR decoding: number of samples (0 = off). Eval variants "+mbrN" use it; on stage only if p50 <= 5 s.
+    mbr_samples: int = field(default_factory=lambda: int(_env("MBR_SAMPLES", "0")))
     mock_ai: bool = field(default_factory=lambda: _flag("MOCK_AI"))
     force_offline: bool = field(default_factory=lambda: _flag("FORCE_OFFLINE"))
     state_path: Path = field(default_factory=lambda: REPO_ROOT / _env("DUEL_STATE_PATH", "duel/state/rounds.json"))

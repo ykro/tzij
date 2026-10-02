@@ -278,11 +278,14 @@ async def main_async(args) -> None:
         raise SystemExit("No dataset: run `make data` (or `make data-pull`).")
     records = load_test(dataset, args.limit, args.per_source or None)
     variants = [v for v in eval_variants(s) if not args.only or v.name in args.only.split(",")]
-    retriever = None
+    retrievers: dict[str, Retriever] = {}
     if any(v.uses_rag for v in variants):
-        retriever = Retriever(s.rag_index) if s.rag_index.exists() else None
-        if retriever is None:
+        if not s.rag_index.exists():
             raise SystemExit("No retrieval index: run `make index`.")
+        # "vector" = the original baseline; "hybrid" = BM25 + vectors + fuzzy glossary, tuned on dev.
+        retrievers["vector"] = Retriever(s.rag_index)
+        retrievers["hybrid"] = Retriever(s.rag_index, mode="hybrid", order=s.rag_order, fuzzy=s.rag_fuzzy)
+        retriever = retrievers["vector"]
         if retriever.dataset_version != dataset.name:
             # Retrieval from another dataset version could contain sentences that are now in test.
             raise SystemExit(f"Retrieval index is from dataset {retriever.dataset_version}, "
@@ -297,8 +300,8 @@ async def main_async(args) -> None:
         print(f"variant {v.name}")
         concurrency = args.cloud_concurrency if v.requires_network else 1
         out = run_dir / f"{v.name.replace('/', '_').replace(':', '_')}.jsonl"
-        results[v.name] = await run_variant(v, records, out, retriever=retriever, online=online,
-                                            concurrency=concurrency, k=s.rag_k)
+        results[v.name] = await run_variant(v, records, out, retriever=retrievers.get(v.retrieval), online=online,
+                                            concurrency=concurrency, k=v.k)
     # The report covers every variant with results in this run, so new variants (e.g. a
     # fine-tuned tag) can be added later with --run <id> --only <names> without rerunning all.
     all_variants = eval_variants(s)

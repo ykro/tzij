@@ -5,6 +5,7 @@ Tables
   entries     every retrievable pair, per direction (source text -> target text)
   glossary    exact lookup of dictionary headwords (embeddings are weak on single words)
   vec_entries sqlite-vec virtual table: one vector per entry, filterable by direction and kind
+  entries_fts FTS5 (BM25) over source texts, for hybrid keyword + vector retrieval
 """
 
 from __future__ import annotations
@@ -24,6 +25,10 @@ CREATE TABLE IF NOT EXISTS entries (
 );
 CREATE TABLE IF NOT EXISTS glossary (direction TEXT, headword TEXT, entry_id INTEGER);
 CREATE INDEX IF NOT EXISTS glossary_lookup ON glossary (direction, headword);
+-- BM25 keyword search over the source side; apostrophes are part of K'iche' words (k'ak').
+CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts USING fts5(
+    source_text, direction UNINDEXED, kind UNINDEXED, tokenize = "unicode61 tokenchars ''''"
+);
 """
 
 

@@ -1,0 +1,28 @@
+{
+  "tag": "tzij-2026-10-raft",
+  "app": "tzij",
+  "where": "cloud",
+  "region": "europe-west4",
+  "image": "us-central1-docker.pkg.dev/ai-experiments-487722/charlas2027/tzij-train:4093b1c97387",
+  "base_model": "gemma-4-E4B-it",
+  "weights_uri": "hf://google",
+  "data_uri": "gs://ai-experiments-487722-train-eu/tzij/data/tzij-2026-10-raft/train.jsonl",
+  "data_date": null,
+  "examples": 5180,
+  "output_uri": "gs://ai-experiments-487722-tzij-models/tzij-2026-10-raft/",
+  "state": "JOB_STATE_FAILED",
+  "runtime": "cloud-run-job",
+  "job": "tzij-train",
+  "execution": "tzij-train-fq9tq",
+  "machine": "Cloud Run Job: 1x NVIDIA L4 (no zonal redundancy), 8 vCPU, 32 GiB",
+  "rates_usd_per_s": {
+    "gpu_l4": 0.0001867,
+    "vcpu": 1.8e-05,
+    "gib": 2e-06
+  },
+  "start_time": "2026-10-01T21:30:53.602971Z",
+  "end_time": "2026-10-01T21:42:26.486711Z",
+  "duration_s": 692.9,
+  "estimated_cost_usd": 0.27,
+  "error": "Task tzij-train-fq9tq-task0 failed with exit code: 1 and message: The container exited with an error."
+}

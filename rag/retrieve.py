@@ -11,7 +11,9 @@ a phone finds "k'ak'".
 
 from __future__ import annotations
 
+import difflib
 import os
+import sqlite3
 import threading
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -32,8 +34,8 @@ class Hit:
     kind: str
     source_name: str
     domain: str
-    score: float  # cosine similarity, 1.0 for exact glossary matches
-    via: str  # "vector" or "exact"
+    score: float  # cosine similarity (vector), RRF score (hybrid), 1.0 exact, 0.9 fuzzy
+    via: str  # "vector", "hybrid", "exact" or "fuzzy"
 
 
 @dataclass
@@ -55,8 +57,18 @@ class RetrievalResult:
         return "\n".join(lines)
 
 
+RRF_K = 60  # reciprocal rank fusion constant (Cormack et al. 2009); 60 is the usual choice
+
+
 class Retriever:
-    def __init__(self, index_path: Path = DEFAULT_INDEX, embedder: Embedder | None = None):
+    """mode="vector": EmbeddingGemma nearest neighbours only.
+    mode="hybrid": BM25 (SQLite FTS5) and vectors, fused with reciprocal rank fusion. BM25 catches
+    rare exact words (names, K'iche' roots) that embeddings blur; vectors catch paraphrases.
+    fuzzy=True also looks up dictionary headwords one edit away (k'ak' vs k'aak', typos).
+    order="best_last" puts the most similar example right before the question."""
+
+    def __init__(self, index_path: Path = DEFAULT_INDEX, embedder: Embedder | None = None,
+                 mode: str = "vector", order: str = "best_first", fuzzy: bool = False):
         if not Path(index_path).exists():
             raise FileNotFoundError(f"retrieval index not found: {index_path} (run `make index`)")
         self.db = connect(index_path)
@@ -68,36 +80,97 @@ class Retriever:
                 "rebuild with `make index`"
             )
         self.dataset_version = meta.get("dataset_version")
+        self.has_fts = bool(self.db.execute("SELECT 1 FROM sqlite_master WHERE name = 'entries_fts'").fetchone())
+        if mode == "hybrid" and not self.has_fts:
+            raise RuntimeError("index has no BM25 table (built before hybrid retrieval): rebuild with `make index`")
+        self.mode, self.order, self.fuzzy = mode, order, fuzzy
+        self._headwords: dict[str, list[str]] = {}
         self._lock = threading.Lock()
 
-    def _knn(self, vector: list[float], direction: str, kind: str, k: int) -> list[Hit]:
-        rows = self.db.execute(
-            """
-            SELECT e.source_text, e.target_text, e.kind, e.source_name, e.domain, v.distance
-            FROM vec_entries v JOIN entries e ON e.id = v.entry_id
-            WHERE v.embedding MATCH ? AND k = ? AND v.direction = ? AND v.kind = ?
-            ORDER BY v.distance
-            """,
-            (serialize(vector), k, direction, kind),
+    # --- candidate generators (entry ids, best first) -----------------------------------------
+    def _knn_ids(self, vector: list[float], direction: str, kind: str, n: int) -> list[tuple[int, float]]:
+        return self.db.execute(
+            """SELECT entry_id, distance FROM vec_entries
+               WHERE embedding MATCH ? AND k = ? AND direction = ? AND kind = ? ORDER BY distance""",
+            (serialize(vector), n, direction, kind),
         ).fetchall()
-        return [Hit(s, t, kd, src, dom, round(1 - dist, 4), "vector") for s, t, kd, src, dom, dist in rows]
+
+    def _bm25_ids(self, query: str, direction: str, kind: str, n: int) -> list[int]:
+        words = [w for w in match_key(query).split() if len(w) > 1]
+        if not words:
+            return []
+        fts_query = " OR ".join('"' + w.replace('"', "") + '"' for w in words)
+        try:
+            rows = self.db.execute(
+                """SELECT rowid FROM entries_fts WHERE entries_fts MATCH ? AND direction = ? AND kind = ?
+                   ORDER BY bm25(entries_fts) LIMIT ?""",
+                (fts_query, direction, kind, n),
+            ).fetchall()
+        except sqlite3.Error:  # an odd query string must never break a round
+            return []
+        return [r[0] for r in rows]
+
+    def _hits(self, ids: list[int], scores: dict[int, float], via: str) -> list[Hit]:
+        if not ids:
+            return []
+        placeholders = ",".join("?" * len(ids))
+        rows = {r[0]: r[1:] for r in self.db.execute(
+            f"SELECT id, source_text, target_text, kind, source_name, domain FROM entries WHERE id IN ({placeholders})",
+            ids).fetchall()}
+        return [Hit(*rows[i], round(scores.get(i, 0.0), 4), via) for i in ids if i in rows]
+
+    def _ranked(self, vector, query: str, direction: str, kind: str, k: int) -> list[Hit]:
+        n = max(20, 3 * k)
+        knn = self._knn_ids(vector, direction, kind, n)
+        if self.mode == "vector":
+            ids = [i for i, _ in knn][:k]
+            return self._hits(ids, {i: 1 - d for i, d in knn}, "vector")
+        fused: dict[int, float] = {}
+        for rank, (i, _) in enumerate(knn):
+            fused[i] = fused.get(i, 0.0) + 1 / (RRF_K + rank + 1)
+        for rank, i in enumerate(self._bm25_ids(query, direction, kind, n)):
+            fused[i] = fused.get(i, 0.0) + 1 / (RRF_K + rank + 1)
+        ids = sorted(fused, key=fused.get, reverse=True)[:k]
+        return self._hits(ids, fused, "hybrid")
+
+    # --- glossary ---------------------------------------------------------------------------------
+    def _headwords_for(self, direction: str) -> list[str]:
+        if direction not in self._headwords:
+            self._headwords[direction] = [r[0] for r in self.db.execute(
+                "SELECT DISTINCT headword FROM glossary WHERE direction = ?", (direction,)).fetchall()]
+        return self._headwords[direction]
+
+    def _glossary_rows(self, direction: str, headword: str) -> list[tuple]:
+        return self.db.execute(
+            """SELECT e.source_text, e.target_text, e.kind, e.source_name, e.domain
+               FROM glossary g JOIN entries e ON e.id = g.entry_id
+               WHERE g.direction = ? AND g.headword = ? LIMIT 3""",
+            (direction, headword),
+        ).fetchall()
 
     def _exact_glossary(self, text: str, direction: str, k: int) -> list[Hit]:
         words = match_key(text).split()
         # Whole input, word bigrams, then single words: longest match first.
         candidates = [" ".join(words)] + [" ".join(words[i:i + 2]) for i in range(len(words) - 1)] + words
-        hits, seen = [], set()
+        hits, seen, matched = [], set(), set()
         for headword in candidates:
-            rows = self.db.execute(
-                """SELECT e.source_text, e.target_text, e.kind, e.source_name, e.domain
-                   FROM glossary g JOIN entries e ON e.id = g.entry_id
-                   WHERE g.direction = ? AND g.headword = ? LIMIT 3""",
-                (direction, headword),
-            ).fetchall()
+            rows = self._glossary_rows(direction, headword)
+            if rows:
+                matched.add(headword)
             for s, t, kd, src, dom in rows:
                 if (s, t) not in seen:
                     seen.add((s, t))
                     hits.append(Hit(s, t, kd, src, dom, 1.0, "exact"))
+        if self.fuzzy:
+            vocabulary = self._headwords_for(direction)
+            for word in words:
+                if word in matched or len(word) < 4:
+                    continue
+                for close in difflib.get_close_matches(word, vocabulary, n=1, cutoff=0.85):
+                    for s, t, kd, src, dom in self._glossary_rows(direction, close):
+                        if (s, t) not in seen:
+                            seen.add((s, t))
+                            hits.append(Hit(s, t, kd, src, dom, 0.9, "fuzzy"))
         return hits[:k]
 
     def retrieve(self, text: str, direction: str, k: int = 8, exclude: set[str] | None = None) -> RetrievalResult:
@@ -117,12 +190,16 @@ class Retriever:
         vector = self.embedder.embed([query])[0]
         extra = 4 if exclude else 0  # ask for more so excluded hits don't shrink the context
         banned = {match_key(x) for x in exclude}  # ignore case and punctuation: "b'e." == "b'e"
-        keep = lambda hits: [h for h in hits  # noqa: E731
-                             if match_key(h.source_text) not in banned and match_key(h.target_text) not in banned]
-        result.examples = keep(self._knn(vector, direction, "sentence", k + extra))[:k]
+
+        def keep(hits: list[Hit]) -> list[Hit]:
+            return [h for h in hits if match_key(h.source_text) not in banned and match_key(h.target_text) not in banned]
+
+        result.examples = keep(self._ranked(vector, query, direction, "sentence", k + extra))[:k]
+        if self.order == "best_last":
+            result.examples.reverse()
         glossary = keep(self._exact_glossary(query, direction, k + extra))[:k]
         seen = {(h.source_text, h.target_text) for h in glossary}
-        for hit in keep(self._knn(vector, direction, "lexicon", k + extra)):
+        for hit in keep(self._ranked(vector, query, direction, "lexicon", k + extra)):
             if len(glossary) >= k:
                 break
             if (hit.source_text, hit.target_text) not in seen:

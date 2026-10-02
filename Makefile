@@ -13,7 +13,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help deploy train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help deploy tune-retrieval train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -48,6 +48,9 @@ fertility: ## Token fertility of K'iche' vs Spanish in Gemma's tokenizer -> eval
 
 datasheet: ## Re-render data/DATASHEET.md from the latest manifest
 	$(UV) run python -m pipeline.datasheet data/processed/$$(cat data/processed/LATEST)/manifest.json
+
+tune-retrieval: ## Tune retrieval (mode, k, order, fuzzy) on the dev split only -> evals/tuning.md
+	$(UV) run python -m evals.tune_retrieval
 
 eval: ## Compare every available variant on the test set -> evals/report.md
 	$(UV) run python -m evals.run_eval $(EVAL_ARGS)
