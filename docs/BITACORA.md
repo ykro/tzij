@@ -22,7 +22,7 @@ de `evals/runs/`.*
 | 4 | 2 oct | RAFT + retrotraducción de Gemini | 18.3 | −1.1 | $0.12 + $3.09 | Sola no ayuda |
 | 5 | 2 oct | + MBR (4 muestras) | **21.5** | +3.2 | $0 | En escena |
 | 6 | 2 oct | El nicho: memoria de traducción (Firefox Focus) | 30.2 vs 28.9 | +1.3 | $0 | **Empate en chrF++; David gana en terminología (78 % contra 46 %)** |
-| 7 | 2 oct | Datos sintéticos anclados en el diccionario | en curso | | $2.09 | |
+| 7 | 2 oct | Datos sintéticos anclados en el diccionario | 33.8 vs 34.2 en dev | −0.4 | $2.09 + $1.14 | **No ayudaron: fuera** |
 | 8 | 2 oct | Sesgo de logits hacia el diccionario (llama-server) | en curso | | $0 | |
 
 \* La iteración 2 se midió sobre el dataset del 30 de septiembre (las mismas fuentes de prueba,
@@ -135,23 +135,28 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
   - es el primer corte donde David no va atrás.
 - **Costo:** $0.
 
-## 7. Datos sintéticos anclados en el diccionario (en curso)
+## 7. Datos sintéticos anclados en el diccionario: no ayudaron (2 de octubre)
 
-- **Qué:** Gemini escribe frases con cada entrada del diccionario, con un sesgo hacia frases
-  cortas, que son el corte más cercano. Además, se intercambian sustantivos y verbos de las
-  oraciones de UD con otras formas atestiguadas que tienen los mismos rasgos.
+- **Qué:** Gemini escribió frases con cada entrada del diccionario, con un sesgo hacia frases
+  cortas, y se intercambiaron sustantivos y verbos de las oraciones de UD con formas atestiguadas
+  que tienen los mismos rasgos.
 - **Filtros:**
   - la palabra del diccionario tiene que estar en el lado Kʼicheʼ;
   - solo letras del alfabeto de la ALMG;
-  - nada repetido de dev ni de prueba;
-  - ida y vuelta: Gemini traduce el Kʼicheʼ de vuelta al español, y el chrF++ contra el español
-    original tiene que llegar al percentil 25 de los pares reales de dev (26.8).
-- **Resultado de la generación:** 5,295 pares anclados al diccionario y 198 de UD.
-  - Descartes: 1,430 por alfabeto, 2,722 por ida y vuelta, 89 sin la palabra.
-  - Costo de Gemini: $2.09.
-  - En el entrenamiento A/B ocupan el 19.8 % de los ejemplos (`origin=synthetic`, con método,
-    modelo, prompt y semilla).
-- **Entrenamiento:** el A/B (con y sin sintéticos, español → Kʼicheʼ ×1.5) está listo para la L4.
+  - nada repetido de dev, de la prueba ni del nicho;
+  - ida y vuelta: el chrF++ tiene que llegar al percentil 25 de los pares reales de dev (26.8).
+
+  Quedaron 5,295 pares anclados al diccionario y 198 de UD, por $2.09 de Gemini.
+- **A/B en dev,** con el mismo presupuesto (2 trozos, unos 2,700 ejemplos, español → Kʼicheʼ ×1.5,
+  sin Firefox Focus):
+
+  | | chrF++ dev | Costo L4 |
+  | --- | ---: | ---: |
+  | sin sintéticos | **34.2** | $1.30 |
+  | con 20 % de sintéticos | 33.8 | $1.14 |
+
+- **Decisión:** se quedan fuera del entrenamiento. Bajaron la pérdida de entrenamiento porque son
+  texto fácil, pero no mejoraron dev.
 
 ## 8. Sesgo de logits hacia el diccionario (en curso)
 
