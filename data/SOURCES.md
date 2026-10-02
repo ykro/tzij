@@ -15,12 +15,19 @@ download code is what's versioned.
 
 Counts, splits and drop reasons per source are in `data/DATASHEET.md`.
 
-## Used (10)
+All of this was gathered automatically (no human collected or reviewed data). Monolingual K'iche'
+sources feed only the back-translation step (`pipeline/monolingual.py` → `pipeline/back_translate.py`):
+Gemini writes the Spanish side once, the K'iche' side stays human-written, and the pairs are used
+only to train Spanish → K'iche', never for test or retrieval.
+
+## Used (12)
 
 | Source (pipeline name) | URL | Owner | License / terms | Size (raw) | Domain | Orthography | Date | Role |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Bloom Library K'iche' books, CC BY subset (`bloom_kiche`) | https://bloomlibrary.org/language:quc | Mostly Ministerio de Educación de Guatemala / USAID, via SIL Bloom Library | CC BY 4.0 per book (130 of 142 K'iche' books). The 12 CC BY-NC-SA / NC-ND books are excluded. Read-online HTML fetched from Bloom's public harvester bucket; book list from the public API the website uses (no account) | 142 books; ~536 page-aligned quc/es text blocks in the ~28 bilingual CC BY books | Education (children's stories, parent guides) | Modern ALMG; a few books tagged `quc` are actually Mam (filtered) | 2012–2024 | **test** |
 | BOUQuET benchmark, sentence level dev + test (`bouquet`) | https://huggingface.co/datasets/facebook/bouquet | Meta FAIR + community translators | CC BY 4.0, **gated**: the presenter's Hugging Face account accepted the terms; the token is Secret Manager `hf-token`. Terms: **evaluation only** (never training or retrieval), redistribution only privately or behind a gate. Kept out of git (raw and processed data are gitignored; copies only in the private bucket) and not shown in the on-stage evaluation rounds | 1,358 spa→quc sentences (504 dev + 854 test) | Multi-domain: conversation, how-to, narration, reflection… (the `domain` field is kept) | Modern, mostly ALMG | 2025–2026 | **test** (evaluation only) |
+| Wikipedia in K'iche', Wikimedia Incubator `Wp/quc` (`incubator_quc`) | https://incubator.wikimedia.org/wiki/Wp/quc | Wikimedia contributors | CC BY-SA 4.0 | 112 pages; 76 sentences kept after filtering (many pages are mostly Spanish medical stubs) | Encyclopedic / health | Modern | 2015–2024 | **monolingual**: K'iche' side of Gemini back-translation (train, es→quc only) |
+| Space Scoop K'iche' (`spacescoop_quc`) | https://www.unawe.org/kids/archive/lang/quc/viewall/ | Universe Awareness (UNAWE) / SpaceScoop.org, volunteer translators | CC BY 4.0 ("provided that the text is credited to SpaceScoop.org") | 22 astronomy-news articles for children; 318 sentences. The K'iche' versions are freer and shorter than the Spanish ones, so they can't be paragraph-aligned | Science / education | Modern | 2015–2016 | **monolingual**: back-translation (train, es→quc only) |
 | UD K'iche'-IU treebank (`ud_kiche_iu`) | https://github.com/UniversalDependencies/UD_Kiche-IU | F. Tyers, R. Henderson (Indiana U.) | CC BY-SA 4.0. README: sentences used with permission of the Academia de Lenguas Mayas de Guatemala and Telma Can Pixabaj | 1,435 sentences, 980 with `text[spa]` (657 ALMG vocabulary examples, 288 UT course, a few Bible/legal/COVID) | Everyday (dictionary examples); small legal, health, religious | ALMG with lax vowels marked (`ä`); folded by `normalize.py` | 2021 (UD v2.8) | train |
 | COERLL "Chqeta'maj le qach'ab'al K'iche'!" (`coerll_kiche`) | https://tzij.coerll.utexas.edu/ | COERLL / LLILAS / AILLA, UT Austin | CC BY 4.0 (stated on the site). Lessons read via the public WordPress REST API | 46 lessons (Spanish edition); ~850 table rows (phrases + vocabulary) | Everyday / language learning | Near-ALMG, Nahualá variety | 2016–2026 | train |
 | Universal Declaration of Human Rights (`udhr_ohchr`) | https://github.com/eric-muller/udhr (XML); https://www.ohchr.org/en/human-rights/universal-declaration/universal-declaration-human-rights/about-universal-declaration-human-rights-translation-project | OHCHR; XML by the UDHR in Unicode project | OHCHR translation project: translations may be reproduced citing OHCHR as the source | 30 articles + title → 51 aligned paragraphs | Legal | Modern with `'` glottal | 2006 (XML) | train |
@@ -35,11 +42,12 @@ translations of the same English original — no machine translation is involved
 sense can diverge ("spot" → "punto" / "k'olib'al" = place). GATITOS entries are therefore
 `kind=lexicon` (retrieval context, not counted as translation examples).
 
-## Needs permission (13)
+## Needs permission (14)
 
 | Source | URL | Owner | License / terms | Size | Domain | Orthography | Date | Why not used yet |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | MayanV (quc subset) | https://github.com/transducens/mayanv | Transducens, U. d'Alacant (NAACL 2024) | CC0 for the *packaging*; README says they do not own the text. Text comes from the ALMG *Vocabulario K'iche'* | 2,632 pairs | Everyday (dictionary examples) | ALMG | 2024 | ALMG requires prior authorization; would more than double the everyday training data. 657 of these examples are already in via UD K'iche'-IU, which has ALMG's permission |
+| Ministerio de Gobernación (MINGOB) news in K'iche' | https://mingob.gob.gt/ (found through FineWeb-2 `quc_Latn`) | Gobierno de Guatemala | No license on the site; news is not covered by Decreto 33-98's free publication of laws | ~3,800 pages, ~1M words of human-translated K'iche' — by far the largest K'iche' text online | Government news | Modern ALMG | 2015–2023 | **Biggest opportunity**: with written permission it would be the main back-translation source (×100 the current monolingual text) |
 | ALMG *K'iche' Choltzij / Vocabulario K'iche'* | https://aprendeporti.com/wp-content/uploads/2023/11/vocabulario-kiche.pdf (mirror; ALMG original 404) | Academia de Lenguas Mayas de Guatemala | No explicit license; ALMG publications state reproduction needs prior authorization | 221 pp., es↔quc entries with example sentences | Everyday | ALMG | 2010 | Authorization from the Comunidad Lingüística K'iche' |
 | ALMG *Kemtaqanik K'iche' Tzij, Gramática Normativa* | https://almg.org.gt/wp-content/uploads/2026/03/Gramatica-Normativa-Idioma-Kiche.pdf | ALMG | "La reproducción total o parcial puede realizarse previa autorización de la Comunidad Lingüística K'iche'" | 111 pp. | Grammar examples | ALMG (normative) | 2021 | Explicit prior authorization; used only as the orthography reference for `normalize.py` |
 | ELAR — Can Pixabaj, formal and ceremonial discourse | https://www.elararchive.org/dk0187/ | Telma Can Pixabaj / ELAR | ELAR access terms (not CC); downloads need an account | ~20 h transcribed with Spanish, ~5,000-entry lexicon | Ceremonial / conversation | Modern | 2018 | Login + archive terms |
@@ -53,10 +61,14 @@ sense can diverge ("spot" → "punto" / "k'olib'al" = place). GATITOS entries ar
 | MINEDUC/DIGEBI *Kemon Ch'ab'äl* textbooks | https://digebi.mineduc.gob.gt/digebi/producto/kemon-chabal-2do-primaria-kiche/ | MINEDUC Guatemala | No license | Grades 1–6 | Education | ALMG | — | No license; K'iche' and Spanish editions are parallel series, not translations |
 | Wuqu' Kawoq COVID-19 resources | https://wuqukawoq.org/programs/covid-19-response/covid-resources/ | Wuqu' Kawoq / Maya Health Alliance | No license | ~9 videos + audio | Health | — | 2020 | No license; audio would need transcription |
 
-## Rejected (24)
+## Rejected (28)
 
 | Source | URL | Owner | License / terms | Reason |
 | --- | --- | --- | --- | --- |
+| FineWeb-2 `quc_Latn` (HuggingFaceFW) | https://huggingface.co/datasets/HuggingFaceFW/fineweb-2 | Hugging Face (crawl compilation) | ODC-By for the compilation; each page keeps its own copyright | 4,772 pages: 80% MINGOB (no license), Bible sites, jw.org (terms forbid), a few Incubator/Space Scoop pages | Mixed | Mixed | 2026 | Used only to *discover* sources; the usable ones (Incubator, Space Scoop) are fetched from the original under their own licenses |
+| GlotCC-V1 `quc-Latn` | https://huggingface.co/datasets/cis-lmu/GlotCC-V1 | CIS LMU | Compilation license; same crawl origins as FineWeb-2 | — | Mixed | Mixed | 2024 | Same pages as FineWeb-2 (government news without license, Bible, jw.org) |
+| FLORES+ (`openlanguagedata/flores_plus`) | https://huggingface.co/datasets/openlanguagedata/flores_plus | Open Language Data Initiative | CC BY-SA 4.0, gated | No `quc` file in the current release | — | — | 2026 | No K'iche' yet (FLORES+ Mayas not released) |
+| Mozilla Common Voice / Global Storybooks / StoryWeaver | — | — | — | No K'iche' locale or edition found | — | — | 2026 | Not available |
 | OPUS bible-uedin es–quc / Christodouloupoulos Bible corpus | https://opus.nlpl.eu/bible-uedin ; https://github.com/christos-c/bible-corpus | C. Christodoulopoulos (markup CC0); texts from Bible.is / Bible Gateway | Markup CC0; the translations themselves are copyrighted by their publishers | Translation copyright not cleared; one of the two K'iche' NTs is in pre-ALMG spelling (`qui bi'`). Replaced by the CC BY Totonicapán NT |
 | eBible `qucNNT` / `qucTNT` (K'iche' Cantel NT) | https://ebible.org/qucNNT/ | Wycliffe Bible Translators | CC BY-NC-ND 3.0 | No-derivatives: normalizing and training on it would be a derivative. Also redundant with the CC BY NT |
 | bible-nlp/biblenlp-corpus, Taxi1500, other Bible repackagings | https://huggingface.co/datasets/bible-nlp/biblenlp-corpus | various | various | Same verses as eBible; religious data is already capped |

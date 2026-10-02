@@ -17,7 +17,7 @@ import httpx
 
 from pipeline.record import Pair
 
-USER_AGENT = "tzij-data-pipeline/0.1 (+research; Spanish-K'iche' translation demo)"
+USER_AGENT = "tzij-data-pipeline/0.1 (https://github.com/ykro/tzij; research, Spanish-K'iche' translation demo)"
 
 TRAIN = "train"  # usable for fine-tuning and retrieval
 TEST = "test"  # held out: evaluation only, reviewed by a native speaker

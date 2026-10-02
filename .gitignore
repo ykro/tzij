@@ -35,3 +35,4 @@ train/runs/*.log
 web/tsconfig.tsbuildinfo
 train/.llama.cpp/
 .env.mk
+data/monolingual/
