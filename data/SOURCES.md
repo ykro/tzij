@@ -31,7 +31,7 @@ only to train Spanish → K'iche', never for test or retrieval.
 | UD K'iche'-IU treebank (`ud_kiche_iu`) | https://github.com/UniversalDependencies/UD_Kiche-IU | F. Tyers, R. Henderson (Indiana U.) | CC BY-SA 4.0. README: sentences used with permission of the Academia de Lenguas Mayas de Guatemala and Telma Can Pixabaj | 1,435 sentences, 980 with `text[spa]` (657 ALMG vocabulary examples, 288 UT course, a few Bible/legal/COVID) | Everyday (dictionary examples); small legal, health, religious | ALMG with lax vowels marked (`ä`); folded by `normalize.py` | 2021 (UD v2.8) | train |
 | COERLL "Chqeta'maj le qach'ab'al K'iche'!" (`coerll_kiche`) | https://tzij.coerll.utexas.edu/ | COERLL / LLILAS / AILLA, UT Austin | CC BY 4.0 (stated on the site). Lessons read via the public WordPress REST API | 46 lessons (Spanish edition); ~850 table rows (phrases + vocabulary) | Everyday / language learning | Near-ALMG, Nahualá variety | 2016–2026 | train |
 | Universal Declaration of Human Rights (`udhr_ohchr`) | https://github.com/eric-muller/udhr (XML); https://www.ohchr.org/en/human-rights/universal-declaration/universal-declaration-human-rights/about-universal-declaration-human-rights-translation-project | OHCHR; XML by the UDHR in Unicode project | OHCHR translation project: translations may be reproduced citing OHCHR as the source | 30 articles + title → 51 aligned paragraphs | Legal | Modern with `'` glottal | 2006 (XML) | train |
-| Mozilla Pontoon localizations (`pontoon_mozilla`) | https://huggingface.co/datasets/ayymen/Pontoon-Translations | Mozilla localization community; packaged by ayymen | MPL-2.0 | 1,014 en→quc strings; joined with en→es-MX (fallback es-ES) on the English source → 783 pairs after dropping placeholders/markup | Software UI | Modern, `‘` as glottal | 2024 snapshot | train |
+| Mozilla Pontoon localizations (`pontoon_mozilla`) | https://huggingface.co/datasets/ayymen/Pontoon-Translations ; product labels from Pontoon's public K'iche' TMX https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx (no login) | Mozilla localization community; packaged by ayymen | MPL-2.0 (TMX: the same strings, used only to label each pair with its product for niche v2) | 1,014 en→quc strings; joined with en→es-MX (fallback es-ES) on the English source → 783 pairs after dropping placeholders/markup | Software UI | Modern, `‘` as glottal | 2024 snapshot | train |
 | New Testament, K'iche' of Totonicapán + Biblia Libre para el Mundo (`ebible_quctt`) | https://ebible.org/quctt/ ; corpus https://github.com/BibleNLP/ebible | Pioneer Bible Translators (quc); BLM (es) | quc: CC BY 4.0 (© 2022 Pioneer Bible Translators). es: public domain | 7,957 verses; capped to 30% of train sentences | **Religious** (never in test) | Modern ALMG with `ꞌ` saltillo | 2022 | train (capped) |
 | GATITOS lexicon (`gatitos`) | https://huggingface.co/datasets/google/smol | Google Research (SMOL/GATITOS) | CC BY 4.0 | 3,992 en→quc and en→es entries; joined on the English entry → 3,982 es–quc | Dictionary (general vocabulary) | Modern, `'` glottal | 2025 | train (lexicon only) |
 | PanLex (`panlex`) | https://panlex.org/ ; https://huggingface.co/datasets/cointegrated/panlex-meanings | PanLex / Long Now Foundation; packaged by cointegrated | CC0 1.0 | 4,141 quc expressions; 279 share a meaning with a Spanish (spa-000) expression | Dictionary | Mixed (some `ä`, `ʼ`) | 2025 packaging | train (lexicon only) |
@@ -41,6 +41,13 @@ Notes on joins through English (Pontoon, GATITOS): both sides are independent *h
 translations of the same English original — no machine translation is involved — but a
 sense can diverge ("spot" → "punto" / "k'olib'al" = place). GATITOS entries are therefore
 `kind=lexicon` (retrieval context, not counted as translation examples).
+
+Synthetic and back-translated training data are not sources: they are derived from the
+sources above. Back-translation (`origin=back_translated_gemini`, Spanish side only) is described in
+`pipeline/back_translate.py`; grounded synthetic pairs (`origin=synthetic`, dictionary-anchored
+and UD slot filling, round-trip filtered) in `pipeline/synthetic.py`, with model, prompt, seed,
+cost and rejection counts in `data/train/synthetic/meta.json`. Neither ever enters dev, test,
+the niche slices or the retrieval index.
 
 ## Needs permission (14)
 
