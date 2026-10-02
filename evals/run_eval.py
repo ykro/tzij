@@ -159,6 +159,28 @@ def breakdown(results: dict[str, list[dict]], ranking: list, records: list[dict]
     return lines
 
 
+def ablation(results: dict[str, list[dict]], records: list[dict]) -> list[str]:
+    """What each step bought: ABLATION_STEPS="label=variant;label=variant;..." in order."""
+    spec = os.environ.get("ABLATION_STEPS", "")
+    steps = [s.split("=", 1) for s in spec.split(";") if "=" in s]
+    steps = [(label.strip(), name.strip()) for label, name in steps if name.strip() in results]
+    if len(steps) < 2:
+        return []
+    lines = ["## Ablation: what each step bought (test set)", "",
+             "| step | variant | es → quc | quc → es | both | Δ both | p50 |",
+             "| --- | --- | ---: | ---: | ---: | ---: | ---: |"]
+    previous = None
+    for label, name in steps:
+        rows = results[name]
+        both = score(rows)
+        es = score([r for r in rows if r["direction"] == "es-quc"])["chrf"]
+        quc = score([r for r in rows if r["direction"] == "quc-es"])["chrf"]
+        delta = "—" if previous is None else f"{both['chrf'] - previous:+.1f}"
+        lines.append(f"| {label} | `{name}` | {es:.1f} | {quc:.1f} | **{both['chrf']:.1f}** | {delta} | {_fmt_ms(both['p50_ms'])} |")
+        previous = both["chrf"]
+    return lines + [""]
+
+
 def _fmt_ms(ms: float | None) -> str:
     return "—" if ms is None else f"{ms / 1000:.2f} s"
 
@@ -244,6 +266,7 @@ def render(results: dict[str, dict], variants: list[Variant], records: list[dict
             f"{score([r for r in rows if r['source_name'] == x])['chrf']:.1f}" for x in sources) + " |")
     lines.append("")
 
+    lines += ablation(results, records)
     lines += breakdown(results, ranking, records)
 
     lines += ["## Failures", "", "| variant | ok | offline | error |", "| --- | ---: | ---: | ---: |"]
