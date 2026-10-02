@@ -54,6 +54,9 @@ class Settings:
     rag_fuzzy: bool = field(default_factory=lambda: _env("RAG_FUZZY", "1") == "1")
     # MBR decoding: number of samples (0 = off). Eval variants "+mbrN" use it; on stage only if p50 <= 5 s.
     mbr_samples: int = field(default_factory=lambda: int(_env("MBR_SAMPLES", "0")))
+    # Dictionary-guided decoding: "" (off), "prompt+select" or "select"; on stage only with CONSTRAINED_ON_STAGE=1.
+    constrained_mode: str = field(default_factory=lambda: _env("CONSTRAINED_MODE", ""))
+    max_constraints: int = field(default_factory=lambda: int(_env("MAX_CONSTRAINTS", "3")))
     mock_ai: bool = field(default_factory=lambda: _flag("MOCK_AI"))
     force_offline: bool = field(default_factory=lambda: _flag("FORCE_OFFLINE"))
     state_path: Path = field(default_factory=lambda: REPO_ROOT / _env("DUEL_STATE_PATH", "duel/state/rounds.json"))

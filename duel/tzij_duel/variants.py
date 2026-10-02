@@ -30,6 +30,7 @@ from duel_core import (
 )
 from rag.retrieve import Retriever
 
+from . import constraints as dict_guide
 from .prompts import DIRECTIONS, translation_messages
 from .settings import Settings
 
@@ -47,6 +48,9 @@ class Variant:
     k: int = 6  # examples and glossary entries in the context
     mbr: int = 0  # >0: sample this many candidates and keep the consensus one (MBR with chrF++)
     sampler: ModelClient | None = None  # client with sampling temperature, for MBR
+    # Dictionary-guided decoding (constraints.py): "" off, "prompt+select" or "select".
+    constrained: str = ""
+    max_constraints: int = 3
 
 
 def normalize_output(text: str, direction: str) -> str:
@@ -68,7 +72,7 @@ async def translate(
     k = k or variant.k
     source_lang = DIRECTIONS[direction][0]
     text = normalize_kiche(text) if source_lang == "quc" else normalize_spanish(text)
-    context, retrieval_ms = "", 0.0
+    context, retrieval_ms, required = "", 0.0, []
     if variant.uses_rag:
         if retriever is None:
             return ContenderResult(variant.name, variant.model, "error", error="índice de recuperación no disponible")
@@ -79,9 +83,13 @@ async def translate(
             return ContenderResult(variant.name, variant.model, "error", error=f"recuperación: {exc}"[:200])
         retrieval_ms = (time.perf_counter() - t0) * 1000
         context = found.as_prompt_context()
+        if variant.constrained:
+            required = dict_guide.constraints_from(found, variant.max_constraints)
+            if "prompt" in variant.constrained and required:
+                context = f"{context}\n{dict_guide.prompt_block(required)}"
     messages = translation_messages(text, direction, context)
     if variant.mbr and variant.sampler is not None:
-        result = await _mbr(variant, messages, online, direction)
+        result = await _mbr(variant, messages, online, direction, required)
     else:
         contender = Contender(variant.name, variant.client, variant.model, variant.price, variant.requires_network)
         result = (await run_duel([contender], messages, online=online))[variant.name]
@@ -93,7 +101,8 @@ async def translate(
     return result
 
 
-async def _mbr(variant: Variant, messages, online: bool, direction: str) -> ContenderResult:
+async def _mbr(variant: Variant, messages, online: bool, direction: str,
+               required: list | None = None) -> ContenderResult:
     """Minimum Bayes risk decoding: N samples, keep the one that agrees most with the others.
 
     Each candidate is scored by its average chrF++ against the other candidates; the winner is
@@ -114,7 +123,12 @@ async def _mbr(variant: Variant, messages, online: bool, direction: str) -> Cont
     def support(i: int) -> float:
         others = [chrf_pp(texts[i], texts[j]) for j in range(len(texts)) if j != i]
         return sum(others) / len(others) if others else 0.0
-    best = max(range(len(texts)), key=support)
+    pool = list(range(len(texts)))
+    if required:  # dictionary-guided: only the candidates that use the most required words compete
+        covered = [dict_guide.coverage(t, required, direction) for t in texts]
+        if max(covered) > 0:
+            pool = [i for i in pool if covered[i] == max(covered)]
+    best = max(pool, key=support)
     chosen = ok[best]
     chosen.name = variant.name
     chosen.latency_ms = round((time.perf_counter() - t0) * 1000, 1)
@@ -168,7 +182,9 @@ def stage_variants(s: Settings) -> tuple[Variant, Variant]:
     stage_mbr = s.mbr_samples if _env_flag("MBR_ON_STAGE") and not s.mock_ai else 0
     david = Variant("david", "David", david_client, s.david_model or "mock-gemma", Price.free(), True, False,
                     retrieval=s.rag_mode, k=s.rag_k, mbr=stage_mbr,
-                    sampler=ollama_client(s, temperature=0.7) if stage_mbr else None)
+                    sampler=ollama_client(s, temperature=0.7) if stage_mbr else None,
+                    constrained=s.constrained_mode if _env_flag("CONSTRAINED_ON_STAGE") else "",
+                    max_constraints=s.max_constraints)
     goliath = Variant("goliath", "Goliath", goliath_client, s.gemini_model or "mock-gemini", gemini_price(s), False, True)
     return david, goliath
 
@@ -194,6 +210,12 @@ def eval_variants(s: Settings) -> list[Variant]:
             variants.append(Variant(f"{tag}+hybrid+mbr{s.mbr_samples}", f"{tag} + híbrida + MBR", ollama, tag,
                                     Price.free(), True, False, retrieval="hybrid", k=s.rag_k,
                                     mbr=s.mbr_samples, sampler=sampler))
+            if s.constrained_mode:
+                suffix = "dict" if s.constrained_mode == "prompt+select" else "dictsel"
+                variants.append(Variant(f"{tag}+hybrid+mbr{s.mbr_samples}+{suffix}", f"{tag} + híbrida + MBR + diccionario",
+                                        ollama, tag, Price.free(), True, False, retrieval="hybrid", k=s.rag_k,
+                                        mbr=s.mbr_samples, sampler=sampler, constrained=s.constrained_mode,
+                                        max_constraints=s.max_constraints))
     if s.gemini_model:
         variants.append(Variant(s.gemini_model, s.gemini_model, gemini, s.gemini_model, gemini_price(s), False, True))
         variants.append(Variant(f"{s.gemini_model}+rag", f"{s.gemini_model} + recuperación", gemini,
