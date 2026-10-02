@@ -32,7 +32,9 @@ def main() -> None:
     weights_uri = os.environ.get("GEMMA_WEIGHTS_URI", "hf://google")
     staging = os.environ["STAGING_BUCKET"].rstrip("/")
     models = os.environ["MODELS_BUCKET"].rstrip("/")
-    work = Path(os.environ.get("WORK_DIR", HERE.parent / "models" / ".work")) / tag
+    work_root = Path(os.environ.get("WORK_DIR", HERE.parent / "models" / ".work"))
+    work = work_root / tag
+    publish_model = "--no-publish" not in sys.argv  # ablation models: register in Ollama only
     out = HERE.parent / "models" / tag
     work.mkdir(parents=True, exist_ok=True)
     out.mkdir(parents=True, exist_ok=True)
@@ -45,7 +47,7 @@ def main() -> None:
 
     t0 = time.time()
     adapter = train_lora.fetch(f"{staging}/tzij/runs/{tag}/adapter", work / "adapter")
-    base_dir = train_lora.base_weights(base_model, weights_uri, work / "base")
+    base_dir = train_lora.base_weights(base_model, weights_uri, work_root / "base")  # shared across tags
     metrics["download_s"] = round(time.time() - t0, 1)
 
     t0 = time.time()
@@ -70,7 +72,10 @@ def main() -> None:
     (out / f"{tag}-f16.gguf").unlink(missing_ok=True)  # the laptop only needs the quantized model
     train_lora.write_modelfile(out, metrics["gguf_quant"], os.environ["OLLAMA_RENDERER"], 0.2)
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2) + "\n")
-    train_lora.publish(out, f"{models}/{tag}")
+    if publish_model:
+        train_lora.publish(out, f"{models}/{tag}")
+    subprocess.run(["ollama", "create", tag, "-f", "Modelfile"], cwd=out, check=True)
+    shutil.rmtree(work / "adapter", ignore_errors=True)
     print(json.dumps(metrics))
 
 

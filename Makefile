@@ -86,7 +86,7 @@ train-local: train-data ## Same training on this Mac (MPS) when no cloud GPU is 
 train-finish: ## Merge + GGUF a cloud-trained adapter on this Mac and publish it (E4B doesn't fit Cloud Run's 32 GiB)
 	@test -n "$(TAG)" || (echo "usage: make train-finish TAG=tzij-YYYY-MM (the tag of a finished cloud training run)" && exit 1)
 	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
-	  python train/finish_local.py $(TAG)
+	  python train/finish_local.py $(TAG) $(FINISH_ARGS)
 
 pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-09
 	@test -n "$(TAG)" || (echo "usage: make pull-model TAG=tzij-YYYY-MM" && exit 1)
