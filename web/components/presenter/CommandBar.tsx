@@ -32,11 +32,11 @@ export function CommandBar({ indexWarning, direction, onDirection, busy, forceOf
       .catch(() => setSuggestions([]));
   }, [direction]);
 
-  async function start(kind: "en_vivo" | "evaluacion", phrase?: string) {
+  async function start(kind: "en_vivo" | "evaluacion", phrase?: string, specialty = false) {
     setError(null);
     setSending(true);
     try {
-      await postJSON("/api/rounds", { kind, direction, text: kind === "en_vivo" ? phrase ?? text : undefined });
+      await postJSON("/api/rounds", { kind, direction, specialty, text: kind === "en_vivo" ? phrase ?? text : undefined });
       setText("");
       onClose();
     } catch (e) {
@@ -95,6 +95,10 @@ export function CommandBar({ indexWarning, direction, onDirection, busy, forceOf
         </button>
         <button type="button" className="btn" disabled={disabled} onClick={() => start("evaluacion")}>
           Frase de evaluación
+        </button>
+        <button type="button" className="btn" disabled={disabled} onClick={() => start("evaluacion", undefined, true)}
+          title="Vocabulario de nuestros diccionarios, poco común en el Kʼicheʼ de la web (nicho pre-registrado)">
+          Ronda de especialidad<kbd>S</kbd>
         </button>
       </div>
       {suggestions.length > 0 && (

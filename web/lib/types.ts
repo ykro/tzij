@@ -25,7 +25,7 @@ export interface Round {
   direction: Direction;
   source_text: string;
   reference: string | null;
-  reference_meta: { source_name: string; url: string; license: string; status: string } | null;
+  reference_meta: { source_name: string; url: string; license: string; status: string; specialty?: boolean } | null;
   status: "translating" | "done";
   results: Partial<Record<ContenderName, ContenderResult>>;
   blind_order: ContenderName[];
@@ -65,6 +65,7 @@ export interface PresenterState {
   model_card: ModelCard;
   validator_url: string;
   deck_size: number;
+  niche_deck_size?: number;
   mock: boolean;
   index_warning: string | null;
 }

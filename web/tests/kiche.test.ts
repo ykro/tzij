@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { directionLabel, displayKiche, displaySource, displayTarget, formatCost, formatCount, modelName } from "../lib/kiche";
+import { directionLabel, displayKiche, displaySource, displayTarget, formatCost, formatCount, modelName, roundKindLabel } from "../lib/kiche";
 
 describe("K'iche' display", () => {
   it("shows the glottal stop as U+02BC", () => {
@@ -20,5 +20,15 @@ describe("K'iche' display", () => {
     expect(modelName("gemma4:e2b-it-qat")).toBe("Gemma 4 E2B");
     expect(modelName("gemini-3.8-flash")).toBe("Gemini 3.8 Flash");
     expect(modelName("tzij-2026-10-raft-bt-s3")).toBe("Gemma 4 E4B ajustado 10/2026");
+  });
+});
+
+describe("round labels", () => {
+  it("names specialty rounds next to the normal ones", () => {
+    expect(roundKindLabel({ kind: "en_vivo", reference_meta: null })).toBe("En vivo");
+    const meta = { source_name: "bloom_kiche", url: "", license: "", status: "auto_validated" };
+    expect(roundKindLabel({ kind: "evaluacion", reference_meta: meta })).toBe("Evaluación");
+    expect(roundKindLabel({ kind: "evaluacion", reference_meta: { ...meta, specialty: true } }))
+      .toBe("Ronda de especialidad: vocabulario de nuestros diccionarios");
   });
 });

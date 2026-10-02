@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from duel_core import Connectivity, OllamaClient
+from pipeline.niche import load_members
 from rag.retrieve import Retriever
 
 from .deck import Deck
@@ -63,6 +64,8 @@ class NewRound(BaseModel):
     kind: Literal["evaluacion", "en_vivo"]
     direction: Literal["es-quc", "quc-es"] = "es-quc"
     text: str | None = Field(default=None, max_length=MAX_PHRASE_CHARS)
+    # Specialty round: an evaluation phrase from the pre-registered niche (evals/niche.md).
+    specialty: bool = False
 
 
 class Verdict(BaseModel):
@@ -90,8 +93,9 @@ class Service:
         )
         self.store = RoundStore(settings.state_path)
         self.deck = deck or (
-            Deck(None, test_file=MOCK_DATA / "deck.jsonl") if settings.mock_ai
-            else Deck(settings.processed_dir, require_validated=settings.require_validated_test)
+            Deck(None, test_file=MOCK_DATA / "deck.jsonl", niche=load_members(MOCK_DATA / "niche_members.json"))
+            if settings.mock_ai
+            else Deck(settings.processed_dir, require_validated=settings.require_validated_test, niche=load_members())
         )
         self.events = Broadcaster()
         self.card = model_card(settings)
@@ -124,6 +128,7 @@ class Service:
             "model_card": self.card,
             "validator_url": self.validator_url,
             "deck_size": len(self.deck.items),
+            "niche_deck_size": self.deck.niche_size,
             "mock": self.settings.mock_ai,
             "index_warning": self.index_warning,
         }
@@ -156,11 +161,14 @@ class Service:
             raise HTTPException(409, "Hay una ronda en curso.")
         if body.kind == EVALUATION:
             used = {((r.reference_meta or {}).get("pair_id"), r.direction) for r in self.store.rounds}
-            item = self.deck.next(body.direction, used)
+            specialty = bool(getattr(body, "specialty", False))
+            item = self.deck.next(body.direction, used, niche=specialty)
             if item is None:
-                raise HTTPException(404, "No quedan frases de evaluación en esta dirección.")
+                what = "de especialidad" if specialty else "de evaluación"
+                raise HTTPException(404, f"No quedan frases {what} en esta dirección.")
+            meta = {**item.meta(), "specialty": specialty}
             round_ = self.store.create(kind=EVALUATION, direction=item.direction, source_text=item.source_text,
-                                       reference=item.reference, reference_meta=item.meta())
+                                       reference=item.reference, reference_meta=meta)
         else:
             text = (body.text or "").strip()
             if not text:

@@ -2,7 +2,7 @@
 // normalizes to); the screen shows the modifier letter apostrophe U+02BC, the
 // typographically correct glottal stop that Literata draws as a proper saltillo.
 
-import type { Direction } from "./types";
+import type { Direction, Round } from "./types";
 
 export const SALTILLO = "ʼ";
 
@@ -58,4 +58,11 @@ export function modelName(tag: string | null | undefined): string {
     .replace(/-flash/i, " Flash")
     .replace(/\be(\d)b\b/i, (_, n) => `E${n}B`)
     .trim();
+}
+
+export const SPECIALTY_LABEL = "Ronda de especialidad: vocabulario de nuestros diccionarios";
+
+export function roundKindLabel(round: Pick<Round, "kind" | "reference_meta">): string {
+  if (round.kind === "en_vivo") return "En vivo";
+  return round.reference_meta?.specialty ? SPECIALTY_LABEL : "Evaluación";
 }

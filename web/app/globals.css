@@ -288,6 +288,10 @@ input {
   color: var(--cochineal);
 }
 
+.eyebrow__kind--specialty {
+  color: var(--slate);
+}
+
 .phrase__text {
   margin: calc(var(--u) * 14) 0 0;
   font-family: var(--font-display), Georgia, serif;

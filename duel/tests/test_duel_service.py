@@ -297,3 +297,22 @@ def test_index_dataset_mismatch_is_reported(service, settings):
     assert service.retriever.dataset_version == "fixture"
     warning = index_mismatch(service.retriever, settings.processed_dir)
     assert warning and "make index" in warning
+
+
+async def test_specialty_round_draws_only_from_the_niche(service):
+    from tzij_duel.deck import Deck
+
+    service.deck = Deck(service.settings.processed_dir, niche={("t2", "es-quc")})
+    async with await _client(service) as client:
+        state = (await client.get("/api/state")).json()
+        assert state["niche_deck_size"] == 1
+        res = await client.post("/api/rounds", json={"kind": "evaluacion", "direction": "es-quc", "specialty": True})
+        assert res.status_code == 200
+        await _finish(service)
+        round_ = (await client.get("/api/state")).json()["round"]
+        assert round_["reference_meta"]["pair_id"] == "t2" and round_["reference_meta"]["specialty"] is True
+        again = await client.post("/api/rounds", json={"kind": "evaluacion", "direction": "es-quc", "specialty": True})
+        assert again.status_code == 404 and "especialidad" in again.json()["detail"]
+        # Normal evaluation rounds still use the whole deck.
+        normal = await client.post("/api/rounds", json={"kind": "evaluacion", "direction": "es-quc"})
+        assert normal.status_code == 200

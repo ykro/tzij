@@ -8,7 +8,7 @@ import { ModelCardPanel, ModelCardStrip } from "@/components/presenter/ModelCard
 import { Scoreboard } from "@/components/presenter/Scoreboard";
 import { Side } from "@/components/presenter/Side";
 import { phraseSize } from "@/components/presenter/sizing";
-import { directionLabel, displayKiche, displaySource } from "@/lib/kiche";
+import { directionLabel, displayKiche, displaySource, roundKindLabel } from "@/lib/kiche";
 import type { Direction, PresenterState } from "@/lib/types";
 import { postJSON, useEventState } from "@/lib/useEventState";
 
@@ -21,8 +21,8 @@ export default function Presenter() {
   const round = state?.round ?? null;
   const busy = round?.status === "translating";
 
-  const evaluationRound = useCallback(() => {
-    postJSON("/api/rounds", { kind: "evaluacion", direction }).catch(() => setCommandOpen(true));
+  const evaluationRound = useCallback((specialty = false) => {
+    postJSON("/api/rounds", { kind: "evaluacion", direction, specialty }).catch(() => setCommandOpen(true));
   }, [direction]);
 
   useEffect(() => {
@@ -37,6 +37,8 @@ export default function Presenter() {
         setCardOpen(false);
       } else if (e.key.toLowerCase() === "e" && !busy) {
         evaluationRound();
+      } else if (e.key.toLowerCase() === "s" && !busy) {
+        evaluationRound(true);
       } else if (e.key.toLowerCase() === "d") {
         setDirection((d) => (d === "es-quc" ? "quc-es" : "es-quc"));
       } else if (e.key.toLowerCase() === "m") {
@@ -94,8 +96,8 @@ export default function Presenter() {
             <span className="eyebrow__sep" aria-hidden>·</span>
             <span className="num">Ronda {round.number}</span>
             <span className="eyebrow__sep" aria-hidden>·</span>
-            <span className={round.kind === "en_vivo" ? "eyebrow__kind--live" : undefined}>
-              {round.kind === "en_vivo" ? "En vivo" : "Evaluación"}
+            <span className={round.kind === "en_vivo" ? "eyebrow__kind--live" : round.reference_meta?.specialty ? "eyebrow__kind--specialty" : undefined}>
+              {roundKindLabel(round)}
             </span>
           </p>
           <p className={`phrase__text${round.direction === "quc-es" ? " kiche" : ""}`} style={{ ["--phrase-size" as string]: phraseSize(source) }}
@@ -116,7 +118,7 @@ export default function Presenter() {
           <p className="eyebrow">David contra Goliath</p>
           <p className="phrase__text" style={{ ["--phrase-size" as string]: 96 }}>Listo para la primera ronda.</p>
           <p className="phrase__hint">
-            <kbd>/</kbd> escribir una frase · <kbd>E</kbd> frase de evaluación · <kbd>D</kbd> cambiar dirección · <kbd>M</kbd> ficha del modelo
+            <kbd>/</kbd> escribir una frase · <kbd>E</kbd> frase de evaluación · <kbd>S</kbd> ronda de especialidad · <kbd>D</kbd> cambiar dirección · <kbd>M</kbd> ficha del modelo
           </p>
         </section>
       )}
