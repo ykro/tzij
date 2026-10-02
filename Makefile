@@ -13,7 +13,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help deploy tune-retrieval train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help demo-screens deploy tune-retrieval niche synthetic train-data-raft-bt-syn train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -52,6 +52,10 @@ datasheet: ## Re-render data/DATASHEET.md from the latest manifest
 tune-retrieval: ## Tune retrieval (mode, k, order, fuzzy) on the dev split only -> evals/tuning.md
 	$(UV) run python -m evals.tune_retrieval
 
+niche: ## David vs Goliath on the pre-registered niche + honest slices -> evals/niche_results.md: make niche RUN=final-20261002 DAVID=<variant>
+	@test -n "$(RUN)" -a -n "$(DAVID)" || (echo "usage: make niche RUN=<eval run> DAVID=<variant> [GOLIATH=gemini-3.8-flash]" && exit 1)
+	$(UV) run python evals/niche_report.py --run $(RUN) --david "$(DAVID)" --goliath "$(or $(GOLIATH),$(GEMINI_MODEL))"
+
 eval: ## Compare every available variant on the test set -> evals/report.md
 	$(UV) run python -m evals.run_eval $(EVAL_ARGS)
 
@@ -66,6 +70,13 @@ train-data-raft: ## Train split with retrieved context in every prompt (RAFT) ->
 
 train-data-raft-bt: ## RAFT data plus Gemini back-translated pairs (es->quc only) -> data/train/chat-raft-bt.jsonl
 	$(UV) run python -m pipeline.train_set --raft --bt
+
+train-data-raft-bt-syn: ## RAFT + back-translation + synthetic pairs capped at SYN (share of examples, tuned on dev) -> data/train/chat-raft-bt-syn<N>.jsonl
+	@test -n "$(SYN)" || (echo "usage: make train-data-raft-bt-syn SYN=0.3" && exit 1)
+	$(UV) run python -m pipeline.train_set --raft --bt --syn $(SYN)
+
+synthetic: ## Grounded synthetic pairs with Gemini (dictionary-anchored + UD slot filling, round-trip filtered) -> data/train/synthetic/
+	$(UV) run python -m pipeline.synthetic all
 
 monolingual: ## Licensed monolingual K'iche' (train-side sources only) -> data/monolingual/quc.jsonl
 	$(UV) run python -m pipeline.monolingual
@@ -122,6 +133,9 @@ reset: ## Clear rounds and verdicts (running service or state file), in well und
 
 emulator: ## Validator in Chrome on the Android emulator (ANDROID_SERIAL, default emulator-5556) + latency check
 	cd web && ANDROID_SERIAL=$${ANDROID_SERIAL:-emulator-5556} BASE_URL=$${BASE_URL:-http://127.0.0.1:$(DUEL_PORT)} node tests/emulator.mjs
+
+demo-screens: ## Screenshots for docs/DEMO.md, driven with the stage keys (needs `make up` with the real stage variant; EMULATOR=0 skips the phone)
+	cd web && node tests/demo.mjs
 
 screenshots: ## Playwright screenshots of both views at 1920x1080 and 390x844 (service must be running)
 	cd web && node tests/screenshots.mjs

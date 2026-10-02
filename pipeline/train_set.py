@@ -30,9 +30,31 @@ OUT = REPO / "data" / "train" / "chat.jsonl"
 OUT_RAFT = REPO / "data" / "train" / "chat-raft.jsonl"
 OUT_RAFT_BT = REPO / "data" / "train" / "chat-raft-bt.jsonl"
 BACK_TRANSLATED = REPO / "data" / "train" / "back_translated_gemini.jsonl"
+SYNTHETIC_DIR = REPO / "data" / "train" / "synthetic"
 
 
-def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra: list[dict] | None = None) -> dict:
+def synthetic_records(cap: float, base_examples: int) -> list[dict]:
+    """Synthetic pairs (pipeline/synthetic.py) as train records in both directions, capped so they
+    are at most `cap` of the final training examples. Stable selection: by hash of the pair id."""
+    import hashlib
+
+    pairs = []
+    for name in ("dictionary_anchored.jsonl", "ud_slots.jsonl"):
+        path = SYNTHETIC_DIR / name
+        if path.exists():
+            pairs += [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    pairs.sort(key=lambda p: hashlib.sha1(p["pair_id"].encode()).hexdigest())
+    budget = int(cap / (1 - cap) * base_examples) // 2  # pairs; each pair gives two examples
+    out = []
+    for p in pairs[:budget]:
+        for direction, src, tgt in (("es-quc", p["es"], p["quc"]), ("quc-es", p["quc"], p["es"])):
+            out.append({"id": f"{p['pair_id']}-{direction}", "pair_id": p["pair_id"], "direction": direction,
+                        "source_text": src, "target_text": tgt, "origin": "synthetic", "method": p["method"]})
+    return out
+
+
+def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra: list[dict] | None = None,
+          synthetic: float = 0.0) -> dict:
     records = [json.loads(line) for line in (dataset_dir / "train.jsonl").read_text(encoding="utf-8").splitlines()]
     sentences = [r for r in records if r["kind"] == "sentence" and r["split"] == "train"]
     # Back-translated pairs (Gemini Spanish -> human K'iche') only teach Spanish -> K'iche'.
@@ -40,9 +62,10 @@ def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra:
     religious = sum(r["domain"] == "religious" for r in sentences) / max(len(sentences), 1)
     if religious > RELIGIOUS_CAP + 1e-9:
         raise SystemExit(f"religious share {religious:.1%} exceeds the {RELIGIOUS_CAP:.0%} cap")
+    synth = synthetic_records(synthetic, len(sentences) + len(back_translated)) if synthetic else []
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8") as fh:
-        for r in sentences + back_translated:
+        for r in sentences + back_translated + synth:
             context = ""
             if retriever is not None:
                 found = retriever.retrieve(r["source_text"], r["direction"], k,
@@ -52,8 +75,10 @@ def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra:
             messages.append({"role": "assistant", "content": r["target_text"]})
             fh.write(json.dumps({"messages": messages, "id": r["id"], "origin": r.get("origin", "web")},
                                 ensure_ascii=False) + "\n")
-    return {"examples": len(sentences) + len(back_translated), "web_pairs": len(sentences),
-            "back_translated": len(back_translated), "religious_share_of_web": round(religious, 4),
+    total = len(sentences) + len(back_translated) + len(synth)
+    return {"examples": total, "web_pairs": len(sentences),
+            "back_translated": len(back_translated), "synthetic": len(synth),
+            "synthetic_share": round(len(synth) / max(total, 1), 4), "religious_share_of_web": round(religious, 4),
             "out": str(out.relative_to(REPO))}
 
 
@@ -82,6 +107,10 @@ if __name__ == "__main__":
         if "--bt" in sys.argv:
             extra = [json.loads(line) for line in BACK_TRANSLATED.read_text(encoding="utf-8").splitlines()]
             out = OUT_RAFT_BT
-        print({"dataset": version, "k": k, **build(processed / version, out, retriever, k, extra)})
+        synthetic = 0.0
+        if "--syn" in sys.argv:  # --syn 0.3 = synthetic pairs capped at 30% of training examples
+            synthetic = float(sys.argv[sys.argv.index("--syn") + 1])
+            out = out.with_name(f"{out.stem}-syn{round(synthetic * 100)}.jsonl")
+        print({"dataset": version, "k": k, **build(processed / version, out, retriever, k, extra, synthetic)})
     else:
         print({"dataset": version, **build(processed / version)})
