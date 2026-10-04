@@ -1,0 +1,69 @@
+{
+  "tag": "tzij-2026-10-tm-a-s4",
+  "app": "tzij",
+  "where": "cloud",
+  "region": "europe-west4",
+  "image": "us-central1-docker.pkg.dev/ai-experiments-487722/charlas2027/tzij-train:b5af50200ba2",
+  "base_model": "gemma-4-E4B-it",
+  "weights_uri": "hf://google",
+  "data_uri": "gs://ai-experiments-487722-train-eu/tzij/data/tzij-2026-10-tm-a-s4/train.jsonl",
+  "data_date": "2026-10",
+  "examples": 6941,
+  "output_uri": "gs://ai-experiments-487722-tzij-models/tzij-2026-10-tm-a-s4/",
+  "state": "JOB_STATE_SUCCEEDED",
+  "runtime": "cloud-run-jobs",
+  "quant": "Q4_K_M",
+  "machine": "Cloud Run Jobs: 1x NVIDIA L4 + 8 vCPU/32 GiB (train), 8 vCPU/32 GiB (merge + GGUF)",
+  "rates_usd_per_s": {
+    "gpu_l4": 0.0001867,
+    "vcpu": 1.8e-05,
+    "gib": 2e-06
+  },
+  "stages": {
+    "train": {
+      "job": "tzij-train",
+      "execution": "tzij-train-b9ssf",
+      "state": "SUCCEEDED",
+      "start_time": "2026-10-02T23:23:55.286364Z",
+      "end_time": "2026-10-02T23:48:56.470315Z",
+      "duration_s": 1501.2,
+      "estimated_cost_usd": 0.593,
+      "error": null
+    }
+  },
+  "finish": "laptop (make train-finish)",
+  "start_time": "2026-10-02T23:23:55.286364Z",
+  "end_time": "2026-10-02T23:48:56.470315Z",
+  "duration_s": 1501.2,
+  "estimated_cost_usd": 0.59,
+  "error": null,
+  "metrics": {
+    "tag": "tzij-2026-10-tm-a-s4",
+    "base_model": "gemma-4-E4B-it",
+    "weights_uri": "hf://google",
+    "hyperparams": {
+      "lora_r": 16,
+      "lora_alpha": 32,
+      "lr": 0.0002,
+      "epochs": 1.0,
+      "batch_size": 2,
+      "grad_accum": 8,
+      "max_length": 1024,
+      "seed": 2027
+    },
+    "weights_s": 3.1,
+    "examples": 1388,
+    "trainable_params": 34881536,
+    "total_params": 7975982368,
+    "train_loss_first": 1.9162015914916992,
+    "train_loss_last": 1.5367935180664063,
+    "train_loss_mean": 1.7806817471295937,
+    "steps": 87,
+    "device": "cuda",
+    "train_s": 1075.2,
+    "merge_s": 0.0,
+    "merged_dir": null,
+    "total_s": 1472.5,
+    "publish_s": 8.6
+  }
+}

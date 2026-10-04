@@ -23,7 +23,7 @@ de `evals/runs/`.*
 | 5 | 2 oct | + MBR (4 muestras) | **21.5** | +3.2 | $0 | En escena |
 | 6 | 2 oct | El nicho: memoria de traducción (Firefox Focus) | 30.2 vs 28.9 | +1.3 | $0 | **Empate en chrF++; David gana en terminología (78 % contra 46 %)** |
 | 7 | 2 oct | Datos sintéticos anclados en el diccionario | 33.8 vs 34.2 en dev | −0.4 | $2.09 + $1.14 | **No ayudaron: fuera** |
-| 8 | 2 oct | Sesgo de logits hacia el diccionario (llama-server) | en curso | | $0 | |
+| 8 | 2 oct | Sesgo de logits hacia el diccionario (llama-server) | 33.8 vs 35.0 en dev | −1.2 | $0 | **No ayudó: fuera** |
 
 \* La iteración 2 se midió sobre el dataset del 30 de septiembre (las mismas fuentes de prueba,
 referencias aún sin validar). Ahí la base con recuperación sacaba 18.4.
@@ -158,13 +158,25 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
 - **Decisión:** se quedan fuera del entrenamiento. Bajaron la pérdida de entrenamiento porque son
   texto fácil, pero no mejoraron dev.
 
-## 8. Sesgo de logits hacia el diccionario (en curso)
+## 8. Sesgo de logits hacia el diccionario: no ayudó (2 de octubre)
 
 - **Qué:** cuando la recuperación encuentra una traducción exacta del diccionario para una
-  palabra de contenido de la entrada, `llama-server` (llama.cpp) le da un sesgo de logits a esos
-  tokens. Se combina con MBR de 8 muestras y prompts distintos (contextos barajados y
-  submuestreados). Ollama no tiene sesgo de logits.
-- **Estado:** el cliente y el MBR multi-prompt ya tienen pruebas; falta correrlos en la laptop.
+  palabra de contenido de la entrada, `llama-server` (llama.cpp) le da un sesgo de logits al primer
+  token de esa forma (sesgar la palabra completa hacía que el modelo la repitiera en bucle). Se
+  combina con MBR de 8 muestras y prompts distintos (contextos barajados y submuestreados). Ollama
+  no tiene sesgo de logits.
+- **Resultado en dev** (230 frases; David = `tzij-2026-10-n2a-s1`, 0.4 épocas):
+
+  | Decodificación | chrF++ dev | p50 |
+  | --- | ---: | ---: |
+  | voraz | 34.2 | 1.2 s |
+  | MBR 4 | 34.1 | 4.2 s |
+  | MBR 8 multi-prompt (llama-server) | **35.0** | 7.1 s |
+  | MBR 8 multi-prompt + sesgo 2 | 33.8 | 5.2 s |
+
+- **Decisión:** el sesgo queda fuera (−1.2 frente al mismo MBR sin sesgo). El MBR multi-prompt
+  suma +0.8, pero su p50 de 7.1 s pasa el límite de 5 s del escenario, así que tampoco entra.
+- **Costo:** $0.
 
 ## Dónde gana David hoy y dónde pierde
 
