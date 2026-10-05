@@ -5,6 +5,7 @@
 // Output: docs/demo/NN-*.png
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
+import { unlockEmulator } from "./unlock.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
@@ -84,6 +85,7 @@ if (process.env.EMULATOR !== "0") {
   if (!serial) throw new Error("No emulator in `adb devices` (EMULATOR=0 skips this step)");
   const adb = (...args) => execFileSync("adb", ["-s", serial, ...args]);
   const phoneBase = BASE.replace("127.0.0.1", "10.0.2.2");
+  await unlockEmulator(adb);
   adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", phoneBase + "/validar/", "com.android.chrome");
   await sleep(2500);
   adb("forward", "tcp:9333", "localabstract:chrome_devtools_remote");

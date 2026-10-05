@@ -3,6 +3,7 @@
 //   BASE_URL=http://127.0.0.1:8787 node tests/emulator.mjs   (ANDROID_SERIAL picks a device)
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
+import { unlockEmulator } from "./unlock.mjs";
 import { mkdir, writeFile } from "node:fs/promises";
 
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
@@ -44,6 +45,7 @@ const presenter = await (await desktop.newContext({ viewport: { width: 1920, hei
 await presenter.goto(BASE + "/presentador/");
 
 // Real Chrome on the emulator, driven over its DevTools socket (adb forward).
+await unlockEmulator(adb);
 adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", PHONE_BASE + "/validar/", "com.android.chrome");
 await sleep(2500);
 adb("forward", "tcp:9333", "localabstract:chrome_devtools_remote");
