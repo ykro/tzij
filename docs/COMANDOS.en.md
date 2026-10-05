@@ -21,7 +21,7 @@ make up            # Ollama + warmed-up David + service + views on the LAN
 
 Open `http://127.0.0.1:8787/presentador/`. Scan the QR code with a phone. Press `E` for an evaluation phrase or `/` to type a live phrase.
 
-To rehearse without the cloud or a GPU: `make up MOCK_AI=1`. Pass variables **after** `make`, because `.env` overrides environment variables. In mock mode David returns its best retrieved example from the licensed data and never makes up K'iche'. It still needs Ollama with `embeddinggemma` and the index.
+To rehearse without the cloud or a GPU: `make up MOCK_AI=1` (or `MOCK_AI=1 make up`: anything on the command line or in the environment wins over `.env`). In mock mode David returns its best retrieved example from a small index of licensed pairs (`mock_data/`, hashing embeddings) and never makes up K'iche'. It needs no Ollama, index or dataset.
 
 ## Every command
 

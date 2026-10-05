@@ -21,7 +21,7 @@ make up            # Ollama + David precargado + servicio + vistas en la LAN
 
 Abre `http://127.0.0.1:8787/presentador/`. Escanea el QR con el teléfono. Pulsa `E` para una frase de evaluación o `/` para escribir una frase en vivo.
 
-Para ensayar sin la nube ni GPU: `make up MOCK_AI=1`. Las variables se pasan **después** de `make`, porque `.env` gana sobre las variables del entorno. En modo simulado David devuelve el mejor ejemplo recuperado de los datos con licencia y nunca inventa K'iche'. Todavía necesita Ollama con `embeddinggemma` y el índice.
+Para ensayar sin la nube ni GPU: `make up MOCK_AI=1` (o `MOCK_AI=1 make up`: lo que pases por la línea de comandos o el entorno gana sobre `.env`). En modo simulado David devuelve el mejor ejemplo recuperado de un índice pequeño de pares con licencia (`mock_data/`, embeddings por hashing) y nunca inventa K'iche'. No necesita Ollama, el índice ni el dataset.
 
 ## Todos los comandos
 
