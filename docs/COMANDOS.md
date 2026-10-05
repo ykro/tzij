@@ -14,7 +14,7 @@ gcloud auth application-default login      # ADC para Vertex AI y Cloud Storage
 
 make data-pull     # baja el último dataset del bucket (o `make data` para generarlo aquí)
 make index         # índice de recuperación con EmbeddingGemma + sqlite-vec + FTS5
-make pull-model TAG=tzij-2026-10-raft-bt-s3   # el David ajustado (o LOCAL_MODEL_TAG=gemma4:e4b)
+make pull-model TAG=tzij-2026-10-mix-s7   # el David ajustado (o LOCAL_MODEL_TAG=gemma4:e4b)
 make web           # compila las vistas (necesita internet una vez, por las tipografías)
 make up            # Ollama + David precargado + servicio + vistas en la LAN
 ```
@@ -37,11 +37,11 @@ Para ensayar sin la nube ni GPU: `make up MOCK_AI=1` (o `MOCK_AI=1 make up`: lo 
 | `make fertility` | Mide la fertilidad de tokens de K'iche' vs español y escribe `evals/fertility.md`. |
 | `make datasheet` | Vuelve a generar `data/DATASHEET.md` desde el último manifest. |
 | `make tune-retrieval` | Ajusta la recuperación (modo, k, orden, glosario difuso) solo con el split dev y escribe `evals/tuning.md`. |
-| `make eval [EVAL_ARGS=…]` | Compara todas las variantes disponibles y escribe `evals/report.md`. |
+| `make eval [EVAL_ARGS=…]` | Compara todas las variantes disponibles y escribe `evals/report.md`. Con `EVAL_ARGS="--split dev_domain --out evals/dev_domain_report.md"` mide en el split `dev_domain` (párrafos de BOUQuET y páginas de Bloom fuera de la muestra de prueba), donde se toman las decisiones entre ejecuciones. |
 | `make human-eval-sheet` | Genera una hoja de evaluación humana a ciegas (50 frases) de la última ejecución; `VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"` elige variantes. |
 | `make train-data` | Convierte las oraciones de `train` en JSONL de chat (`data/train/chat.jsonl`). |
 | `make train-data-raft` | Como `train-data`, pero con el contexto recuperado en cada prompt, excluyendo el propio par (RAFT): `data/train/chat-raft.jsonl`. |
-| `make monolingual` | K'iche' monolingüe con licencia, solo de fuentes de entrenamiento: `data/monolingual/quc.jsonl`. |
+| `make monolingual` | K'iche' monolingüe con licencia, solo de fuentes de entrenamiento (incluye los libros de Bloom solo en K'iche'): `data/monolingual/quc.jsonl`. |
 | `make back-translate` | Gemini traduce ese K'iche' al español una sola vez y registra el costo: `data/train/back_translated_gemini.jsonl`. |
 | `make train-data-raft-bt` | Datos RAFT + pares retrotraducidos (solo español → K'iche'): `data/train/chat-raft-bt.jsonl`. |
 | `make train TAG=tzij-AAAA-MM [TRAIN_ARGS=…]` | Fine-tune LoRA como Cloud Run Job con una L4. Registra duración y costo en `train/runs/<tag>.json`. |
@@ -57,6 +57,7 @@ Para ensayar sin la nube ni GPU: `make up MOCK_AI=1` (o `MOCK_AI=1 make up`: lo 
 | `make emulator` | Abre el validador en Chrome del emulador Android (`10.0.2.2`) y falla si el voto tarda más de 1 s en llegar a la pantalla. |
 | `make screenshots` | Capturas de Playwright de ambas vistas a 1920×1080 y 390×844 (el servicio debe estar corriendo). |
 | `make niche RUN=niche DAVID=<variante>` | David contra Goliath en el nicho (producto de Pontoon apartado, memoria de traducción): `evals/niche_results.md`. |
+| `make distill [LIMIT=N]` | Destilación en los dominios de la prueba: Gemini escribe español cotidiano y lo traduce al K'iche' con el contexto recuperado de David; solo quedan los pares que pasan el alfabeto de la ALMG, la longitud y la ida y vuelta. Escribe `data/train/distilled/` (los rechazos en `rejected.jsonl`, para no pagarlos dos veces). Solo entrenamiento ([bitácora, sección 11](BITACORA.md)). |
 | `make synthetic` | Pares sintéticos con Gemini, anclados al diccionario y a UD, filtrados con ida y vuelta: `data/train/synthetic/`. No entran al entrenamiento ([bitácora, sección 7](BITACORA.md)). |
 | `make train-data-raft-bt-syn` | RAFT + retrotraducción + sintéticos con tope `SYN`: `data/train/chat-raft-bt-syn<N>.jsonl`. |
 | `make llama-server` | Servidor de llama.cpp para las variantes `@llama` de la evaluación (sesgo de logits, 8 ranuras en paralelo) con el GGUF de `LLAMA_SERVER_MODEL` en Ollama. |

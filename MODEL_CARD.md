@@ -8,14 +8,15 @@ On stage it competes against Goliath, a frontier model (Gemini) used as anyone w
 
 | | David | Goliath |
 | --- | --- | --- |
-| Model | `LOCAL_MODEL_TAG` (now `tzij-2026-10-raft-bt-s3`, a LoRA on Gemma 4 E4B) served by Ollama | `GEMINI_MODEL` (now `gemini-3.8-flash`) on Vertex AI |
+| Model | `LOCAL_MODEL_TAG` (now `tzij-2026-10-mix-s7`, a LoRA on Gemma 4 E4B) served by Ollama | `GEMINI_MODEL` (now `gemini-3.8-flash`) on Vertex AI |
 | Extra knowledge | Hybrid retrieval index: ~7,000 dictionary entries and example pairs per direction (BM25 over SQLite FTS5 + EmbeddingGemma in sqlite-vec, fused with RRF; exact and fuzzy glossary) | None |
 | Decoding | MBR: 4 samples at temperature 0.7, keep the one with the highest mean chrF++ against the others (`MBR_ON_STAGE=1`) | One answer, temperature 0.2 |
 | Runs on | The presenter's laptop, offline | Google Cloud, needs internet |
 | Cost per translation | $0 (hardware already paid for) | Tokens × list price (shown live) |
 
-**On stage now:** `tzij-2026-10-raft-bt-s3` + hybrid retrieval + MBR (4 samples), the best local
-variant in `evals/report.md` with p50 under the 5 s stage budget.
+**On stage now:** `tzij-2026-10-mix-s7` + hybrid retrieval + MBR (4 samples), the best local
+variant in `evals/report.md` with p50 under the 5 s stage budget. It never saw Firefox Focus, so
+it also plays the specialty round.
 
 Run `final-20261002`, dataset `20261002-022500`, 600 held-out sentences (Bloom + BOUQuET,
 references `auto_validated`). Retrieval tuned on dev only; test used once.
@@ -27,32 +28,43 @@ references `auto_validated`). Retrieval tuned on dev only; test used once.
 | Gemma 4 E4B + hybrid retrieval | 19.0 | 19.8 | 19.4 | 1.8 s | 4.7 s | $0 |
 | Gemma 4 E4B + hybrid + MBR4 | 20.4 | 20.9 | 20.7 | 4.6 s | 16.3 s | $0 |
 | `tzij-2026-10-raft-bt-s3` + hybrid | 18.4 | 18.3 | 18.3 | 1.7 s | 4.7 s | $0 |
-| `tzij-2026-10-raft-bt-s3` + hybrid + MBR4 (**David on stage**) | 21.9 | 21.2 | **21.5** | 4.0 s | 14.2 s | $0 |
+| `tzij-2026-10-raft-bt-s3` + hybrid + MBR4 (previous David) | 21.9 | 21.2 | 21.5 | 4.0 s | 14.2 s | $0 |
+| `tzij-2026-10-mix-s7` + hybrid | 26.9 | 23.2 | 25.1 | 1.6 s | 4.3 s | $0 |
+| `tzij-2026-10-mix-s7` + hybrid + MBR4 (**David on stage**) | 27.0 | 24.3 | **25.7** | 4.1 s | 13.4 s | $0 |
 | Gemini 3.8 Flash (**Goliath**) | 33.4 | 40.7 | **36.9** | 1.7 s | 4.7 s | $0.29 |
 | Gemini 3.8 Flash + same retrieval (vector) | 34.6 | 40.1 | 37.2 | 2.1 s | 6.5 s | $0.95 |
 
 Ablation (both directions): base + vector retrieval 18.5 → + hybrid retrieval 19.4 (+0.9) →
-+ RAFT fine-tune with Gemini back-translation 18.3 (−1.1) → + MBR 21.5 (+3.2).
++ RAFT fine-tune with Gemini back-translation 18.3 (−1.1) → + MBR 21.5 (+3.2) → + data without
+Focus, 2 epochs, Bloom back-translation and distillation 25.7 (+4.1).
 
-The true picture, for the talk:
+What the numbers say, for the talk:
 
-- **Goliath is better at translating.** David trails by 15.4 chrF++ points overall and in every
-  slice (length, direction, source, domain); it beats Goliath on 74 of 599 sentences (12%) and
-  is within 5 points on 23%.
-- **Except where David holds a translation memory Goliath lacks.** In the pre-registered niche
+- **Where David holds a translation memory Goliath lacks, he wins.** In the pre-registered niche
   (`evals/niche.md`): Firefox Focus, 144 es→quc pairs David never saw, with Mozilla's other
-  products and two terminology lists in his index. There they tie on chrF++ (30.2 vs 28.9, +1.3
-  [−2.3, +5.3]), and David uses the right term far more often (78% vs 46%, +32 [+13, +51]).
-  Results: `evals/niche_results.md`.
+  products and two terminology lists in his index. The stage David scores 37.4 vs 28.9 chrF++,
+  +8.5 [+4.7, +12.7]. On terminology they tie (61% vs 46%, +15 [−2, +32]); the base model with the
+  same index uses the right term 78% of the time but ties on chrF++ (30.2). Results:
+  `evals/niche_results.md`.
+- **In general, Goliath is better at translating.** David trails by 11.2 chrF++ points (15.4 with
+  the previous David) and in every slice (length, direction, source, domain): the gap is general
+  K'iche' competence. It beats Goliath on 130 of 599 sentences (22%) and is within 5 points on
+  34%. Gemini 3.1 Pro ties Gemini 3.8 Flash in K'iche', so model size is not Goliath's edge.
 - **Data is what moves David.** Retrieval from ~7,000 licensed dictionary entries and example
   pairs takes base E4B from 11.7 to 18.5; most of the gain is Spanish → K'iche' (7.5 → 18.2),
   the direction a model can't fake. Hybrid search adds +0.9.
-- **MBR is the biggest single gain (+3.2), paid in latency:** p50 1.7 → 4.0 s, p95 14 s.
-- **The fine-tune alone didn't help with retrieval (−1.1); with MBR it adds +0.8** over the
-  base model with MBR (21.5 vs 20.7). It is worse than base on short phrases (13.7 vs 16.4).
-  At an equal 1/4-epoch budget, adding back-translated pairs is worth +1.1 (15.7 vs 14.6).
-- **Goliath teaches once in the cloud, David serves forever offline.** One-time costs: Gemini
-  back-translation $0.12, fine-tuning $3.09 (5 L4 Cloud Run jobs).
+- **MBR was the biggest single gain for the previous David (+3.2), paid in latency:** p50 1.7 →
+  4.0 s, p95 14 s. For the current David it adds +0.6 on test and +1.5 on the niche.
+- **The first fine-tune didn't help with retrieval (−1.1); with MBR it added +0.8** over the
+  base model with MBR (21.5 vs 20.7). At an equal 1/4-epoch budget, adding back-translated pairs
+  was worth +1.1 (15.7 vs 14.6).
+- **The fine-tune pays off when its data looks like the test's domain:** `tzij-2026-10-mix-s7`
+  beats the base model with the same retrieval by +5.7 (25.1 vs 19.4) and the previous David by
+  +4.1 [+3.6, +4.7].
+- **Goliath teaches once in the cloud, David serves forever offline.** One-time costs: first
+  back-translation $0.12 and fine-tune $3.09 (5 L4 Cloud Run jobs); the data round behind the
+  current David about $24.3 (L4 $8.52; Gemini back-translation, distillation and a Gemini Pro
+  measurement; `docs/BITACORA.md`, sections 10–11).
 - **Where David wins outright:** cost ($0 vs $0.29 per 1,000 translations, and the cloud price
   doubles in 2027) and availability. With no internet Goliath produces nothing, and David's
   scores are unchanged: model, index and embeddings all live on the laptop.
@@ -78,18 +90,23 @@ drop reasons are in `data/DATASHEET.md` (generated). Dataset `20261002-022500`:
 - **Held-out test:** 1,654 pairs per direction from MINEDUC children's books on Bloom
   Library and Meta's BOUQuET benchmark (evaluation only, per its terms). No test source is
   ever used for training or retrieval; train pairs repeating a test sentence are removed.
-- **No synthetic K'iche'.** Gemini never writes K'iche': it would teach David its own
-  mistakes. Every K'iche' record is `origin=web`, with a URL and a license. The one controlled
-  use of Gemini in the data is **back-translation**: 405 licensed monolingual K'iche' sentences
-  (K'iche' Wikipedia on Wikimedia Incubator, CC BY-SA 4.0; Space Scoop, CC BY 4.0) translated
-  into Spanish → 399 pairs tagged `origin=back_translated_gemini` (model, prompt, seed 2027 and
-  $0.12 cost in `data/train/back_translated_gemini.meta.json`). They train Spanish → K'iche'
-  only, and never enter test or the retrieval index.
+- **Gemini's K'iche' only in training, filtered.** Every K'iche' record in the dataset, the
+  retrieval index, dev and test is `origin=web`, with a URL and a license. Gemini contributes
+  training-only data in two controlled ways:
+  - **back-translation:** licensed monolingual K'iche' (K'iche' Wikipedia on Wikimedia Incubator,
+    CC BY-SA 4.0; Space Scoop, CC BY 4.0; K'iche'-only Bloom books, CC BY 4.0) translated into
+    Spanish: 2,397 pairs tagged `origin=back_translated_gemini` (model, prompt, seed and cost in
+    `data/train/back_translated_gemini.meta.json`). The K'iche' side is human-written; since
+    2026-10-04 the pairs train both directions;
+  - **distillation** (`origin=distilled_gemini`, `pipeline/distill.py`): everyday Spanish written
+    by Gemini in BOUQuET's domains, translated into K'iche' with David's retrieved context and
+    kept only if it passes the ALMG alphabet, length and round-trip filters (2,409 pairs in
+    training).
 - **Orthography.** Glottal stops unified to `'` and lax vowels folded (`data/normalize.py`);
   the screen shows the modifier letter apostrophe `ʼ`.
 - **Fine-tuning threshold** (2,000 clean sentence pairs outside test): met with 2,849, of
   which 2,029 are non-religious.
-- **Training recipe of `tzij-2026-10-raft-bt-s3`.** LoRA (r=16, alpha=32, lr 2e-4) on Gemma 4
+- **Training recipe of the previous David, `tzij-2026-10-raft-bt-s3`.** LoRA (r=16, alpha=32, lr 2e-4) on Gemma 4
   E4B, 1 epoch over 5,579 examples: the train split in both directions plus the back-translated
   pairs, religious ≤30%. Every prompt carries the same hybrid retrieval context David sees on
   stage, with the pair itself excluded from its own context (RAFT, 0 answer leaks). Batch 2 ×
@@ -97,6 +114,11 @@ drop reasons are in `data/DATASHEET.md` (generated). Dataset `20261002-022500`:
   previous adapter) as Cloud Run Jobs on one L4 in europe-west4, to stay under the 1 h GPU task
   limit. Merge and GGUF (Q4_K_M) finished on the laptop because the 16 GB merged checkpoint
   doesn't fit the job's 32 GiB. Runs in `train/runs/`.
+- **Training recipe of `tzij-2026-10-mix-s7` (on stage).** The same RAFT recipe for 2 epochs on
+  data without Firefox Focus (`tzij-2026-10-tm-a-e2-s4`), continued in 8 chunks (`-s0` … `-s7`)
+  with the Bloom back-translation in both directions, the distilled pairs and 30% of the web
+  pairs as replay: 10,692 examples. Decisions were made on the `dev_domain` split
+  (`evals/dev_domain_report.md`), never on test.
 
 ## Evaluation
 

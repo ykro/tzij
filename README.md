@@ -1,27 +1,27 @@
 # Tzij — traductor español ↔ K'iche' que funciona sin internet
 
-Demo de la charla **"David vs. Goliath: cómo un modelo pequeño le gana a un modelo frontier"**. Tzij ("palabra" en K'iche') traduce entre español y K'iche' (ISO 639-3 `quc`), el idioma maya más hablado de Guatemala. **David** es Gemma 4 E4B ajustado con LoRA (`tzij-2026-10-raft-bt-s3`) en Ollama, en la laptop, con un índice de recuperación híbrido construido solo con datos K'iche' con licencia y decodificación MBR. **Goliath** es Gemini 3.8 Flash en Vertex AI, usado como lo usa cualquiera. Los dos traducen la misma frase en paralelo en el escenario. Una persona hablante nativa vota desde su teléfono sin saber qué modelo hizo cada traducción.
+Demo de la charla **"David vs. Goliath: cómo un modelo pequeño le gana a un modelo frontier"**. Tzij ("palabra" en K'iche') traduce entre español y K'iche' (ISO 639-3 `quc`), el idioma maya más hablado de Guatemala. **David** es Gemma 4 E4B ajustado con LoRA (`tzij-2026-10-mix-s7`) en Ollama, en la laptop, con un índice de recuperación híbrido construido solo con datos K'iche' con licencia y decodificación MBR. **Goliath** es Gemini 3.8 Flash en Vertex AI, usado como lo usa cualquiera. Los dos traducen la misma frase en paralelo en el escenario. **Con la memoria de traducción de una organización, David le gana a Goliath**; en traducción general, Goliath sigue arriba. Una persona hablante nativa vota desde su teléfono sin saber qué modelo hizo cada traducción.
 
 [English version](README.en.md)
 
 ## Qué vas a aprender
 
 1. **Datos con licencia y split por fuente:** cada registro K'iche' lleva URL y licencia, y una fuente entera es de prueba o de entrenamiento.
-2. **Qué compra cada paso:** la recuperación y la decodificación MBR le suben a Gemma más que el fine-tune, que solo suma cuando va junto con MBR.
-3. **Goliath enseña una vez:** Gemini retrotraduce K'iche' con licencia al español por $0.12 y David sirve para siempre sin internet.
-4. **Un nicho pre-registrado:** con una memoria de traducción que Goliath no tiene, David empata en chrF++ y gana en terminología.
+2. **Qué compra cada paso:** la recuperación es el mayor salto; el fine-tune empezó a sumar (+5.7) cuando sus datos se parecieron al dominio de la prueba.
+3. **Goliath enseña una vez:** Gemini retrotraduce K'iche' con licencia y escribe datos de destilación por unos $14, y David sirve para siempre sin internet.
+4. **Un nicho pre-registrado:** con una memoria de traducción que Goliath no tiene, David gana por +8.5 chrF++.
 5. **Offline por diseño:** modelo, embeddings, índice, servicio y vistas viven en la laptop.
 
 ## El resultado
 
-| `make eval`, 600 frases de prueba | David (laptop) | Goliath (nube) |
+| | David (laptop) | Goliath (nube) |
 | --- | ---: | ---: |
-| chrF++ | 21.5 | **36.9** |
+| **Especialidad:** memoria de traducción, Firefox Focus (144 frases), chrF++ | **37.4** | 28.9 |
+| General: `make eval`, 600 frases de prueba, chrF++ | 25.7 | **36.9** |
 | Costo por 1,000 traducciones | **$0** | $0.29 |
 | Sin internet | **traduce igual** | no produce nada |
-| Nicho (Firefox Focus): término correcto | **78 %** | 46 % |
 
-Goliath traduce mejor; David gana en costo, privacidad y disponibilidad. Tabla completa, ablación y conclusiones en [docs/DECISIONES.md](docs/DECISIONES.md#resultados).
+En la especialidad David gana por +8.5 [IC 95 %: +4.7, +12.7] en un producto que nunca vio. En traducción general Goliath sigue arriba por 11.2 puntos: la brecha es K'iche' general ([bitácora, sección 10](docs/BITACORA.md)). Tabla completa, ablación y conclusiones en [docs/DECISIONES.md](docs/DECISIONES.md#resultados).
 
 **Lo que no funcionó** (detalle, números y costo en la [bitácora](docs/BITACORA.md)):
 
@@ -41,7 +41,7 @@ cp .env.example .env                       # modelos, buckets y puertos; nunca s
 uv sync && ollama pull gemma4:e4b && ollama pull embeddinggemma
 gcloud auth application-default login      # ADC para Vertex AI y Cloud Storage
 make data-pull && make index && make web   # dataset, índice y vistas
-make pull-model TAG=tzij-2026-10-raft-bt-s3 && make up
+make pull-model TAG=tzij-2026-10-mix-s7 && make up
 open http://127.0.0.1:8787/presentador/    # E: frase de evaluación · /: frase en vivo
 ```
 

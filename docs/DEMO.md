@@ -13,14 +13,15 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
 
   ```bash
   make data-pull && make index
-  make pull-model TAG=tzij-2026-10-raft-bt-s3
-  ollama list            # tzij-2026-10-raft-bt-s3 y embeddinggemma
+  make pull-model TAG=tzij-2026-10-mix-s7
+  ollama list            # tzij-2026-10-mix-s7 y embeddinggemma
   ```
 
-- [ ] **Ronda de especialidad solo con un David limpio.** `S` usa Firefox Focus, el producto que
-  se apartó como nicho. `LOCAL_MODEL_TAG` tiene que ser un modelo que no entrenó con Focus: la base
-  `gemma4:e4b` o un fine-tune hecho sin ese producto. `tzij-2026-10-raft-bt-s3` sí lo vio, así que
-  con él no hay ronda de especialidad.
+- [ ] **Ronda de especialidad con un David que no vio Focus.** `S` usa Firefox Focus, el producto
+  que se apartó como nicho. `tzij-2026-10-mix-s7`, el David en escena, nunca entrenó con Focus, así
+  que la ronda vale tal cual. Si cambias `LOCAL_MODEL_TAG`, usa la base `gemma4:e4b` u otro
+  fine-tune hecho sin ese producto: `tzij-2026-10-raft-bt-s3` sí lo vio y con él no hay ronda de
+  especialidad.
 - [ ] **Levantar todo y precalentar David.** `make up` carga David y EmbeddingGemma por 30 min (`keep_alive`)
   y avisa con `!!` si falta algo.
 
@@ -118,8 +119,8 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
 
   `D` vuelve a español → Kʼicheʼ (`S` siempre usa esa dirección).
 - **Idea:** "Firefox Focus en Kʼicheʼ. David nunca vio este producto, pero tiene la memoria de
-  traducción de los demás productos de Mozilla. Aquí empata con Goliath y usa el término correcto
-  el 78 % de las veces, contra el 46 % de Goliath. Lo definimos antes de ver los resultados."
+  traducción de los demás productos de Mozilla. Aquí David le gana a Goliath: 37.4 contra 28.9 de
+  chrF++ en las 144 frases, +8.5 puntos. Lo definimos antes de ver los resultados."
 - **Tiempo:** 45 s.
 
 ## Paso 5 — En vivo, una frase corta
@@ -220,9 +221,10 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
 
 - **Teclas:** cambia a la diapositiva de resultados. La gráfica es `docs/diagrams/bitacora.png` y
   la historia completa está en [`BITACORA.md`](BITACORA.md).
-- **Idea:** "Cada mejora de David vino de datos o de cómo los usa. Goliath enseña una vez en la
-  nube; David sirve para siempre sin internet. Y aun así, Goliath sigue arriba: eso también es
-  un resultado."
+- **Idea:** "Cada mejora de David vino de datos o de cómo los usa: de 11.7 a 25.7. Goliath enseña
+  una vez en la nube; David sirve para siempre sin internet. Con la memoria de traducción de una
+  organización, David gana (+8.5). En traducción general, Goliath sigue arriba por 11.2 puntos,
+  y un Gemini más grande no traduce mejor Kʼicheʼ: el techo es cuánto Kʼicheʼ hay en la web."
 - **Tiempo:** 1 min.
 
 ## Si algo falla
@@ -231,7 +233,7 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
 | --- | --- |
 | La pantalla dice "No hay conexión con el servicio del duelo" | `make up` en la terminal; la página se reconecta sola. |
 | David tarda más de 15 s en la primera ronda | Estaba en frío. Espera esa ronda, después `make reset`. La próxima vez precalienta (ver arriba). |
-| David dice "error" en todas las rondas | `ollama list`; si falta el modelo, `make pull-model TAG=tzij-2026-10-raft-bt-s3`. Para seguir ya: `LOCAL_MODEL_TAG=gemma4:e4b make up`. |
+| David dice "error" en todas las rondas | `ollama list`; si falta el modelo, `make pull-model TAG=tzij-2026-10-mix-s7`. Para seguir ya: `LOCAL_MODEL_TAG=gemma4:e4b make up`. |
 | "recuperación: …" en el lado de David | Ollama no sirve `embeddinggemma`: `ollama pull embeddinggemma` y `make up`. |
 | Aviso de índice en la barra de comandos | El índice no es del dataset actual: `make index` (unos minutos) o sigue; las rondas funcionan. |
 | Goliath "Sin conexión" con Wi-Fi encendido | Revisa que "Simular sin Wi-Fi (ensayo)" esté desmarcado (`/`). Si no, la red del lugar bloquea Vertex AI: úsalo como el momento offline. |

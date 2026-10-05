@@ -1,27 +1,27 @@
 # Tzij — a Spanish ↔ K'iche' translator that works without internet
 
-Demo for the talk **"David vs. Goliath: cómo un modelo pequeño le gana a un modelo frontier"** ("David vs. Goliath: how a small model beats a frontier model"). Tzij ("word" in K'iche') translates between Spanish and K'iche' (ISO 639-3 `quc`), Guatemala's most widely spoken Mayan language. **David** is Gemma 4 E4B fine-tuned with LoRA (`tzij-2026-10-raft-bt-s3`) in Ollama on the laptop, with a hybrid retrieval index built only from licensed K'iche' data and MBR decoding. **Goliath** is Gemini 3.8 Flash on Vertex AI, used the way anyone would use it. On stage both translate the same phrase in parallel. A native speaker votes from their phone without knowing which model wrote each translation.
+Demo for the talk **"David vs. Goliath: cómo un modelo pequeño le gana a un modelo frontier"** ("David vs. Goliath: how a small model beats a frontier model"). Tzij ("word" in K'iche') translates between Spanish and K'iche' (ISO 639-3 `quc`), Guatemala's most widely spoken Mayan language. **David** is Gemma 4 E4B fine-tuned with LoRA (`tzij-2026-10-mix-s7`) in Ollama on the laptop, with a hybrid retrieval index built only from licensed K'iche' data and MBR decoding. **Goliath** is Gemini 3.8 Flash on Vertex AI, used the way anyone would use it. On stage both translate the same phrase in parallel. **With an organization's translation memory, David beats Goliath**; in general translation, Goliath stays ahead. A native speaker votes from their phone without knowing which model wrote each translation.
 
 The Spanish [README.md](README.md) is the primary document; this is a faithful English version.
 
 ## What you'll learn
 
 1. **Licensed data and a split by source:** every K'iche' record carries a URL and a license, and a source is either entirely test or entirely training.
-2. **What each step buys you:** retrieval and MBR decoding lift Gemma more than the fine-tune, which only helps together with MBR.
-3. **Goliath teaches once:** Gemini back-translates licensed K'iche' into Spanish for $0.12, and David serves forever offline.
-4. **A pre-registered niche:** with a translation memory Goliath lacks, David ties on chrF++ and wins on terminology.
+2. **What each step buys you:** retrieval is the biggest jump; the fine-tune started to pay off (+5.7) once its data looked like the test's domain.
+3. **Goliath teaches once:** Gemini back-translates licensed K'iche' and writes distillation data for about $14, and David serves forever offline.
+4. **A pre-registered niche:** with a translation memory Goliath lacks, David wins by +8.5 chrF++.
 5. **Offline by design:** model, embeddings, index, service and views all live on the laptop.
 
 ## The result
 
-| `make eval`, 600 test sentences | David (laptop) | Goliath (cloud) |
+| | David (laptop) | Goliath (cloud) |
 | --- | ---: | ---: |
-| chrF++ | 21.5 | **36.9** |
+| **Specialty:** translation memory, Firefox Focus (144 sentences), chrF++ | **37.4** | 28.9 |
+| General: `make eval`, 600 test sentences, chrF++ | 25.7 | **36.9** |
 | Cost per 1,000 translations | **$0** | $0.29 |
 | Without internet | **translates the same** | produces nothing |
-| Niche (Firefox Focus): right term | **78%** | 46% |
 
-Goliath translates better; David wins on cost, privacy and availability. Full table, ablation and takeaways in [docs/DECISIONES.en.md](docs/DECISIONES.en.md#results).
+On the specialty round David wins by +8.5 [95% CI: +4.7, +12.7] on a product he never saw. In general translation Goliath stays ahead by 11.2 points: the gap is general K'iche' ([logbook, section 10](docs/BITACORA.md), Spanish). Full table, ablation and takeaways in [docs/DECISIONES.en.md](docs/DECISIONES.en.md#results).
 
 **What did not work** (details, numbers and cost in the [logbook](docs/BITACORA.md), Spanish):
 
@@ -43,7 +43,7 @@ cp .env.example .env                       # models, buckets and ports; .env is 
 uv sync && ollama pull gemma4:e4b && ollama pull embeddinggemma
 gcloud auth application-default login      # ADC for Vertex AI and Cloud Storage
 make data-pull && make index && make web   # dataset, index and views
-make pull-model TAG=tzij-2026-10-raft-bt-s3 && make up
+make pull-model TAG=tzij-2026-10-mix-s7 && make up
 open http://127.0.0.1:8787/presentador/    # E: evaluation phrase · /: live phrase
 ```
 

@@ -8,7 +8,7 @@ What runs where and where each piece lives in the code. Back to the [README](../
 
 *The diagrams are labeled in Spanish, like the UI.*
 
-- **On the laptop, inside the offline boundary:** the duel service (FastAPI on `:8787`) serves the API, the event stream (SSE) and both built views (`/presentador/` and `/validar/`). David runs in Ollama (`tzij-2026-10-raft-bt-s3`, a LoRA on Gemma 4 E4B). The index is a SQLite file with `sqlite-vec` (EmbeddingGemma vectors) and FTS5 (BM25).
+- **On the laptop, inside the offline boundary:** the duel service (FastAPI on `:8787`) serves the API, the event stream (SSE) and both built views (`/presentador/` and `/validar/`). David runs in Ollama (`tzij-2026-10-mix-s7`, a LoRA on Gemma 4 E4B). The index is a SQLite file with `sqlite-vec` (EmbeddingGemma vectors) and FTS5 (BM25).
 - **On the LAN (optional):** if there is a validator, their phone opens the QR code on the presenter view and votes from there. The whole demo works without one: evaluation rounds are scored automatically with chrF++.
 - **On Google Cloud:** Goliath (`gemini-3.8-flash` on Vertex AI, `global`) and two Cloud Run Jobs, one for the data and one for the GPU fine-tune. Their outputs land in Cloud Storage. The laptop only downloads datasets and models while preparing, never during the talk.
 
@@ -24,7 +24,7 @@ Diagram sources: [`diagrams/`](diagrams/) (HTML, SVG and PNG).
 data/          normalize.py (orthography), SOURCES.md, DATASHEET.md (generated)
 pipeline/      run.py → sources/ (one per source) → clean.py → split.py → manifest/datasheet
                validate_test.py (automatic validation), review.py / apply_review.py (optional native review)
-               train_set.py (chat JSONL, RAFT), monolingual.py + back_translate.py (back-translation)
+               train_set.py (chat JSONL, RAFT), monolingual.py + back_translate.py (back-translation), distill.py (distillation)
                Dockerfile + cloudbuild.yaml (image for the data Cloud Run Job)
 rag/           embedder.py (EmbeddingGemma via Ollama), store.py (sqlite-vec),
                build_index.py, retrieve.py (hybrid BM25 + vectors with RRF, examples + glossary)

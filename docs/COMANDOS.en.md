@@ -14,7 +14,7 @@ gcloud auth application-default login      # ADC for Vertex AI and Cloud Storage
 
 make data-pull     # download the latest dataset from the bucket (or `make data` to build it here)
 make index         # retrieval index with EmbeddingGemma + sqlite-vec + FTS5
-make pull-model TAG=tzij-2026-10-raft-bt-s3   # the fine-tuned David (or LOCAL_MODEL_TAG=gemma4:e4b)
+make pull-model TAG=tzij-2026-10-mix-s7   # the fine-tuned David (or LOCAL_MODEL_TAG=gemma4:e4b)
 make web           # build the views (needs internet once, for the fonts)
 make up            # Ollama + warmed-up David + service + views on the LAN
 ```
@@ -37,11 +37,11 @@ To rehearse without the cloud or a GPU: `make up MOCK_AI=1` (or `MOCK_AI=1 make 
 | `make fertility` | Measures K'iche' vs Spanish token fertility and writes `evals/fertility.md`. |
 | `make datasheet` | Regenerates `data/DATASHEET.md` from the latest manifest. |
 | `make tune-retrieval` | Tunes retrieval (mode, k, order, fuzzy glossary) on the dev split only and writes `evals/tuning.md`. |
-| `make eval [EVAL_ARGS=…]` | Compares every available variant and writes `evals/report.md`. |
+| `make eval [EVAL_ARGS=…]` | Compares every available variant and writes `evals/report.md`. With `EVAL_ARGS="--split dev_domain --out evals/dev_domain_report.md"` it measures on the `dev_domain` split (BOUQuET paragraphs and Bloom pages outside the test sample), where decisions between runs are made. |
 | `make human-eval-sheet` | Builds a blind human-evaluation sheet (50 sentences) from the latest eval run; `VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"` picks variants. |
 | `make train-data` | Renders the `train` sentences as chat JSONL (`data/train/chat.jsonl`). |
 | `make train-data-raft` | Like `train-data`, but with retrieved context in every prompt, excluding the pair itself (RAFT): `data/train/chat-raft.jsonl`. |
-| `make monolingual` | Licensed monolingual K'iche', from training-side sources only: `data/monolingual/quc.jsonl`. |
+| `make monolingual` | Licensed monolingual K'iche', from training-side sources only (including the K'iche'-only Bloom books): `data/monolingual/quc.jsonl`. |
 | `make back-translate` | Gemini translates that K'iche' into Spanish once and records the cost: `data/train/back_translated_gemini.jsonl`. |
 | `make train-data-raft-bt` | RAFT data + back-translated pairs (Spanish → K'iche' only): `data/train/chat-raft-bt.jsonl`. |
 | `make train TAG=tzij-YYYY-MM [TRAIN_ARGS=…]` | LoRA fine-tune as a Cloud Run Job on one L4. Records duration and cost in `train/runs/<tag>.json`. |
@@ -57,6 +57,7 @@ To rehearse without the cloud or a GPU: `make up MOCK_AI=1` (or `MOCK_AI=1 make 
 | `make emulator` | Opens the validator in Chrome on the Android emulator (`10.0.2.2`) and fails if a vote takes more than 1 s to reach the screen. |
 | `make screenshots` | Playwright screenshots of both views at 1920×1080 and 390×844 (the service must be running). |
 | `make niche RUN=niche DAVID=<variant>` | David vs Goliath on the niche (held-out Pontoon product, translation memory): `evals/niche_results.md`. |
+| `make distill [LIMIT=N]` | Distillation in the test's domains: Gemini writes everyday Spanish and translates it into K'iche' with David's retrieved context; only pairs that pass the ALMG alphabet, length and round-trip filters are kept. Writes `data/train/distilled/` (rejections in `rejected.jsonl`, so they are never paid for twice). Training only ([logbook, section 11](BITACORA.md), Spanish). |
 | `make synthetic` | Gemini synthetic pairs, anchored to the dictionary and UD, round-trip filtered: `data/train/synthetic/`. They are not used for training ([logbook, section 7](BITACORA.md), Spanish). |
 | `make train-data-raft-bt-syn` | RAFT + back-translation + synthetic pairs capped at `SYN`: `data/train/chat-raft-bt-syn<N>.jsonl`. |
 | `make llama-server` | llama.cpp server for the `@llama` eval variants (logit bias, 8 parallel slots) on the GGUF of `LLAMA_SERVER_MODEL` from Ollama. |

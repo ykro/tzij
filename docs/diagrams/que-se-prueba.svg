@@ -74,11 +74,11 @@
       <text x="466.6" y="340" fill="#8c2f39" fill-opacity="0.85" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LLM</text>
       <text x="748" y="340" fill="#8c2f39" font-size="9" font-weight="500" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">PASOS 2–8</text>
       <text x="452" y="366" fill="#2d3142" font-size="15" font-weight="600" font-family="'Geist', sans-serif">David en la laptop</text>
-      <text x="452" y="384" fill="#4f5d75" font-size="10" font-family="'Geist Mono', monospace">tzij-2026-10-raft-bt-s3 · Ollama · MBR 4</text>
+      <text x="452" y="384" fill="#4f5d75" font-size="10" font-family="'Geist Mono', monospace">tzij-2026-10-mix-s7 · Ollama · MBR 4</text>
       <line x1="452" y1="398" x2="748" y2="398" stroke="#2d3142" stroke-opacity="0.12" stroke-width="0.8"/>
       <text x="452" y="414" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.12em">SE VERIFICA</text>
       <text x="452" y="431" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">Traduce sin internet y a $0;</text>
-      <text x="452" y="447" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">p50 de 4.0 s, dentro del límite de 5 s</text>
+      <text x="452" y="447" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">p50 de 4.1 s, dentro del límite de 5 s</text>
       <rect x="880" y="96" width="280" height="152" rx="6" fill="#f5f5f5"/>
       <rect x="880" y="96" width="280" height="152" rx="6" fill="#2d3142" fill-opacity="0.03" stroke="#2d3142" stroke-opacity="0.30" stroke-width="1"/>
       <rect x="892" y="106" width="35.6" height="14" rx="2" fill="none" stroke="#2d3142" stroke-opacity="0.45" stroke-width="0.8"/>
@@ -88,7 +88,7 @@
       <text x="892" y="160" fill="#4f5d75" font-size="10" font-family="'Geist Mono', monospace">gemini-3.8-flash · global</text>
       <line x1="892" y1="174" x2="1148" y2="174" stroke="#2d3142" stroke-opacity="0.12" stroke-width="0.8"/>
       <text x="892" y="190" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.12em">SE VERIFICA</text>
-      <text x="892" y="207" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">Con red traduce mejor (36.9 vs 21.5);</text>
+      <text x="892" y="207" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">En general traduce mejor (36.9 vs 25.7);</text>
       <text x="892" y="223" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">sin red, «Sin conexión» (paso 7)</text>
       <rect x="880" y="320" width="280" height="152" rx="6" fill="#f5f5f5"/>
       <rect x="880" y="320" width="280" height="152" rx="6" fill="#2d3142" fill-opacity="0.05" stroke="#4f5d75" stroke-width="1"/>
@@ -99,8 +99,8 @@
       <text x="892" y="384" fill="#4f5d75" font-size="10" font-family="'Geist Mono', monospace">sqlite-vec + FTS5 · EmbeddingGemma</text>
       <line x1="892" y1="398" x2="1148" y2="398" stroke="#2d3142" stroke-opacity="0.12" stroke-width="0.8"/>
       <text x="892" y="414" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.12em">SE VERIFICA</text>
-      <text x="892" y="431" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">Memoria de traducción: término</text>
-      <text x="892" y="447" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">correcto 78 % vs 46 % de Goliath</text>
+      <text x="892" y="431" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">Memoria de traducción: David gana</text>
+      <text x="892" y="447" fill="#2d3142" font-size="12" font-family="'Geist', sans-serif">37.4 vs 28.9 chrF++ (Firefox Focus)</text>
       <line x1="40" y1="704" x2="1160" y2="704" stroke="#2d3142" stroke-opacity="0.10" stroke-width="0.8"/>
       <text x="40" y="726" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEYENDA</text>
       <rect x="120" y="716" width="22" height="14" rx="3" fill="#8c2f39" fill-opacity="0.08" stroke="#8c2f39" stroke-width="1.2"/>

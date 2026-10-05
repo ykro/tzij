@@ -9,7 +9,8 @@ Status:
 - **rejected** — reason given.
 
 Rules applied: nothing behind a login, nothing whose terms forbid it, no machine-translated
-or synthetic K'iche' (`origin=web` on every record). Raw files are never committed: they
+or synthetic K'iche' in the dataset (`origin=web` on every record). Machine-made text lives only
+in the training files, tagged by origin (below). Raw files are never committed: they
 live in `data/raw/` (gitignored) and in `gs://ai-experiments-487722-tzij-data/raw/`; the
 download code is what's versioned.
 
@@ -17,16 +18,25 @@ Counts, splits and drop reasons per source are in `data/DATASHEET.md`.
 
 All of this was gathered automatically (no human collected or reviewed data). Monolingual K'iche'
 sources feed only the back-translation step (`pipeline/monolingual.py` → `pipeline/back_translate.py`):
-Gemini writes the Spanish side once, the K'iche' side stays human-written, and the pairs are used
-only to train Spanish → K'iche', never for test or retrieval.
+Gemini writes the Spanish side once and the K'iche' side stays human-written. Since 2026-10-04 the
+pairs train both directions (K'iche' → Spanish learns Gemini's Spanish for human K'iche'), never test
+or retrieval.
 
-## Used (14)
+**Distillation (training only, `origin=distilled_gemini`, since 2026-10-04).** No open K'iche' text
+exists for the test's everyday domains (search below), so Gemini writes everyday Spanish in BOUQuET's
+domains plus children's stories, translates it into K'iche' with the same retrieved context David gets,
+and only pairs that pass the ALMG-alphabet and round-trip filters are kept (`pipeline/distill.py`,
+`data/train/distilled/meta.json`). Spanish overlapping dev/test (any shared 6-gram) is dropped first.
+Never in the dataset, the retrieval index, dev or test.
+
+## Used (15)
 
 | Source (pipeline name) | URL | Owner | License / terms | Size (raw) | Domain | Orthography | Date | Role |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Bloom Library K'iche' books, CC BY subset (`bloom_kiche`) | https://bloomlibrary.org/language:quc | Mostly Ministerio de Educación de Guatemala / USAID, via SIL Bloom Library | CC BY 4.0 per book (130 of 142 K'iche' books). The 12 CC BY-NC-SA / NC-ND books are excluded. Read-online HTML fetched from Bloom's public harvester bucket; book list from the public API the website uses (no account) | 142 books; ~536 page-aligned quc/es text blocks in the ~28 bilingual CC BY books | Education (children's stories, parent guides) | Modern ALMG; a few books tagged `quc` are actually Mam (filtered) | 2012–2024 | **test** |
 | BOUQuET benchmark, sentence level dev + test (`bouquet`) | https://huggingface.co/datasets/facebook/bouquet | Meta FAIR + community translators | CC BY 4.0, **gated**: the presenter's Hugging Face account accepted the terms; the token is Secret Manager `hf-token`. Terms: **evaluation only** (never training or retrieval), redistribution only privately or behind a gate. Kept out of git (raw and processed data are gitignored; copies only in the private bucket) and not shown in the on-stage evaluation rounds | 1,358 spa→quc sentences (504 dev + 854 test) | Multi-domain: conversation, how-to, narration, reflection… (the `domain` field is kept) | Modern, mostly ALMG | 2025–2026 | **test** (evaluation only) |
 | Wikipedia in K'iche', Wikimedia Incubator `Wp/quc` (`incubator_quc`) | https://incubator.wikimedia.org/wiki/Wp/quc | Wikimedia contributors | CC BY-SA 4.0 | 112 pages; 76 sentences kept after filtering (many pages are mostly Spanish medical stubs) | Encyclopedic / health | Modern | 2015–2024 | **monolingual**: K'iche' side of Gemini back-translation (train, es→quc only) |
+| Bloom Library K'iche'-only books, CC BY subset (`bloom_mono_quc`) | https://bloomlibrary.org/language:quc | Mostly Ministerio de Educación de Guatemala / USAID, via SIL Bloom Library | CC BY 4.0 per book (same API field and book HTML link as `bloom_kiche`); NC/ND books excluded | 102 books with K'iche' text and no Spanish side; 2,052 sentences kept | Children's stories, folk tales, parent guides | Modern ALMG | 2016–2019 | **monolingual**: back-translation (train, both directions). Never the bilingual test books; sentences repeating dev/test are dropped (1 found) |
 | Space Scoop K'iche' (`spacescoop_quc`) | https://www.unawe.org/kids/archive/lang/quc/viewall/ | Universe Awareness (UNAWE) / SpaceScoop.org, volunteer translators | CC BY 4.0 ("provided that the text is credited to SpaceScoop.org") | 22 astronomy-news articles for children; 318 sentences. The K'iche' versions are freer and shorter than the Spanish ones, so they can't be paragraph-aligned | Science / education | Modern | 2015–2016 | **monolingual**: back-translation (train, es→quc only) |
 | UD K'iche'-IU treebank (`ud_kiche_iu`) | https://github.com/UniversalDependencies/UD_Kiche-IU | F. Tyers, R. Henderson (Indiana U.) | CC BY-SA 4.0. README: sentences used with permission of the Academia de Lenguas Mayas de Guatemala and Telma Can Pixabaj | 1,435 sentences, 980 with `text[spa]` (657 ALMG vocabulary examples, 288 UT course, a few Bible/legal/COVID) | Everyday (dictionary examples); small legal, health, religious | ALMG with lax vowels marked (`ä`); folded by `normalize.py` | 2021 (UD v2.8) | train |
 | COERLL "Chqeta'maj le qach'ab'al K'iche'!" (`coerll_kiche`) | https://tzij.coerll.utexas.edu/ | COERLL / LLILAS / AILLA, UT Austin | CC BY 4.0 (stated on the site). Lessons read via the public WordPress REST API | 46 lessons (Spanish edition); ~850 table rows (phrases + vocabulary) | Everyday / language learning | Near-ALMG, Nahualá variety | 2016–2026 | train |
@@ -126,3 +136,11 @@ the niche slices or the retrieval index.
 - **Constitución Política / Ley de Idiomas Nacionales / Acuerdos de Paz in K'iche'**,
   **UNICEF–ALMG**, **CONRED**: catalog records or press releases only, no downloadable text.
 - **StoryWeaver, Global Voices, Mozilla Common Voice**: no K'iche'.
+- **Search of 2026-10-04** (for the test's everyday domains), nothing new and open:
+  Google SMOL (K'iche' only inside GATITOS, already used); Tatoeba (8 K'iche' sentences, no links);
+  FLORES+ (no `quc` as of 2026-10-01; FLORES+ Mayas unreleased); AmericasNLP 2026 (image captioning,
+  no K'iche'); Aya and Meta Omnilingual (no K'iche'); OPUS es–quc (only Mozilla, Tatoeba, Bible);
+  Hugging Face datasets tagged `quc` (copies of FineWeb-2, or gated sets built from jw.org/MayanV);
+  Peace Corps manuals (Kaqchikel and Q'eqchi' only); GNOME, LibreOffice (nothing). Enlace Quiché's
+  *Learning the K'iche' Language* (2007) is described as CC BY-SA 2.5 but no original copy could be
+  found to verify it.

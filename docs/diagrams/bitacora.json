@@ -70,6 +70,20 @@
     -16.3,
     -14.3
    ]
+  },
+  {
+   "label": [
+    "+ datos",
+    "Bloom + destilación"
+   ],
+   "run": "final-20261002",
+   "variant": "tzij-2026-10-mix-s7+hybrid+mbr4",
+   "all": 25.7,
+   "goliath_all": 36.9,
+   "delta_ci": [
+    -12.1,
+    -10.1
+   ]
   }
  ]
 }

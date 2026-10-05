@@ -9,75 +9,62 @@ Status of references: 514 auto_validated — references validated automatically 
 | variant | where it runs | retrieval | español → K'iche' | K'iche' → español | both | p50 latency | p95 latency | cost per 1,000 translations |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `gemma4:e4b+hybrid` | laptop | yes | 18.6 | 19.9 | **19.2** | 4.61 s | 7.99 s | $0 (local) |
-| `tzij-2026-10-raft-bt-s3+hybrid` | laptop | yes | 17.7 | 19.0 | **18.3** | 1.69 s | 5.42 s | $0 (local) |
-| `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | laptop | yes | 25.0 | 22.7 | **23.9** | 3.17 s | 8.48 s | $0 (local) |
 | `tzij-2026-10-tm-a-e2-s4+hybrid` | laptop | yes | 24.1 | 20.0 | **22.1** | 1.70 s | 4.99 s | $0 (local) |
+| `tzij-2026-10-mix-s7+hybrid` | laptop | yes | 27.7 | 23.7 | **25.8** | 1.60 s | 4.44 s | $0 (local) |
 | `gemini-3.8-flash` | cloud | no | 34.4 | 39.5 | **36.8** | 1.58 s | 4.13 s | $0.319 |
 
 ## Which David goes on stage
 
-Best local variant: **`tzij-2026-10-raft-bt-s3+hybrid+mbr4`** (chrF++ 23.9). Set `LOCAL_MODEL_TAG=tzij-2026-10-raft-bt-s3` — the duel always adds retrieval to David, so pick a `+rag` variant unless the table shows retrieval hurting.
-Against Goliath (`gemini-3.8-flash`, 36.8): **-12.9 chrF++** for David.
+Best local variant: **`tzij-2026-10-mix-s7+hybrid`** (chrF++ 25.8). Set `LOCAL_MODEL_TAG=tzij-2026-10-mix-s7` — the duel always adds retrieval to David, so pick a `+rag` variant unless the table shows retrieval hurting.
+Against Goliath (`gemini-3.8-flash`, 36.8): **-11.0 chrF++** for David.
 
 **Fine-tuning, honestly** (same retrieval and decoding, fine-tuned vs base):
-- `tzij-2026-10-raft-bt-s3+hybrid` 18.3 vs `gemma4:e4b+hybrid` 19.2 (**-0.9**)
 - `tzij-2026-10-tm-a-e2-s4+hybrid` 22.1 vs `gemma4:e4b+hybrid` 19.2 (**+2.9**)
+- `tzij-2026-10-mix-s7+hybrid` 25.8 vs `gemma4:e4b+hybrid` 19.2 (**+6.6**)
 
 ## By test source (chrF++, both directions)
 
 | variant | `bloom_kiche` | `bouquet` |
 | --- | ---: | ---: |
 | `gemma4:e4b+hybrid` | 17.8 | 21.3 |
-| `tzij-2026-10-raft-bt-s3+hybrid` | 16.7 | 20.7 |
-| `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | 0.0 | 23.9 |
 | `tzij-2026-10-tm-a-e2-s4+hybrid` | 19.8 | 25.4 |
+| `tzij-2026-10-mix-s7+hybrid` | 23.7 | 28.8 |
 | `gemini-3.8-flash` | 34.4 | 40.6 |
-
-## Ablation: what each step bought (test set)
-
-| step | variant | es → quc | quc → es | both | Δ both | p50 |
-| --- | --- | ---: | ---: | ---: | ---: | ---: |
-| + hybrid retrieval (BM25+vectors, tuned on dev) | `gemma4:e4b+hybrid` | 18.6 | 19.9 | **19.2** | — | 4.61 s |
-| + RAFT with Gemini back-translation (1 epoch) | `tzij-2026-10-raft-bt-s3+hybrid` | 17.7 | 19.0 | **18.3** | -0.9 | 1.69 s |
-| + MBR (4 samples) | `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | 25.0 | 22.7 | **23.9** | +5.6 | 3.17 s |
 
 ## Where the gap is (chrF++ by slice)
 
-Same test pairs, sliced. `David` = best local variant (`tzij-2026-10-raft-bt-s3+hybrid+mbr4`), `Goliath` = `gemini-3.8-flash`.
+Same test pairs, sliced. `David` = best local variant (`tzij-2026-10-mix-s7+hybrid`), `Goliath` = `gemini-3.8-flash`.
 
 ### By length of the source text
 
 | variant | long sentence (13+ words) | sentence (5–12 words) | short phrase (1–4 words) |
 | --- | ---: | ---: | ---: |
 | `gemma4:e4b+hybrid` | 18.7 (n=256) | 22.3 (n=205) | 13.3 (n=53) |
-| `tzij-2026-10-raft-bt-s3+hybrid` | 17.5 (n=256) | 22.3 (n=205) | 14.5 (n=53) |
-| `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | 23.4 (n=119) | 25.0 (n=156) | 21.3 (n=25) |
 | `tzij-2026-10-tm-a-e2-s4+hybrid` | 21.2 (n=256) | 27.0 (n=205) | 14.5 (n=53) |
+| `tzij-2026-10-mix-s7+hybrid` | 25.2 (n=256) | 29.4 (n=205) | 14.1 (n=53) |
 | `gemini-3.8-flash` | 36.8 (n=256) | 38.7 (n=205) | 23.2 (n=53) |
 
 ### By direction and test source
 
-| variant | K'iche' → español · bouquet | español → K'iche' · bouquet |
-| --- | ---: | ---: |
-| `gemma4:e4b+hybrid` | 20.7 (n=150) | 21.9 (n=150) |
-| `tzij-2026-10-raft-bt-s3+hybrid` | 21.1 (n=150) | 20.3 (n=150) |
-| `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | 22.7 (n=150) | 25.0 (n=150) |
-| `tzij-2026-10-tm-a-e2-s4+hybrid` | 23.6 (n=150) | 27.0 (n=150) |
-| `gemini-3.8-flash` | 43.8 (n=150) | 37.7 (n=150) |
+| variant | K'iche' → español · bloom_kiche | K'iche' → español · bouquet | español → K'iche' · bloom_kiche | español → K'iche' · bouquet |
+| --- | ---: | ---: | ---: | ---: |
+| `gemma4:e4b+hybrid` | 19.4 (n=107) | 20.7 (n=150) | 16.3 (n=107) | 21.9 (n=150) |
+| `tzij-2026-10-tm-a-e2-s4+hybrid` | 17.6 (n=107) | 23.6 (n=150) | 22.0 (n=107) | 27.0 (n=150) |
+| `tzij-2026-10-mix-s7+hybrid` | 21.9 (n=107) | 26.4 (n=150) | 25.4 (n=107) | 31.1 (n=150) |
+| `gemini-3.8-flash` | 36.8 (n=107) | 43.8 (n=150) | 32.1 (n=107) | 37.7 (n=150) |
 
 ### By domain
 
-| variant | comments | conversation | how-to | narration | other-misc. | reflection | social-posts | web-misc. |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `gemma4:e4b+hybrid` | 21.2 (n=52) | 22.8 (n=74) | 18.3 (n=50) | 22.7 (n=42) | 21.4 (n=16) | 25.6 (n=14) | 17.2 (n=16) | 23.3 (n=36) |
-| `tzij-2026-10-raft-bt-s3+hybrid` | 23.5 (n=52) | 22.4 (n=74) | 18.8 (n=50) | 19.4 (n=42) | 21.8 (n=16) | 19.5 (n=14) | 17.0 (n=16) | 23.2 (n=36) |
-| `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | 23.5 (n=52) | 26.0 (n=74) | 21.9 (n=50) | 24.6 (n=42) | 21.8 (n=16) | 27.3 (n=14) | 20.9 (n=16) | 24.4 (n=36) |
-| `tzij-2026-10-tm-a-e2-s4+hybrid` | 25.7 (n=52) | 29.8 (n=74) | 22.3 (n=50) | 26.9 (n=42) | 21.4 (n=16) | 28.0 (n=14) | 19.9 (n=16) | 26.0 (n=36) |
-| `gemini-3.8-flash` | 37.1 (n=52) | 41.5 (n=74) | 34.8 (n=50) | 46.0 (n=42) | 47.6 (n=16) | 43.2 (n=14) | 40.1 (n=16) | 43.3 (n=36) |
+| variant | comments | conversation | education | how-to | narration | other-misc. | reflection | social-posts | web-misc. |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `gemma4:e4b+hybrid` | 21.2 (n=52) | 22.8 (n=74) | 17.8 (n=214) | 18.3 (n=50) | 22.7 (n=42) | 21.4 (n=16) | 25.6 (n=14) | 17.2 (n=16) | 23.3 (n=36) |
+| `tzij-2026-10-tm-a-e2-s4+hybrid` | 25.7 (n=52) | 29.8 (n=74) | 19.8 (n=214) | 22.3 (n=50) | 26.9 (n=42) | 21.4 (n=16) | 28.0 (n=14) | 19.9 (n=16) | 26.0 (n=36) |
+| `tzij-2026-10-mix-s7+hybrid` | 26.9 (n=52) | 32.9 (n=74) | 23.7 (n=214) | 24.8 (n=50) | 30.1 (n=42) | 28.6 (n=16) | 31.8 (n=14) | 25.8 (n=16) | 30.8 (n=36) |
+| `gemini-3.8-flash` | 37.1 (n=52) | 41.5 (n=74) | 34.4 (n=214) | 34.8 (n=50) | 46.0 (n=42) | 47.6 (n=16) | 43.2 (n=14) | 40.1 (n=16) | 43.3 (n=36) |
 
 ### Head to head, sentence by sentence
 
-- David scores higher than Goliath on **36 of 299** sentences (12%) and within 5 chrF++ points on 64 (21%).
+- David scores higher than Goliath on **103 of 513** sentences (20%) and within 5 chrF++ points on 157 (31%).
 - Cost of these 514 translations: David $0, Goliath $0.16.
 - With no internet, Goliath produces nothing (shown as offline on stage); David's numbers above are unchanged because everything it uses — model, index, embeddings — is on the laptop.
 
@@ -86,9 +73,8 @@ Same test pairs, sliced. `David` = best local variant (`tzij-2026-10-raft-bt-s3+
 | variant | ok | offline | error |
 | --- | ---: | ---: | ---: |
 | `gemma4:e4b+hybrid` | 514 | 0 | 0 |
-| `tzij-2026-10-raft-bt-s3+hybrid` | 514 | 0 | 0 |
-| `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | 300 | 0 | 0 |
 | `tzij-2026-10-tm-a-e2-s4+hybrid` | 514 | 0 | 0 |
+| `tzij-2026-10-mix-s7+hybrid` | 514 | 0 | 0 |
 | `gemini-3.8-flash` | 513 | 0 | 1 |
 
 Failed or offline answers count as empty translations in chrF++.

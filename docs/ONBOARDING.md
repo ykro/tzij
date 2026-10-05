@@ -53,9 +53,9 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 | --- | --- | --- |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Goliath |
 | `GEMINI_INPUT_USD_PER_M` / `GEMINI_OUTPUT_USD_PER_M` | `0.75` / `3.75` | Costo mostrado en pantalla. Desde el 1 de enero de 2027 la tarifa de lista sube a `1.50` / `7.50` (ver el comentario en `.env.example`). |
-| `LOCAL_MODEL_TAG` | `tzij-2026-10-raft-bt-s3` | David (siempre con recuperación) |
+| `LOCAL_MODEL_TAG` | `tzij-2026-10-mix-s7` | David (siempre con recuperación) |
 | `BASE_MODEL_TAGS` | `gemma4:e4b` | Modelos base que compara `make eval` |
-| `FINETUNED_MODEL_TAGS` | `tzij-2026-10-raft-bt-s3,tzij-2026-10-raft-bt-s0,tzij-2026-10-raft-s0` | Modelos con fine-tune que compara `make eval` |
+| `FINETUNED_MODEL_TAGS` | `tzij-2026-10-mix-s7,tzij-2026-10-raft-bt-s3,tzij-2026-10-raft-bt-s0,tzij-2026-10-raft-s0` | Modelos con fine-tune que compara `make eval` (`raft-bt-s3` es el David anterior) |
 | `GEMMA_BASE_MODEL` | `gemma-4-E4B-it` | Checkpoint base del fine-tune y tokenizador de `make fertility` |
 | `EMBEDDING_MODEL` | `embeddinggemma` | Embeddings del índice. El índice y las consultas tienen que usar el mismo. |
 | `RAG_INDEX`, `RAG_K` | `rag/index/tzij.sqlite`, `6` | Índice y cuántos ejemplos y entradas de glosario recibe David |
@@ -72,7 +72,7 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 ## 3. Modelos de Ollama
 
 ```bash
-make pull-model TAG=tzij-2026-10-raft-bt-s3   # David (ver §6.5)
+make pull-model TAG=tzij-2026-10-mix-s7   # David (ver §6.5)
 ollama pull embeddinggemma      # embeddings del índice (también offline, en el escenario)
 ollama pull gemma4:e4b          # base, para `make eval` y como David de respaldo
 ollama list
@@ -181,7 +181,7 @@ Mide tokens por palabra con el `tokenizer.json` de `google/<GEMMA_BASE_MODEL>` y
 make train TAG=tzij-2026-09 TRAIN_ARGS="--epochs=1"
 ```
 
-El David actual se entrenó con RAFT + retrotraducción, en 4 trozos de 1/4 de época para no pasar el límite de 1 h:
+El primer David ajustado (`tzij-2026-10-raft-bt-s3`) se entrenó con RAFT + retrotraducción, en 4 trozos de 1/4 de época para no pasar el límite de 1 h:
 
 ```bash
 make monolingual && make back-translate   # una vez: 405 oraciones → 399 pares, $0.12
@@ -193,6 +193,20 @@ make train TAG=tzij-2026-10-raft-bt-s1 TRAIN_DATA=data/train/chat-raft-bt.jsonl 
 # … igual para s2 y s3; después make train-finish TAG=tzij-2026-10-raft-bt-s3
 ```
 
+El David actual (`tzij-2026-10-mix-s7`) continúa el adaptador `tzij-2026-10-tm-a-e2-s4` (2 épocas, sin Firefox Focus) con datos en el dominio de la prueba ([bitácora, sección 11](BITACORA.md)):
+
+```bash
+make monolingual && make back-translate   # incluye los libros de Bloom solo en K'iche' (1,998 pares nuevos)
+make distill                              # español de Gemini → K'iche' filtrado: data/train/distilled/
+uv run python -m pipeline.train_set --raft --bt --bt-both --distilled 2409 --only-new 0.3
+#   → data/train/chat-raft-bt-both-dst2409-new30.jsonl: datos nuevos en las dos direcciones + 30 % de los pares web
+make train TAG=tzij-2026-10-mix-s0 TRAIN_DATA=data/train/chat-raft-bt-both-dst2409-new30.jsonl \
+  TRAIN_ARGS="… --shard=0/8 --init-adapter=gs://…-train-eu/tzij/runs/tzij-2026-10-tm-a-e2-s4/adapter"
+# … s1 a s7, cada uno con el adapter del anterior; después make train-finish TAG=tzij-2026-10-mix-s7
+```
+
+Los hiperparámetros de cada trozo quedan en `train/runs/<tag>.json`. Las decisiones entre ejecuciones se toman con `make eval EVAL_ARGS="--split dev_domain --out evals/dev_domain_report.md"`, no con la prueba.
+
 1. `make train-data` convierte las oraciones de `train` (ambas direcciones) en JSONL de chat con el mismo prompt del duelo, sin contexto de recuperación, y vuelve a comprobar el tope religioso. Salen 5,180 ejemplos.
 2. `train/submit_job.py` sube el JSONL a `gs://…-train-eu/tzij/data/<tag>/`, construye o reutiliza la imagen (`02`), actualiza el job (`03`), lo ejecuta con `--epochs`, etc., espera y escribe `train/runs/<tag>.json` con duración, máquina y costo estimado.
 3. Dentro del job, `train/train_lora.py` baja los pesos (`GEMMA_WEIGHTS_URI=hf://google`, con caché en el bucket), entrena la LoRA (r=16, alpha=32, lr 2e-4, solo el decodificador de texto) y guarda el adapter en el volumen.
@@ -202,8 +216,8 @@ Límites que hay que respetar: **1 h por tarea de GPU** en Cloud Run (por eso se
 ### 6.5 `make train-finish` y `make pull-model`
 
 ```bash
-make train-finish TAG=tzij-2026-10-raft-bt-s3   # adapter del bucket → merge → GGUF Q8_0 → Q4_K_M → gs://…-tzij-models/<tag>/
-make pull-model  TAG=tzij-2026-10-raft-bt-s3    # baja Modelfile + GGUF + metrics.json a models/<tag>/ y hace `ollama create`
+make train-finish TAG=tzij-2026-10-mix-s7   # adapter del bucket → merge → GGUF Q8_0 → Q4_K_M → gs://…-tzij-models/<tag>/
+make pull-model  TAG=tzij-2026-10-mix-s7    # baja Modelfile + GGUF + metrics.json a models/<tag>/ y hace `ollama create`
 ```
 
 `train-finish` usa `uv run --python 3.12 --with-requirements train/requirements.txt --with torch` (un entorno aparte del proyecto) y descarga llama.cpp `b11292` a `train/.llama.cpp/`. El GGUF Q4_K_M resultante pesa unos 5.3 GB. El `Modelfile` usa el renderer y el parser de `gemma4`, así que el modelo ajustado se pide igual que su base.
@@ -216,7 +230,8 @@ Si no hay GPU en la nube: `make train-local TAG=… [TRAIN_ARGS="--epochs=1"]` c
 make eval                                             # todas las variantes, 150 pares por fuente y dirección
 make eval EVAL_ARGS="--limit 20"                      # prueba rápida
 make eval EVAL_ARGS="--only gemma4:e4b+hybrid"        # una variante
-make eval EVAL_ARGS="--run final-20261002 --only tzij-2026-10-raft-bt-s3+hybrid+mbr4"  # agrega variantes a una ejecución
+make eval EVAL_ARGS="--run final-20261002 --only tzij-2026-10-mix-s7+hybrid+mbr4"  # agrega variantes a una ejecución
+make eval EVAL_ARGS="--split dev_domain --run dev-domain --out evals/dev_domain_report.md"  # decisiones en el dominio de la prueba, sin tocarla
 ```
 
 Necesita internet y ADC para las variantes de Gemini, y en Ollama todos los tags de `BASE_MODEL_TAGS` y `FINETUNED_MODEL_TAGS`. Las predicciones se guardan en `evals/runs/<run>/<variante>.jsonl`, así que una ejecución interrumpida se retoma con `--run`. El reporte incluye todas las variantes que tengan resultados en esa ejecución y dice cuál debe subir al escenario: la mejor variante local. Ese tag va en `LOCAL_MODEL_TAG`.
@@ -334,7 +349,7 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 | La vista del presentador dice "Solo desde la laptop del presentador" o las rondas responden 403 | Se abrió con la IP de la LAN en vez de `127.0.0.1` | Abre `http://127.0.0.1:8787/presentador/` en la laptop; el teléfono usa el QR |
 | El teléfono dice "Esta traducción ya tiene veredicto" | Una traducción acepta un solo veredicto por ronda | Es lo esperado; espera la siguiente ronda en vivo |
 | `!! el índice de recuperación es del dataset …` al arrancar, o `make eval` se niega a correr | El índice se construyó con otra versión del dataset | `make index` |
-| `!! David (tzij-2026-10-raft-bt-s3) no está en Ollama` al hacer `make up` | El modelo no está descargado | `make pull-model TAG=tzij-2026-10-raft-bt-s3` (o `LOCAL_MODEL_TAG=gemma4:e4b` y `ollama pull gemma4:e4b`) |
+| `!! David (tzij-2026-10-mix-s7) no está en Ollama` al hacer `make up` | El modelo no está descargado | `make pull-model TAG=tzij-2026-10-mix-s7` (o `LOCAL_MODEL_TAG=gemma4:e4b` y `ollama pull gemma4:e4b`) |
 | David responde "índice de recuperación no disponible" | Falta `rag/index/tzij.sqlite`, o el servicio lo desactivó al arrancar (`!! retrieval disabled` en la consola) | `make index`; reinicia `make up` |
 | `index built with 'X' but queries use 'Y'` | El índice se construyó con otro `EMBEDDING_MODEL` | `make index` con el modelo de `.env` |
 | David responde `recuperación: …` | Ollama no responde a `/api/embed` (EmbeddingGemma no está o Ollama se cayó) | `ollama pull embeddinggemma`; `curl 127.0.0.1:11434/api/version` |

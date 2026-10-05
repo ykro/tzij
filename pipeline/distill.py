@@ -47,6 +47,7 @@ from tzij_duel.prompts import translation_messages  # noqa: E402
 OUT_DIR = REPO / "data" / "train" / "distilled"
 SPANISH = OUT_DIR / "spanish.jsonl"
 PAIRS = OUT_DIR / "pairs.jsonl"
+REJECTED = OUT_DIR / "rejected.jsonl"  # translated and filtered out: a rerun skips them (no paying twice)
 META = OUT_DIR / "meta.json"
 ORIGIN = "distilled_gemini"
 SEED = 2027
@@ -165,9 +166,10 @@ async def translate(limit: int | None = None) -> dict:
         seen.add(key)
         rows.append(x)
     rows = rows[:limit] if limit else rows
-    done = {}
-    if PAIRS.exists():
-        done = {x["es_key"]: x for x in map(json.loads, PAIRS.read_text().splitlines())}
+    done = set()
+    for path in (PAIRS, REJECTED):
+        if path.exists():
+            done |= {x["es_key"] for x in map(json.loads, path.read_text().splitlines())}
     todo = [x for x in rows if match_key(x["es"]) not in done]
 
     g = Gemini(concurrency=16)
@@ -180,21 +182,22 @@ async def translate(limit: int | None = None) -> dict:
         quc = normalize_kiche(str(out.get("quc", ""))) if isinstance(out, dict) else ""
         if not quc:
             stats["failed"] += 1
-            return None
+            return None  # not recorded: a transient failure is retried on the next run
         stats["translated"] += 1
         names = {w for w in re.findall(r"\b[A-ZÁÉÍÓÚÑ][\w']+", x["es"])}
+        reject = lambda why: {"es_key": match_key(x["es"]), "rejected": why}  # noqa: E731
         if outside_alphabet(" ".join(w for w in quc.split() if w.strip(".,;:!?¿¡\"()") not in names)):
             stats["alphabet"] += 1
-            return None
+            return reject("alphabet")
         ratio = len(quc.split()) / max(len(x["es"].split()), 1)
         if not 0.4 <= ratio <= 2.0:
             stats["length"] += 1
-            return None
+            return reject("length")
         rt = await g.round_trip([quc])
         score = chrf_pp(rt[0], x["es"]) if rt else 0.0
         if score < threshold:
             stats["round_trip"] += 1
-            return None
+            return reject("round_trip")
         stats["kept"] += 1
         pid = "dst-" + hashlib.sha1(f"{match_key(x['es'])}|{match_key(quc)}".encode()).hexdigest()[:12]
         return {"pair_id": pid, "es": x["es"], "quc": quc, "es_key": match_key(x["es"]), "round_trip_chrf": round(score, 1),
@@ -205,10 +208,10 @@ async def translate(limit: int | None = None) -> dict:
     results = []
     for i in range(0, len(todo), 400):  # checkpoint every 400 sentences
         chunk = await asyncio.gather(*(one(x) for x in todo[i:i + 400]))
-        with PAIRS.open("a", encoding="utf-8") as fh:
+        with PAIRS.open("a", encoding="utf-8") as fh, REJECTED.open("a", encoding="utf-8") as rj:
             for rec in chunk:
                 if rec:
-                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                    (rj if "rejected" in rec else fh).write(json.dumps(rec, ensure_ascii=False) + "\n")
         results += chunk
         print(f"  {min(i + 400, len(todo))}/{len(todo)} kept so far {stats['kept']} (${g.cost():.2f})", flush=True)
     meta = _meta()

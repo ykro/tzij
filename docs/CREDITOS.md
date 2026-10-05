@@ -20,8 +20,11 @@ Cada fuente, con dueño, licencia, tamaño, dominio, ortografía y estado, está
 | [Wikcionario](https://es.wiktionary.org/) vía [kaikki.org](https://kaikki.org/eswiktionary/) | Colaboradores de Wikcionario | CC BY-SA 4.0 | Léxico |
 | [Unicode CLDR](https://github.com/unicode-org/cldr), nombres de emoji en K'iche' | Colaboradores de Unicode CLDR | Unicode License V3 | Léxico (memoria de traducción) |
 | [Glosario FLORES-Mayas](https://github.com/transducens/floresmayas) (`quc/vocab.json`, commit fijo) | Transducens (Universitat d'Alacant) con traductores de la PLFM | Apache-2.0 | Léxico (memoria de traducción); nunca junto a una prueba basada en FLORES |
-| [Wikipedia en K'iche' (Incubator `Wp/quc`)](https://incubator.wikimedia.org/wiki/Wp/quc) | Colaboradores de Wikimedia | CC BY-SA 4.0 | K'iche' monolingüe para retrotraducción (solo español → K'iche') |
-| [Space Scoop en K'iche'](https://www.unawe.org/kids/archive/lang/quc/viewall/) | Universe Awareness (UNAWE) / SpaceScoop.org | CC BY 4.0 (crédito a SpaceScoop.org) | K'iche' monolingüe para retrotraducción (solo español → K'iche') |
+| [Wikipedia en K'iche' (Incubator `Wp/quc`)](https://incubator.wikimedia.org/wiki/Wp/quc) | Colaboradores de Wikimedia | CC BY-SA 4.0 | K'iche' monolingüe para retrotraducción (entrenamiento) |
+| [Space Scoop en K'iche'](https://www.unawe.org/kids/archive/lang/quc/viewall/) | Universe Awareness (UNAWE) / SpaceScoop.org | CC BY 4.0 (crédito a SpaceScoop.org) | K'iche' monolingüe para retrotraducción (entrenamiento) |
+| [Bloom Library, libros solo en K'iche'](https://bloomlibrary.org/language:quc) (solo CC BY) | Principalmente Ministerio de Educación de Guatemala / USAID, vía SIL Bloom Library | CC BY 4.0 por libro; se excluyen los NC/ND | K'iche' monolingüe para retrotraducción (entrenamiento, las dos direcciones; 2,052 oraciones). Nunca los libros bilingües de prueba |
+
+**Pares destilados** (`origin=distilled_gemini`): son salida de Gemini, español escrito por Gemini y traducido por Gemini al K'iche' con el contexto recuperado de David, filtrado por alfabeto, longitud e ida y vuelta (`pipeline/distill.py`). Solo entrenan: nunca entran al dataset, al índice, a dev ni a la prueba, y no son datos K'iche' de ninguna fuente.
 
 Las fuentes que piden autorización previa (publicaciones de la ALMG fuera de los ejemplos permitidos, PLFM, diccionarios del SIL, entre otras) están marcadas como *needs permission* y no se usan. Los datos K'iche' pertenecen a sus hablantes y a sus instituciones.
 

@@ -20,8 +20,11 @@ Every source, with owner, license, size, domain, orthography and status, is list
 | [Spanish Wiktionary](https://es.wiktionary.org/) via [kaikki.org](https://kaikki.org/eswiktionary/) | Wiktionary contributors | CC BY-SA 4.0 | Lexicon |
 | [Unicode CLDR](https://github.com/unicode-org/cldr), K'iche' emoji names | Unicode CLDR contributors | Unicode License V3 | Lexicon (translation memory) |
 | [FLORES-Mayas glossary](https://github.com/transducens/floresmayas) (`quc/vocab.json`, pinned commit) | Transducens (Universitat d'Alacant) with PLFM translators | Apache-2.0 | Lexicon (translation memory); never together with a FLORES-based test |
-| [K'iche' Wikipedia (Incubator `Wp/quc`)](https://incubator.wikimedia.org/wiki/Wp/quc) | Wikimedia contributors | CC BY-SA 4.0 | Monolingual K'iche' for back-translation (Spanish → K'iche' only) |
-| [Space Scoop in K'iche'](https://www.unawe.org/kids/archive/lang/quc/viewall/) | Universe Awareness (UNAWE) / SpaceScoop.org | CC BY 4.0 (credit SpaceScoop.org) | Monolingual K'iche' for back-translation (Spanish → K'iche' only) |
+| [K'iche' Wikipedia (Incubator `Wp/quc`)](https://incubator.wikimedia.org/wiki/Wp/quc) | Wikimedia contributors | CC BY-SA 4.0 | Monolingual K'iche' for back-translation (training) |
+| [Space Scoop in K'iche'](https://www.unawe.org/kids/archive/lang/quc/viewall/) | Universe Awareness (UNAWE) / SpaceScoop.org | CC BY 4.0 (credit SpaceScoop.org) | Monolingual K'iche' for back-translation (training) |
+| [Bloom Library K'iche'-only books](https://bloomlibrary.org/language:quc) (CC BY only) | Mostly Ministerio de Educación de Guatemala / USAID, via SIL Bloom Library | CC BY 4.0 per book; NC/ND books excluded | Monolingual K'iche' for back-translation (training, both directions; 2,052 sentences). Never the bilingual test books |
+
+**Distilled pairs** (`origin=distilled_gemini`): Gemini output, Spanish written by Gemini and translated by Gemini into K'iche' with David's retrieved context, filtered by alphabet, length and round trip (`pipeline/distill.py`). Training only: they never enter the dataset, the index, dev or test, and they are not K'iche' data from any source.
 
 Sources that require prior authorization (ALMG publications beyond the permitted examples, PLFM, SIL dictionaries, among others) are marked *needs permission* and are not used. K'iche' data belongs to its speakers and their institutions.
 
