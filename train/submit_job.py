@@ -79,16 +79,24 @@ def cloud_run_cost(duration_s: float, gpu: bool = True) -> float:
     return duration_s * (per_s + (CLOUD_RUN_RATES["gpu_l4"] if gpu else 0.0))
 
 
-def execute(job: str, region: str, job_args: list[str], gpu: bool) -> dict:
-    """Start one execution of a Cloud Run Job, poll until it ends, return state, timing and cost."""
-    execution = sh(
+def execute(job: str, region: str, job_args: list[str], gpu: bool, attach: str = "") -> dict:
+    """Start one execution of a Cloud Run Job (or attach to a running one), poll until it ends, return state, timing and cost."""
+    execution = attach or sh(
         "gcloud", "run", "jobs", "execute", job, f"--region={region}", "--async",
         f"--args={','.join(job_args)}", "--format=value(metadata.name)",
     )
     print(f"==> {job}: execution {execution}", flush=True)
-    last = None
+    last, failures = None, 0
     while True:
-        ex = json.loads(sh("gcloud", "run", "jobs", "executions", "describe", execution, f"--region={region}", "--format=json"))
+        try:
+            ex = json.loads(sh("gcloud", "run", "jobs", "executions", "describe", execution, f"--region={region}", "--format=json"))
+            failures = 0
+        except subprocess.CalledProcessError:
+            failures += 1  # a transient gcloud/network error must not orphan a running job
+            if failures >= 10:
+                raise
+            time.sleep(30)
+            continue
         st = ex.get("status", {})
         cond = {c["type"]: c for c in st.get("conditions", [])}.get("Completed", {})
         state = "SUCCEEDED" if st.get("succeededCount") else "FAILED" if st.get("failedCount") or cond.get("status") == "False" else "RUNNING" if st.get("runningCount") else "PENDING"
@@ -129,7 +137,7 @@ def run_cloud_run(args, image: str, data_uri: str, region: str, run: dict, out: 
         return run
 
     stages = run["stages"]
-    stages["train"] = execute(f"{args.app}-train", region, train_args(args, data_uri, work_dir), gpu=True)
+    stages["train"] = execute(f"{args.app}-train", region, train_args(args, data_uri, work_dir), gpu=True, attach=args.attach)
     out.write_text(json.dumps(run, indent=2) + "\n")
     finish_here = os.environ.get("TRAIN_FINISH", "cloud") != "local"
     if stages["train"]["state"] == "SUCCEEDED" and finish_here:
@@ -230,6 +238,7 @@ def main() -> None:
     ap.add_argument("--tag", required=True)
     ap.add_argument("--data", required=True, help="local chat JSONL")
     ap.add_argument("--no-wait", action="store_true")
+    ap.add_argument("--attach", default="", help="watch this already-running train execution instead of starting one")
     ap.add_argument("--quant", default=os.environ.get("QUANT"), required=not os.environ.get("QUANT"),
                     help="GGUF quantization of the finished model (env QUANT, e.g. Q5_K_M)")
     ap.add_argument("--keep-f16", action="store_true", default=os.environ.get("KEEP_F16", "1") == "1",
@@ -238,6 +247,7 @@ def main() -> None:
     args = ap.parse_args()
 
     project, region = env("GOOGLE_CLOUD_PROJECT"), env("TRAIN_REGION", "europe-west4")
+    os.environ["CLOUDSDK_CORE_PROJECT"] = project  # scope every gcloud call without touching the global config
     runtime = env("TRAIN_RUNTIME", "cloud-run")
     staging = env("STAGING_BUCKET").rstrip("/")
     data_uri = f"{staging}/{args.app}/data/{args.tag}/train.jsonl"

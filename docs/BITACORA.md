@@ -24,6 +24,7 @@ de `evals/runs/`.*
 | 6 | 2 oct | El nicho: memoria de traducción (Firefox Focus) | 30.2 vs 28.9 | +1.3 | $0 | **Empate en chrF++; David gana en terminología (78 % contra 46 %)** |
 | 7 | 2 oct | Datos sintéticos anclados en el diccionario | 33.8 vs 34.2 en dev | −0.4 | $2.09 + $1.14 | **No ayudaron: fuera** |
 | 8 | 2 oct | Sesgo de logits hacia el diccionario (llama-server) | 33.8 vs 35.0 en dev | −1.2 | $0 | **No ayudó: fuera** |
+| 9 | 4 oct | Más épocas (hasta 2) y más español → Kʼicheʼ | 37.5 vs 36.6 en dev | +0.9 | $6.16 | **Empate en dev: el David en escena no cambia** |
 
 \* La iteración 2 se midió sobre el dataset del 30 de septiembre (las mismas fuentes de prueba,
 referencias aún sin validar). Ahí la base con recuperación sacaba 18.4.
@@ -177,6 +178,35 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
 - **Decisión:** el sesgo queda fuera (−1.2 frente al mismo MBR sin sesgo). El MBR multi-prompt
   suma +0.8, pero su p50 de 7.1 s pasa el límite de 5 s del escenario, así que tampoco entra.
 - **Costo:** $0.
+
+## 9. Más épocas y más español → Kʼicheʼ: empate (4 de octubre)
+
+- **Qué:** la misma receta de RAFT con retrotraducción, entrenada en trozos de un quinto de época
+  que continúan el adaptador anterior. Dos preguntas: (A) ¿ayuda entrenar más, de 0.4 a 1 y a 2
+  épocas, con español → Kʼicheʼ ×1.5?; (B) ¿ayuda subir español → Kʼicheʼ a ×2 con el presupuesto
+  de 0.4 épocas? B tiene un factor de confusión: sus contextos de recuperación salen del índice
+  actual (con CLDR y FLORES), y los de A del índice anterior.
+- **Resultado en dev** (230 frases, índice actual, mismas predicciones de Goliath):
+
+  | David | es → quc | quc → es | ambas | con MBR 4 | p50 (MBR 4) |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | En escena (`raft-bt-s3`, 1 época) | 37.8 | 35.3 | 36.6 | 37.6 | 3.9 s |
+  | A, 1 época (`tm-a-s4`) | 36.7 | 34.7 | 35.8 | 36.7 | 4.0 s |
+  | A, 2 épocas (`tm-a-e2-s4`) | 39.8 | 35.1 | **37.5** | **38.1** | 4.5 s |
+  | B, español → Kʼicheʼ ×2, 0.4 épocas (`tm-b-s1`) | 35.4 | 31.8 | 33.7 | — | — |
+  | Goliath (`gemini-3.8-flash`) | 33.7 | 43.9 | 38.6 | — | 1.6 s |
+
+- **Bootstrap pareado** (2,000 remuestreos, IC 95 %): A con 2 épocas contra el David en escena da
+  +0.9 [−1.0, +2.9] sin MBR y +0.5 [−1.2, +2.4] con MBR 4. Son empates.
+- **Lo que sí sale claro en dev:** los dos Davids le ganan a Goliath en español → Kʼicheʼ (+5.5
+  [+1.0, +10.3] el de escena con MBR 4) y pierden en Kʼicheʼ → español (−8.0 [−14.6, −1.7]). En
+  la prueba (Bloom y BOUQuET) David pierde en las dos direcciones, así que esta ventaja es de las
+  fuentes de dev (COERLL, Pontoon, UD, DUDH) y no se puede generalizar.
+- **Decisión:** el David en escena no cambia. Más épocas no compran una mejora medible, y subir
+  español → Kʼicheʼ a ×2 no ayuda: B saca 33.7, contra 34.2 de A con el mismo presupuesto
+  (sección 7, medido con el índice anterior).
+- **Costo:** $6.16 de L4 (A, época 1: $1.81; A, época 2: $3.12; B: $1.23), más el merge y el GGUF
+  en la laptop.
 
 ## Dónde gana David hoy y dónde pierde
 
