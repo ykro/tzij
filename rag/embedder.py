@@ -41,7 +41,7 @@ class OllamaEmbedder:
         vectors: list[list[float]] = []
         for start in range(0, len(texts), self.batch_size):
             batch = [TASK_PREFIX + t for t in texts[start:start + self.batch_size]]
-            response = self._client.post(f"{self.host}/api/embed", json={"model": self.name, "input": batch, "keep_alive": "30m"})
+            response = self._client.post(f"{self.host}/api/embed", json={"model": self.name, "input": batch, "keep_alive": "2h"})
             response.raise_for_status()
             vectors.extend(response.json()["embeddings"])
         return vectors

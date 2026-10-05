@@ -255,7 +255,7 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
                 import httpx
 
                 async with httpx.AsyncClient(base_url=settings.ollama_url, timeout=120) as http:
-                    await http.post("/api/chat", json={"model": svc.david.model, "messages": [], "keep_alive": "30m",
+                    await http.post("/api/chat", json={"model": svc.david.model, "messages": [], "keep_alive": "2h",
                                                        "options": {"num_ctx": settings.ollama_num_ctx}})
                 if svc.retriever:
                     await asyncio.to_thread(svc.retriever.retrieve, "hola", "es-quc", 1)

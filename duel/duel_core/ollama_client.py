@@ -26,7 +26,7 @@ class OllamaClient:
         temperature: float = 0.2,
         num_predict: int = 128,
         seed: int | None = None,
-        keep_alive: str = "30m",  # keep David loaded: a cold load costs seconds on stage
+        keep_alive: str = "2h",  # keep David loaded through a talk: a cold load costs seconds on stage
         think: bool = False,  # hybrid-reasoning models think by default; a translation doesn't need it
         timeout_s: float = 60.0,
         transport: httpx.AsyncBaseTransport | None = None,

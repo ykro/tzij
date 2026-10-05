@@ -26,7 +26,7 @@ from .settings import get_settings
 from .variants import stage_variants, translate
 
 WARMUP_PHRASE = "Buenos días, ¿cómo está usted?"
-KEEP_ALIVE = "30m"  # same as `make up` and the duel service
+KEEP_ALIVE = "2h"  # same as `make up` and the duel service: warm up early, stay loaded
 
 
 def line(label: str, result: str, ok: bool = True) -> bool:
