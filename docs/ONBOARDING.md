@@ -1,6 +1,6 @@
 # Onboarding — Tzij
 
-Guía para montar Tzij desde cero, preparar los datos y los modelos, ensayar el duelo y llegar al día de la charla sin sorpresas. La visión general y las decisiones técnicas están en el [README](../README.md).
+Guía para montar Tzij desde cero, preparar los datos y los modelos, ensayar el duelo y llegar al día de la charla sin sorpresas. La visión general está en el [README](../README.md) y las decisiones técnicas en [DECISIONES.md](DECISIONES.md).
 
 Contenido:
 
@@ -197,7 +197,7 @@ make train TAG=tzij-2026-10-raft-bt-s1 TRAIN_DATA=data/train/chat-raft-bt.jsonl 
 2. `train/submit_job.py` sube el JSONL a `gs://…-train-eu/tzij/data/<tag>/`, construye o reutiliza la imagen (`02`), actualiza el job (`03`), lo ejecuta con `--epochs`, etc., espera y escribe `train/runs/<tag>.json` con duración, máquina y costo estimado.
 3. Dentro del job, `train/train_lora.py` baja los pesos (`GEMMA_WEIGHTS_URI=hf://google`, con caché en el bucket), entrena la LoRA (r=16, alpha=32, lr 2e-4, solo el decodificador de texto) y guarda el adapter en el volumen.
 
-Límites que hay que respetar: **1 h por tarea de GPU** en Cloud Run (por eso se usa `--epochs=1`; 1.5 épocas no cabían) y **32 GiB** de memoria (por eso el merge de E4B no termina en la nube). La corrida `tzij-2026-09` entrenó bien (324 pasos, 22 min) y después el job terminó con *"The configured memory limit was reached"* al guardar el modelo fusionado. Es lo esperado con E4B: sigue con `make train-finish`.
+Límites que hay que respetar: **1 h por tarea de GPU** en Cloud Run (por eso se usa `--epochs=1`; 1.5 épocas no cabían) y **32 GiB** de memoria (por eso el merge de E4B no termina en la nube). La ejecución `tzij-2026-09` entrenó bien (324 pasos, 22 min) y después el job terminó con *"The configured memory limit was reached"* al guardar el modelo fusionado. Es lo esperado con E4B: sigue con `make train-finish`.
 
 ### 6.5 `make train-finish` y `make pull-model`
 
@@ -216,10 +216,10 @@ Si no hay GPU en la nube: `make train-local TAG=… [TRAIN_ARGS="--epochs=1"]` c
 make eval                                             # todas las variantes, 150 pares por fuente y dirección
 make eval EVAL_ARGS="--limit 20"                      # prueba rápida
 make eval EVAL_ARGS="--only gemma4:e4b+hybrid"        # una variante
-make eval EVAL_ARGS="--run final-20261002 --only tzij-2026-10-raft-bt-s3+hybrid+mbr4"  # agrega variantes a una corrida
+make eval EVAL_ARGS="--run final-20261002 --only tzij-2026-10-raft-bt-s3+hybrid+mbr4"  # agrega variantes a una ejecución
 ```
 
-Necesita internet y ADC para las variantes de Gemini, y en Ollama todos los tags de `BASE_MODEL_TAGS` y `FINETUNED_MODEL_TAGS`. Las predicciones se guardan en `evals/runs/<run>/<variante>.jsonl`, así que una corrida interrumpida se retoma con `--run`. El reporte incluye todas las variantes que tengan resultados en esa corrida y dice cuál debe subir al escenario: la mejor variante local. Ese tag va en `LOCAL_MODEL_TAG`.
+Necesita internet y ADC para las variantes de Gemini, y en Ollama todos los tags de `BASE_MODEL_TAGS` y `FINETUNED_MODEL_TAGS`. Las predicciones se guardan en `evals/runs/<run>/<variante>.jsonl`, así que una ejecución interrumpida se retoma con `--run`. El reporte incluye todas las variantes que tengan resultados en esa ejecución y dice cuál debe subir al escenario: la mejor variante local. Ese tag va en `LOCAL_MODEL_TAG`.
 
 ## 7. Correr el duelo (y sin internet)
 
@@ -288,11 +288,11 @@ Se llena antes de cada evento: 50 frases por modelo, adecuación y fluidez de 1 
 
 ```bash
 make eval
-make human-eval-sheet VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"   # RUN=<id> para otra corrida
-# sin VARIANTS incluye todas las variantes de la corrida
+make human-eval-sheet VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"   # RUN=<id> para otra ejecución
+# sin VARIANTS incluye todas las variantes de la ejecución
 ```
 
-Escribe `evals/runs/<run>/human_eval_sheet.csv` (sin nombres de modelo, filas mezcladas) y `human_eval_key.json` (letra → modelo, que no se comparte hasta terminar). `VARIANTS` usa los nombres de variante del reporte (los mismos de `make eval`); si alguno no tiene resultados en la corrida, el comando lo dice y no genera la hoja. La hoja muestra el texto original, así que aplica la misma regla de privacidad para BOUQuET.
+Escribe `evals/runs/<run>/human_eval_sheet.csv` (sin nombres de modelo, filas mezcladas) y `human_eval_key.json` (letra → modelo, que no se comparte hasta terminar). `VARIANTS` usa los nombres de variante del reporte (los mismos de `make eval`); si alguno no tiene resultados en la ejecución, el comando lo dice y no genera la hoja. La hoja muestra el texto original, así que aplica la misma regla de privacidad para BOUQuET.
 
 ## 10. Pruebas y ensayo
 
