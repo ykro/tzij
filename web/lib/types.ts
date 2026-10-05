@@ -69,6 +69,7 @@ export interface PresenterState {
   niche_deck_size?: number;
   mock: boolean;
   index_warning: string | null;
+  validators?: number; // validator phones connected right now
 }
 
 export interface BlindRound {

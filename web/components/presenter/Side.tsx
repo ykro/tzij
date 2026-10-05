@@ -11,6 +11,7 @@ interface Props {
   model: string;
   round: Round | null;
   online: boolean;
+  validators?: number; // validator phones connected (the validator is optional)
 }
 
 const LABEL: Record<ContenderName, string> = { david: "David", goliath: "Goliath" };
@@ -47,7 +48,7 @@ function Result({ result, direction, compact }: { result: ContenderResult; direc
   );
 }
 
-export function Side({ name, model, round, online }: Props) {
+export function Side({ name, model, round, online, validators = 0 }: Props) {
   const result = round?.results[name];
   const other = round?.results[name === "david" ? "goliath" : "david"];
   const offline = result?.status === "offline" || (name === "goliath" && !online && !result);
@@ -91,12 +92,12 @@ export function Side({ name, model, round, online }: Props) {
         <span className="side__model">{subtitle(name, model)}</span>
       </header>
       <div className="side__body">{body}</div>
-      <footer className="side__foot">{round && result?.status === "ok" && <RoundScore name={name} round={round} result={result} other={other} />}</footer>
+      <footer className="side__foot">{round && result?.status === "ok" && <RoundScore name={name} round={round} result={result} other={other} validators={validators} />}</footer>
     </section>
   );
 }
 
-function RoundScore({ name, round, result, other }: { name: ContenderName; round: Round; result: ContenderResult; other?: ContenderResult }) {
+function RoundScore({ name, round, result, other, validators }: { name: ContenderName; round: Round; result: ContenderResult; other?: ContenderResult; validators: number }) {
   if (round.kind === "evaluacion") {
     if (result.chrf == null) return null;
     // A win needs a rival: if the other side is offline or failed, there is no duel to win.
@@ -110,7 +111,8 @@ function RoundScore({ name, round, result, other }: { name: ContenderName; round
   }
   const tally = round.tallies[name];
   const given = (Object.keys(tally) as VerdictName[]).filter((v) => tally[v] > 0);
-  if (!given.length) return <span className="side__awaiting">Esperando el veredicto de la validadora…</span>;
+  // The validator is optional: only say we're waiting for a verdict when a phone is connected.
+  if (!given.length) return validators > 0 ? <span className="side__awaiting">Esperando el veredicto del teléfono…</span> : null;
   return (
     <>
       {given.map((v) => (

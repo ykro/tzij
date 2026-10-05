@@ -267,10 +267,10 @@ Requisito previo: `make web` **con** internet al menos una vez, porque `next/fon
 Desde el emulador, `10.0.2.2` es el `localhost` de la laptop.
 
 ```bash
-emulator -avd <tu_avd> &           # cualquier AVD con Chrome
+emulator -avd Pixel_9_API_36_1 &   # el AVD de los demos 2027 (cualquiera con Chrome sirve)
 make up                            # en otra terminal
-make emulator                      # ANDROID_SERIAL=emulator-5556 por defecto
-make emulator ANDROID_SERIAL=emulator-5554 BASE_URL=http://127.0.0.1:8787
+make emulator                      # el primer emulador de `adb devices` (o ANDROID_SERIAL=…)
+make emulator BASE_URL=http://127.0.0.1:8788   # si el duelo corre en otro puerto (DUEL_PORT)
 ```
 
 `web/tests/emulator.mjs` abre `http://10.0.2.2:8787/validar/` en el Chrome del emulador, lo controla por DevTools (`adb forward tcp:9333`), lanza una ronda en vivo, vota y mide cuánto tarda el voto en aparecer en el presentador. **Falla si tarda más de 1 s.** Las capturas quedan en `web/test-results/screens/`. Para probar a mano, abre `http://10.0.2.2:8787/validar/` en el Chrome del emulador.

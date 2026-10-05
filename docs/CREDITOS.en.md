@@ -28,4 +28,4 @@ Every source, with owner, license, size, domain, orthography and status, is list
 
 Sources that require prior authorization (ALMG publications beyond the permitted examples, PLFM, SIL dictionaries, among others) are marked *needs permission* and are not used. K'iche' data belongs to its speakers and their institutions.
 
-Every translation shown in a screenshot (`docs/screenshots/`, `docs/demo/`) is unvalidated model output.
+Every translation shown in a screenshot (`docs/demo/`) is unvalidated model output.

@@ -1,12 +1,17 @@
 // Validator on the Android emulator (Chrome), presenter on desktop Chromium.
 // The emulator reaches the laptop at 10.0.2.2. Measures tap -> presenter latency.
-//   BASE_URL=http://127.0.0.1:8788 ANDROID_SERIAL=emulator-5556 node tests/emulator.mjs
+//   BASE_URL=http://127.0.0.1:8787 node tests/emulator.mjs   (ANDROID_SERIAL picks a device)
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
-const SERIAL = process.env.ANDROID_SERIAL ?? "emulator-5556";
+// ANDROID_SERIAL, or the first running emulator in `adb devices` (its port changes between boots).
+const emulatorSerial = () =>
+  process.env.ANDROID_SERIAL ??
+  execFileSync("adb", ["devices"]).toString().split("\n").map((l) => l.split("\t")[0]).find((s) => s.startsWith("emulator-"));
+const SERIAL = emulatorSerial();
+if (!SERIAL) throw new Error("No emulator in `adb devices`: start Pixel_9_API_36_1 or set ANDROID_SERIAL");
 const PHONE_BASE = BASE.replace("127.0.0.1", "10.0.2.2").replace("localhost", "10.0.2.2");
 const OUT = new URL("../test-results/screens/", import.meta.url).pathname;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

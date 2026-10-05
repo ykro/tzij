@@ -139,13 +139,13 @@ Breakdown by source, length, domain and failures in [`evals/report.md`](../evals
 
 ### On stage
 
-![Evaluation round: the reference comes from a licensed book; David and Goliath translate the same sentence](screenshots/presenter-03-evaluation.png)
+![Evaluation round: the reference comes from a licensed book; David and Goliath translate the same sentence](demo/02-evaluacion-es-quc.png)
 
-*Evaluation round (with the previous David). The sentence and its **reference** come from a Bloom Library book (MINEDUC Guatemala, CC BY 4.0). Both translations are **unvalidated model output**; chrF++ compares them with the reference. David took 2.7 s with 4 MBR samples (p50 in the report: 4.0 s) and Goliath 1.7 s.*
+*Evaluation round with `tzij-2026-10-mix-s7`. The sentence and its **reference** come from a Bloom Library book (MINEDUC Guatemala, CC BY 4.0). Both translations are **unvalidated model output**; chrF++ compares them with the reference (45.9 vs 47.3). David took 5.1 s with 4 MBR samples on a long sentence (p50 in the report: 4.1 s) and Goliath 3.2 s.*
 
-![With Wi-Fi off: David translates on the laptop, Goliath shows as offline](screenshots/presenter-06-offline.png)
+![With Wi-Fi off: David translates on the laptop, Goliath shows as offline](demo/07-sin-conexion.png)
 
-*Same kind of round with the network cut (rehearsal switch). David's translation is **unvalidated model output**.*
+*Another evaluation round with the network cut (rehearsal switch). David's translation is **unvalidated model output**.*
 
 ## Versions
 

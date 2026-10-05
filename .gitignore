@@ -36,3 +36,4 @@ web/tsconfig.tsbuildinfo
 train/.llama.cpp/
 .env.mk
 data/monolingual/
+docs/demo/timings.txt

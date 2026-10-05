@@ -153,8 +153,8 @@ warmup: ## Load David + the embedding model in Ollama, one David translation (re
 preflight: ## Talk-day gate: Ollama + models, no Focus-trained David, index = dataset, decks, duel, Gemini, disk, David median of 3 <= 5 s (the p50 budget)
 	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.preflight
 
-emulator: ## Validator in Chrome on the Android emulator (ANDROID_SERIAL, default emulator-5556) + latency check
-	cd web && ANDROID_SERIAL=$${ANDROID_SERIAL:-emulator-5556} BASE_URL=$${BASE_URL:-http://127.0.0.1:$(DUEL_PORT)} node tests/emulator.mjs
+emulator: ## Validator in Chrome on the Android emulator (first emulator in adb devices, or ANDROID_SERIAL) + latency check
+	cd web && BASE_URL=$${BASE_URL:-http://127.0.0.1:$(DUEL_PORT)} node tests/emulator.mjs
 
 demo-screens: ## Screenshots for docs/DEMO.md, driven with the stage keys (needs `make up` with the real stage variant; EMULATOR=0 skips the phone)
 	cd web && node tests/demo.mjs

@@ -37,7 +37,7 @@ infra/         env.sh, 01-train-service-account.sh, 02-train-image.sh, 03-train-
 web/           Next.js: app/presentador, app/validar, components/, lib/, tests/
 tests/         pruebas del pipeline, normalización, recuperación y fertilidad
 docs/          ONBOARDING.md, DEMO.md, BITACORA.md, DECISIONES.md, COMANDOS.md, ESTRUCTURA.md, CREDITOS.md,
-               diagrams/, screenshots/ (toda traducción en una captura es salida del modelo, sin validar)
+               diagrams/, demo/ (toda traducción en una captura es salida del modelo, sin validar)
 MODEL_CARD.md  qué es David, con qué datos, resultados y límites
 ```
 

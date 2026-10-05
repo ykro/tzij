@@ -139,13 +139,13 @@ Detalle por fuente, longitud, dominio y fallos en [`evals/report.md`](../evals/r
 
 ### En el escenario
 
-![Ronda de evaluación: la referencia viene de un libro con licencia; David y Goliath traducen la misma frase](screenshots/presenter-03-evaluation.png)
+![Ronda de evaluación: la referencia viene de un libro con licencia; David y Goliath traducen la misma frase](demo/02-evaluacion-es-quc.png)
 
-*Ronda de evaluación (con el David anterior). La frase y su **referencia** vienen de un libro de Bloom Library (MINEDUC Guatemala, CC BY 4.0). Las dos traducciones son **salida del modelo, sin validar** por una persona hablante nativa; chrF++ las compara con la referencia. David tardó 2.7 s con 4 muestras MBR (p50 en el reporte: 4.0 s) y Goliath 1.7 s.*
+*Ronda de evaluación con `tzij-2026-10-mix-s7`. La frase y su **referencia** vienen de un libro de Bloom Library (MINEDUC Guatemala, CC BY 4.0). Las dos traducciones son **salida del modelo, sin validar** por una persona hablante nativa; chrF++ las compara con la referencia (45.9 contra 47.3). David tardó 5.1 s con 4 muestras MBR en una frase larga (p50 en el reporte: 4.1 s) y Goliath 3.2 s.*
 
-![Con Wi-Fi apagado: David traduce en la laptop, Goliath aparece sin conexión](screenshots/presenter-06-offline.png)
+![Con Wi-Fi apagado: David traduce en la laptop, Goliath aparece sin conexión](demo/07-sin-conexion.png)
 
-*Misma ronda con la red cortada (interruptor de ensayo). La traducción de David es **salida del modelo, sin validar**.*
+*Otra ronda de evaluación con la red cortada (interruptor de ensayo). La traducción de David es **salida del modelo, sin validar**.*
 
 ## Versiones
 

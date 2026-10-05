@@ -28,4 +28,4 @@ Cada fuente, con dueño, licencia, tamaño, dominio, ortografía y estado, está
 
 Las fuentes que piden autorización previa (publicaciones de la ALMG fuera de los ejemplos permitidos, PLFM, diccionarios del SIL, entre otras) están marcadas como *needs permission* y no se usan. Los datos K'iche' pertenecen a sus hablantes y a sus instituciones.
 
-Toda traducción que aparece en una captura (`docs/screenshots/`, `docs/demo/`) es salida del modelo, sin validar.
+Toda traducción que aparece en una captura (`docs/demo/`) es salida del modelo, sin validar.

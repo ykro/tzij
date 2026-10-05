@@ -7,7 +7,10 @@ import { execFileSync } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 
 const BASE = process.env.BASE_URL ?? "http://127.0.0.1:8787";
-const SERIAL = process.env.ANDROID_SERIAL ?? "emulator-5556";
+// ANDROID_SERIAL, or the first running emulator in `adb devices` (its port changes between boots).
+const emulatorSerial = () =>
+  process.env.ANDROID_SERIAL ??
+  execFileSync("adb", ["devices"]).toString().split("\n").map((l) => l.split("\t")[0]).find((s) => s.startsWith("emulator-"));
 const OUT = new URL("../../docs/demo/", import.meta.url).pathname;
 // Phrases from licensed data (Bloom Library, MINEDUC, CC BY 4.0); the first two are short phrases.
 const SHORT_ES = process.env.SHORT_ES ?? "Ocho mazorcas.";
@@ -72,7 +75,9 @@ await shot(p, "05b-en-vivo-frase-corta");
 
 // 6. Optional: the validator on the Android emulator votes; the verdict shows on the projector.
 if (process.env.EMULATOR !== "0") {
-  const adb = (...args) => execFileSync("adb", ["-s", SERIAL, ...args]);
+  const serial = emulatorSerial();
+  if (!serial) throw new Error("No emulator in `adb devices` (EMULATOR=0 skips this step)");
+  const adb = (...args) => execFileSync("adb", ["-s", serial, ...args]);
   const phoneBase = BASE.replace("127.0.0.1", "10.0.2.2");
   adb("shell", "am", "start", "-a", "android.intent.action.VIEW", "-d", phoneBase + "/validar/", "com.android.chrome");
   await sleep(2500);

@@ -2,8 +2,9 @@
 
 Paso a paso para mostrar a David (Gemma 4 E4B ajustado, en la laptop) contra Goliath (Gemini 3.8
 Flash, en la nube). Cada paso es una pantalla, con las teclas exactas, la frase que se escribe, la
-idea que se dice y el tiempo esperado. Todas las capturas son de la variante de escenario real
-(`make demo-screens`). Las traducciones que se ven en ellas son **salida del modelo, sin validar**.
+idea que se dice y el tiempo esperado. Las capturas son de la variante de escenario
+(`tzij-2026-10-mix-s7` + recuperación híbrida + MBR-4, `make demo-screens`, 5 de octubre de 2026).
+Las traducciones que se ven en ellas son **salida del modelo, sin validar**.
 
 Duración total: unos 6 minutos (8 con el teléfono validador).
 
@@ -95,8 +96,8 @@ Después de la charla: `make stage-off` (en Tzij solo lo confirma: no hay nada e
 - **Idea:** "La frase y su referencia vienen de un libro con licencia del Ministerio de Educación.
   Ninguno de los dos la vio antes; chrF++ mide qué tanto se parece cada traducción a la
   referencia."
-- **Tiempo:** 45 s. David tarda unos 4 s porque genera 4 candidatos y elige el de consenso (MBR).
-  Goliath tarda unos 2 s.
+- **Tiempo:** 45 s. David tarda de 2 a 7 s según el largo de la frase (p50 en la prueba: 4.1 s)
+  porque genera 4 candidatos y elige el de consenso (MBR). Goliath tarda de 1 a 3 s.
 
 ## Paso 3 — Kʼicheʼ → español
 
@@ -124,11 +125,14 @@ Después de la charla: `make stage-off` (en Tzij solo lo confirma: no hay nada e
   S
   ```
 
-  `D` vuelve a español → Kʼicheʼ (`S` siempre usa esa dirección).
+  `D` vuelve a español → Kʼicheʼ (`S` siempre usa esa dirección). Pulsa `S` dos o tres veces: el
+  resultado es el de las 144 frases y una frase sola puede salir para cualquiera de los dos. La
+  primera del mazo («Tu búsqueda, tu manera», la de la captura) suele ganarla Goliath.
 - **Idea:** "Firefox Focus en Kʼicheʼ. David nunca vio este producto, pero tiene la memoria de
-  traducción de los demás productos de Mozilla. Aquí David le gana a Goliath: 37.4 contra 28.9 de
-  chrF++ en las 144 frases, +8.5 puntos. Lo definimos antes de ver los resultados."
-- **Tiempo:** 45 s.
+  traducción de los demás productos de Mozilla. En las 144 frases David le gana a Goliath: 37.4
+  contra 28.9 de chrF++, +8.5 puntos, y gana 81 frases contra 60 de Goliath. Lo definimos antes de
+  ver los resultados."
+- **Tiempo:** 1 min.
 
 ## Paso 5 — En vivo, una frase corta
 
@@ -166,7 +170,7 @@ Después de la charla: `make stage-off` (en Tzij solo lo confirma: no hay nada e
   En el teléfono se toca un veredicto. Para ensayar con el emulador:
 
   ```bash
-  adb -s emulator-5556 shell am start -a android.intent.action.VIEW \
+  adb shell am start -a android.intent.action.VIEW \
     -d http://10.0.2.2:8787/validar/ com.android.chrome
   ```
 

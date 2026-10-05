@@ -97,7 +97,7 @@ class Service:
             if settings.mock_ai
             else Deck(settings.processed_dir, require_validated=settings.require_validated_test)
         )
-        self.events = Broadcaster()
+        self.events = Broadcaster(on_change=self._subscribers_changed)
         self.card = model_card(settings)
         self.validator_url = public_url(settings.public_url, settings.port) + "/validar/"
         self.online = True
@@ -131,11 +131,17 @@ class Service:
             "niche_deck_size": self.deck.niche_size,
             "mock": self.settings.mock_ai,
             "index_warning": self.index_warning,
+            "validators": self.events.count(VALIDATOR),
         }
 
     def validator_state(self) -> dict[str, Any]:
         current = self.store.current
         return {"round": current.blind() if current else None}
+
+    def _subscribers_changed(self, channel: str) -> None:
+        # A validator phone joining or leaving changes what the presenter shows on live rounds.
+        if channel == VALIDATOR:
+            self.events.publish(PRESENTER, "state", self.state())
 
     def publish(self) -> None:
         self.events.publish(PRESENTER, "state", self.state())

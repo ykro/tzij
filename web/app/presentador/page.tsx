@@ -124,8 +124,8 @@ export default function Presenter() {
       )}
 
       <div className="duel">
-        <Side name="david" model={state.contenders.david.model} round={round} online={state.online} />
-        <Side name="goliath" model={state.contenders.goliath.model} round={round} online={state.online} />
+        <Side name="david" model={state.contenders.david.model} round={round} online={state.online} validators={state.validators} />
+        <Side name="goliath" model={state.contenders.goliath.model} round={round} online={state.online} validators={state.validators} />
       </div>
 
       <footer className="stage__foot">

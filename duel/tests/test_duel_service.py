@@ -339,3 +339,17 @@ async def test_specialty_round_draws_only_from_the_niche(service, tmp_path):
         assert normal.status_code == 200
         await _finish(service)
         assert (await client.get("/api/state")).json()["round"]["reference_meta"]["pair_id"] != "n1"
+
+
+async def test_presenter_state_counts_connected_validators(service):
+    # The validator is optional: the presenter only says it's waiting for a verdict when a phone is
+    # connected, so the state carries the count and is republished when a phone joins or leaves.
+    seen = []
+    service.events.on_change = lambda ch: seen.append((ch, service.state()["validators"]))
+    assert service.state()["validators"] == 0
+    stream = service.events.stream("validator", first="hello")
+    assert await stream.__anext__() == "hello"
+    assert service.state()["validators"] == 1
+    await stream.aclose()
+    assert service.state()["validators"] == 0
+    assert seen == [("validator", 1), ("validator", 0)]
