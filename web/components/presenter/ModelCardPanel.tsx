@@ -37,7 +37,11 @@ export function ModelCardPanel({ card }: { card: ModelCard }) {
         <dt>Goliath</dt>
         <dd>{modelName(card.goliath_model)}, en la nube, sin datos extra</dd>
       </dl>
-      <p className="model-card__note">Sin datos sintéticos: nada de Kʼicheʼ generado por IA. Detalle en data/SOURCES.md y MODEL_CARD.md.</p>
+      <p className="model-card__note">
+        {card.finetune_sources?.length
+          ? "Índice y prueba: solo textos con licencia escritos por personas; el fine-tune también usó pares de Gemini. Detalle en MODEL_CARD.md."
+          : "Solo textos con licencia escritos por personas. Detalle en data/SOURCES.md y MODEL_CARD.md."}
+      </p>
     </aside>
   );
 }

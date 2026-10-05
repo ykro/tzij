@@ -46,6 +46,7 @@ export interface ModelCard {
   sources: number | null;
   source_names?: string[];
   train_sources?: string[];
+  finetune_sources?: string[]; // training-only Gemini data (back-translation, distillation)
   test_sources?: string[];
   pairs: number | null;
   test_pairs: number | null;

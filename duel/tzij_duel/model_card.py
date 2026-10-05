@@ -26,6 +26,15 @@ SOURCE_LABELS = {
     "floresmayas_quc": "Glosario FLORES-Mayas",
 }
 
+# Training-only data a fine-tuned David learned from on top of the dataset (never in the index,
+# dev or test). Counts from MODEL_CARD.md and docs/BITACORA.md, section 11.
+FINETUNE_SOURCES = {
+    "tzij-2026-10-mix-s7": [
+        "Retrotraducción de Gemini (2,397 pares, solo entrenamiento)",
+        "Destilación de Gemini (2,409 pares filtrados, solo entrenamiento)",
+    ],
+}
+
 MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto",
           "septiembre", "octubre", "noviembre", "diciembre"]
 
@@ -64,6 +73,10 @@ def model_card(s: Settings) -> dict:
             "dataset_version": m["version"],
             "finetune_threshold_met": m["finetune"]["threshold_met"],
         }
+    extra = FINETUNE_SOURCES.get(s.david_model, [])
+    card["finetune_sources"] = extra
+    if extra:
+        card["train_sources"] = [*card.get("train_sources", []), *extra]
     index = _index_meta(s.rag_index)
     card["index_entries"] = index.get("entries")
     card["embedding_model"] = index.get("embedding_model")

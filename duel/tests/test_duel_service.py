@@ -247,6 +247,18 @@ async def test_model_card_and_validator_url(service):
     assert state["validator_url"] == "http://192.0.2.10:8787/validar/"
 
 
+def test_model_card_lists_the_training_only_gemini_data_of_the_stage_david(settings):
+    from dataclasses import replace
+
+    from tzij_duel.model_card import model_card
+
+    base = model_card(replace(settings, david_model="gemma4:e4b"))
+    assert base["finetune_sources"] == [] and base["train_sources"] == []
+    stage = model_card(replace(settings, david_model="tzij-2026-10-mix-s7"))
+    assert any("Retrotraducción" in s for s in stage["train_sources"])
+    assert any("Destilación" in s and "2,409" in s for s in stage["train_sources"])
+
+
 def test_verdict_options():
     assert VERDICTS == ("correcta", "aceptable", "incorrecta")
 
