@@ -10,7 +10,7 @@ Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish 
 | --- | --- |
 | Data the big models don't have | `data/SOURCES.md`, licensed web sources only, orthography normalization |
 | When NOT to fine-tune | `make eval` compares RAG vs FT vs FT+RAG; 2,000-pair threshold visible |
-| Honest evals | split by source, chrF++, native-speaker validation, token fertility |
+| Evals you can check | split by source, chrF++, automatic test validation (native review optional), token fertility |
 | AI for communities without connectivity | everything at runtime works offline |
 
 ## Components
@@ -20,10 +20,10 @@ Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish 
 | Source research | Web search, documented source list | Coding agent | — |
 | Data pipeline (`pipeline/`) | Python: download, clean, normalize, split by source | Cloud Run Job → `gs://ai-experiments-487722-tzij-data` (also runnable locally) | Reproducible, no laptop needed |
 | Retrieval index | EmbeddingGemma via Ollama, SQLite + `sqlite-vec` | Laptop | Must be built with the same embedding model used offline at query time |
-| Training (`train/`) | Optional LoRA of Gemma, TRL + PEFT, GGUF | Vertex AI Custom Job (L4, europe-west4); notebook for Colab | CUDA stack, billed cost |
+| Training (`train/`) | LoRA of Gemma, TRL + PEFT, GGUF | Cloud Run Job (1× L4, europe-west4); merge + GGUF of E4B on the laptop (`make train-finish`); notebook for Colab | CUDA stack, billed cost; E4B's merge doesn't fit Cloud Run's 32 GiB |
 | David | Gemma (fine-tuned or base) + retrieval | Laptop (Ollama) | Offline |
 | Duel service (`duel/`) | Python, FastAPI, Ollama client, `google-genai`, `sacrebleu` | Laptop | Offline |
-| Presenter view + validator view | Next.js served on the laptop's LAN | Laptop | The native speaker's phone reaches it without internet |
+| Presenter view + validator view | Next.js served on the laptop's LAN | Laptop | An optional validator's phone reaches it without internet |
 
 ## Source research (first task)
 
@@ -38,18 +38,18 @@ Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish 
 
 - Always build the retrieval index: dictionary entries and example sentence pairs; for each input fetch the most relevant ones into David's prompt.
 - Fine-tune only if there are at least 2,000 clean parallel sentence pairs outside the test set.
-- `make eval` compares every available variant and writes `evals/report.md`: Gemma base, Gemma + retrieval, fine-tuned Gemma, fine-tuned + retrieval, Gemini alone, Gemini + the same retrieval. The best David variant goes on stage; the report shows all results honestly.
+- `make eval` compares every available variant and writes `evals/report.md`: Gemma base, Gemma + retrieval, fine-tuned Gemma, fine-tuned + retrieval, Gemini alone, Gemini + the same retrieval. The best David variant goes on stage; the report shows every result, including the ones where David loses.
 
 ## Evaluation
 
-- Test set (target ≥ 200 pairs per direction) from sources not used for training or retrieval, split by source. `status=pending_native_review` until a native speaker validates it (`make review-test` exports a CSV/validator session); rejected pairs are dropped.
+- Test set (target ≥ 200 pairs per direction) from sources not used for training or retrieval, split by source. Validated automatically (`pipeline/validate_test.py`) as `auto_validated`; no human step is required. Native review is optional (`make review-test` / `make apply-review`) and drops rejected pairs.
 - Metric: chrF++.
-- `evals/human_eval.md`: blind rating template (adequacy/fluency 1–5, 50 translations per model), filled before each event.
+- `evals/human_eval.md`: optional blind rating procedure (adequacy/fluency 1–5, 50 translations per model); the demo never depends on it.
 - Report includes token fertility (tokens per word) of K'iche' vs Spanish in Gemma's tokenizer.
 
 ## Presenter and validator views
 
-- Presenter: phrase and direction; David and Goliath side by side with translation, latency and cost; scoreboard with chrF++ (evaluation rounds) and native-speaker verdicts (live rounds); model card panel with sources, pair count and data date.
+- Presenter: phrase and direction; David and Goliath side by side with translation, latency and cost; scoreboard with chrF++ (evaluation rounds) and validator verdicts (live rounds, optional); model card panel with sources, pair count and data date.
 - Validator (phone over LAN, QR on the presenter view): both translations without saying which model made each; mark correct / acceptable / wrong; verdict appears on screen instantly.
 - Offline: everything runs without internet; Goliath shows as offline.
 
@@ -75,7 +75,7 @@ These demos are teaching material for a talk. The code, folder names, reports an
 | Cloud models | Gemini via Vertex AI with the Google Gen AI SDK (`@google/genai` / `google-genai`), ADC, `GOOGLE_CLOUD_LOCATION=global` |
 | Images | Nano Banana 2 Lite (`IMAGE_MODEL`) via Vertex AI |
 | Local models | Gemma served with Ollama; EmbeddingGemma where retrieval is needed |
-| Fine-tuning | LoRA with Hugging Face TRL + PEFT as a Vertex AI Custom Job (L4, `europe-west4`); same script wrapped in a Colab notebook; exported to quantized GGUF for Ollama |
+| Fine-tuning | LoRA with Hugging Face TRL + PEFT as a Cloud Run Job (L4, `europe-west4`); same script wrapped in a Colab notebook; exported to quantized GGUF for Ollama |
 | Agents | Agent Development Kit (ADK, Python); MCP for tools; A2A for agent-to-agent |
 | Cloud | Google Cloud project `ai-experiments-487722`. Every web app or API runs on **Cloud Run** (`us-central1`, Dockerfile + Cloud Build + Artifact Registry repo `charlas2027`). Firebase services (Auth, Firestore named database per app, FCM, Storage, App Check) are used as SDKs, never Firebase Hosting |
 | Local data | JSON/JSONL files or SQLite in the repo |

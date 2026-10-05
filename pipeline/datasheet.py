@@ -27,7 +27,7 @@ ORTHOGRAPHY_NOTES = """\
   Christodouloupoulos corpus) were not used.
 - **Dialects.** K'iche' is written differently in Nahualá, Cantel, Totonicapán and
   Santa Cruz del Quiché (`le`/`ri` articles, `xuqe'`/`xuquje'`). We do not force one
-  variety; the test set is reviewed by a native speaker who can mark dialect issues.
+  variety, and chrF++ against a single reference counts a dialect variant as an error.
 - **Spanish.** Accents and `¿ ¡` are kept; only whitespace, quotes and dashes are unified.
 """
 
@@ -183,7 +183,7 @@ Raw orthography markers per source (pairs whose raw K'iche' text shows the marke
 - Pontoon (software strings) and GATITOS (dictionary) pair Spanish and K'iche' through a
   shared English original: both are human translations, but senses can diverge.
 - Bloom books are page-aligned, not sentence-aligned; some Spanish pages paraphrase.
-  The native-speaker review is the final filter for the test set.
+  The automatic length-ratio filter (0.5–2.0) drops the worst ones; chrF++ on the rest is noisier.
 - Dialect variation is not normalized (see Orthography).
 """
 

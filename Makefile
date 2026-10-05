@@ -69,7 +69,7 @@ niche: ## David vs Goliath on the niche (held-out Pontoon product, translation m
 eval: ## Compare every available variant on the test set -> evals/report.md
 	$(UV) run python -m evals.run_eval $(EVAL_ARGS)
 
-human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run: [VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"] [RUN=id]
+human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run: [VARIANTS="tzij-2026-10-mix-s7+hybrid+mbr4,gemini-3.8-flash"] [RUN=id]
 	$(UV) run python -m evals.human_eval_sheet $(if $(VARIANTS),--variants "$(VARIANTS)") $(if $(RUN),--run $(RUN))
 
 train-data: ## Training data of the stage David: RAFT + back-translation (both directions) + 2,409 distilled pairs + 30% web replay -> data/train/chat-raft-bt-both-dst2409-new30.jsonl
@@ -107,8 +107,8 @@ train-finish: ## Merge + GGUF a cloud-trained adapter on this Mac and publish it
 	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
 	  python train/finish_local.py $(TAG) $(FINISH_ARGS)
 
-pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-09
-	@test -n "$(TAG)" || (echo "usage: make pull-model TAG=tzij-YYYY-MM" && exit 1)
+pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-10-mix-s7
+	@test -n "$(TAG)" || (echo "usage: make pull-model TAG=tzij-2026-10-mix-s7" && exit 1)
 	MODELS_BUCKET=$(MODELS_BUCKET) train/pull_model.sh $(TAG)
 
 web: ## Build the presenter and validator views (static export; needs internet once for fonts)

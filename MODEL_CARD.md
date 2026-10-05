@@ -156,9 +156,9 @@ translations and can be wrong in ways a non-speaker cannot detect.
 - K'iche' varies by region (Nahualá, Totonicapán, Santa Cruz del Quiché, Cantel); the data
   mixes varieties and the model does not choose one on purpose.
 - chrF++ rewards character overlap with one reference; a correct paraphrase can score low.
-  Live rounds are judged by a native speaker for that reason.
-- Some test pairs (children's books) are page-aligned and paraphrased; the native review is
-  the final filter.
+  The optional validator view lets a native speaker judge live rounds when one is present.
+- Some test pairs (children's books) are page-aligned and paraphrased; the automatic
+  length-ratio filter (0.5–2.0) drops the worst ones, and chrF++ on the rest is noisier.
 
 ## Ethics and community
 

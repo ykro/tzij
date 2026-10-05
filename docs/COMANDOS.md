@@ -49,7 +49,7 @@ make stage-off                                   # igual que en los otros repos 
 | `make datasheet` | Vuelve a generar `data/DATASHEET.md` desde el último manifest. |
 | `make tune-retrieval` | Ajusta la recuperación (modo, k, orden, glosario difuso) solo con el split dev y escribe `evals/tuning.md`. |
 | `make eval [EVAL_ARGS=…]` | Compara todas las variantes disponibles y escribe `evals/report.md`. Con `EVAL_ARGS="--split dev_domain --out evals/dev_domain_report.md"` mide en el split `dev_domain` (párrafos de BOUQuET y páginas de Bloom fuera de la muestra de prueba), donde se toman las decisiones entre ejecuciones. |
-| `make human-eval-sheet` | Genera una hoja de evaluación humana a ciegas (50 frases) de la última ejecución; `VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"` elige variantes. |
+| `make human-eval-sheet` | Genera una hoja de evaluación humana a ciegas (50 frases) de la última ejecución; `VARIANTS="tzij-2026-10-mix-s7+hybrid+mbr4,gemini-3.8-flash"` elige variantes. |
 | `make train-data` | Los datos del David en escena: RAFT (contexto recuperado en cada prompt, sin el propio par), retrotraducción en las dos direcciones, los primeros 2,409 pares destilados y el 30 % de los pares web: `data/train/chat-raft-bt-both-dst2409-new30.jsonl` (el `TRAIN_DATA` por defecto). |
 | `make train-data-raft` | Solo los pares de `train` en RAFT: `data/train/chat-raft.jsonl`. |
 | `make monolingual` | K'iche' monolingüe con licencia, solo de fuentes de entrenamiento (incluye los libros de Bloom solo en K'iche'): `data/monolingual/quc.jsonl`. |

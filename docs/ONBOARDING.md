@@ -305,11 +305,11 @@ make eval                                 # vuelve a puntuar con las referencias
 
 ### Evaluación humana a ciegas (`evals/human_eval.md`)
 
-Se llena antes de cada evento: 50 frases por modelo, adecuación y fluidez de 1 a 5.
+Opcional, solo si hay una persona hablante disponible; el demo no depende de ella. 50 frases por modelo, adecuación y fluidez de 1 a 5.
 
 ```bash
 make eval
-make human-eval-sheet VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"   # RUN=<id> para otra ejecución
+make human-eval-sheet VARIANTS="tzij-2026-10-mix-s7+hybrid+mbr4,gemini-3.8-flash"   # RUN=<id> para otra ejecución
 # sin VARIANTS incluye todas las variantes de la ejecución
 ```
 

@@ -38,22 +38,10 @@ parecido de caracteres con una referencia; esta evaluación mide si la traducci�
 
 Columna `notas`: variante dialectal, palabras en español sin traducir, ortografía no ALMG.
 
-## Registro del evento
+## Resultados
 
-| Campo | Valor |
-| --- | --- |
-| Fecha | |
-| Evento | |
-| Evaluadora / evaluador (iniciales, variante de K'iche') | |
-| Run de `make eval` | |
-| Modelos incluidos (se llena al abrir la clave) | |
-
-## Resultados (se llena al abrir la clave)
-
-| Modelo | n | Adecuación media | Fluidez media | % adecuación ≥ 4 |
-| --- | ---: | ---: | ---: | ---: |
-| | 50 | | | |
-| | 50 | | | |
-
-Observaciones cualitativas (3–5 líneas): errores recurrentes, dónde ayudó la recuperación,
-dónde el modelo grande inventó palabras.
+Todavía no se ha hecho ninguna evaluación humana; los resultados del repositorio son de chrF++
+(`evals/report.md`, `evals/niche_results.md`). Al terminar una, se abre la clave, se promedian
+adecuación y fluidez por modelo desde la hoja, y la tabla y 3–5 líneas de observaciones (errores
+recurrentes, dónde ayudó la recuperación, dónde el modelo grande inventó palabras) se agregan aquí
+con la fecha, el evento, la variante de K'iche' de quien evaluó y el run de `make eval`.

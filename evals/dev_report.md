@@ -23,7 +23,7 @@ Status of references: 230 clean.
 Best local variant: **`tzij-2026-10-tm-a-e2-s4+hybrid+mbr4`** (chrF++ 38.1). Set `LOCAL_MODEL_TAG=tzij-2026-10-tm-a-e2-s4` — the duel always adds retrieval to David, so pick a `+rag` variant unless the table shows retrieval hurting.
 Against Goliath (`gemini-3.8-flash`, 38.6): **-0.5 chrF++** for David.
 
-**Fine-tuning, honestly** (same retrieval and decoding, fine-tuned vs base):
+**Fine-tuning vs. base** (same retrieval and decoding, fine-tuned vs base):
 - `tzij-2026-10-raft-bt-s3+hybrid` 36.6 vs `gemma4:e4b+hybrid` 30.7 (**+5.9**)
 - `tzij-2026-10-tm-a-s4+hybrid` 35.8 vs `gemma4:e4b+hybrid` 30.7 (**+5.1**)
 - `tzij-2026-10-tm-b-s1+hybrid` 33.7 vs `gemma4:e4b+hybrid` 30.7 (**+3.0**)

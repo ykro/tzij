@@ -5,7 +5,7 @@ FINETUNED_MODEL_TAGS once they exist) with and without retrieval, Gemini alone
 and Gemini with the same retrieval. The best David variant goes on stage; the
 report shows all of them, including the ones that lose.
 
-Honest-eval rules this script follows:
+Eval rules this script follows:
   * test pairs come only from test sources (never in the retrieval index);
   * chrF++ is corpus-level, on normalized text (same apostrophe for everyone);
   * local models run one request at a time, like on stage, so latency is real;
@@ -275,7 +275,7 @@ def render(results: dict[str, dict], variants: list[Variant], records: list[dict
         finetuned = [(v, sc) for v, sc in local if v.model in s.finetuned_model_tags]
         base = {v.name: sc for v, sc in local if v.model in s.base_model_tags}
         if finetuned and base:
-            lines += ["", "**Fine-tuning, honestly** (same retrieval and decoding, fine-tuned vs base):"]
+            lines += ["", "**Fine-tuning vs. base** (same retrieval and decoding, fine-tuned vs base):"]
             for v, sc in finetuned:
                 suffix = v.name[len(v.model):]
                 matches = [(n, b) for n, b in base.items() if n.endswith(suffix) and n[: len(n) - len(suffix)] in s.base_model_tags]
