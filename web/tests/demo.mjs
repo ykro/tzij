@@ -1,6 +1,7 @@
 // Screenshots for docs/DEMO.md: the demo, step by step, driven with the same keys the presenter
 // uses on stage. Needs `make up` running with the stage variant (real models, not MOCK_AI).
-//   cd web && node tests/demo.mjs            (EMULATOR=0 skips the Android validator step)
+//   cd web && node tests/demo.mjs            (EMULATOR=0 skips the Android validator step;
+//                                             ONLY=validator retakes just that step, 06a/06b)
 // Output: docs/demo/NN-*.png
 import { chromium } from "playwright";
 import { execFileSync } from "node:child_process";
@@ -46,32 +47,36 @@ const browser = await chromium.launch();
 const p = await (await browser.newContext({ viewport: { width: 1920, height: 1080 } })).newPage();
 await p.goto(BASE + "/presentador/");
 await p.waitForSelector(".stage__bar");
-await shot(p, "01-listo");
+const only = process.env.ONLY === "validator";
+if (!only) {
+  await shot(p, "01-listo");
 
-// 2. Evaluation round, Spanish -> K'iche' (key E).
-await p.keyboard.press("e");
-await untilDone();
-await shot(p, "02-evaluacion-es-quc");
+  // 2. Evaluation round, Spanish -> K'iche' (key E).
+  await p.keyboard.press("e");
+  await untilDone();
+  await shot(p, "02-evaluacion-es-quc");
 
-// 3. Change direction (D), evaluation round K'iche' -> Spanish (E).
-await p.keyboard.press("d");
-await p.keyboard.press("e");
-await untilDone();
-await shot(p, "03-evaluacion-quc-es");
+  // 3. Change direction (D), evaluation round K'iche' -> Spanish (E).
+  await p.keyboard.press("d");
+  await p.keyboard.press("e");
+  await untilDone();
+  await shot(p, "03-evaluacion-quc-es");
 
-// 4. Specialty round from the niche: Firefox Focus, translation memory (D back to es->quc, then S).
-await p.keyboard.press("d");
-await p.keyboard.press("s");
-await untilDone();
-await shot(p, "04-especialidad");
+  // 4. Specialty round from the niche: Firefox Focus, translation memory (D back to es->quc, then S).
+  await p.keyboard.press("d");
+  await p.keyboard.press("s");
+  await untilDone();
+  await shot(p, "04-especialidad");
 
-// 5. Live round with a short phrase typed in the command bar (/ , type, Enter).
-await p.keyboard.press("/");
-await p.fill("#phrase", SHORT_ES);
-await shot(p, "05a-escribir-frase");
-await p.keyboard.press("Enter");
-await untilDone();
-await shot(p, "05b-en-vivo-frase-corta");
+  // 5. Live round with a short phrase typed in the command bar (/ , type, Enter).
+  await p.keyboard.press("/");
+  await p.fill("#phrase", SHORT_ES);
+  await shot(p, "05a-escribir-frase");
+  await p.keyboard.press("Enter");
+  await untilDone();
+  await shot(p, "05b-en-vivo-frase-corta");
+
+}
 
 // 6. Optional: the validator on the Android emulator votes; the verdict shows on the projector.
 if (process.env.EMULATOR !== "0") {
@@ -105,30 +110,32 @@ if (process.env.EMULATOR !== "0") {
   adb("forward", "--remove", "tcp:9333");
 }
 
-// 7. Wi-Fi off (rehearsal switch in the command bar), then an evaluation round (E).
-await p.keyboard.press("/");
-// Controlled checkbox: the server confirms the switch over SSE, so click and wait for the state.
-await p.getByLabel("Simular sin Wi-Fi (ensayo)").click();
-for (let i = 0; i < 50 && !(await state()).force_offline; i++) await sleep(100);
-await sleep(300);
-await p.keyboard.press("Escape");
-await p.keyboard.press("e");
-await untilDone();
-await shot(p, "07-sin-conexion");
-await api("/api/connectivity", { force_offline: false });
+if (!only) {
+  // 7. Wi-Fi off (rehearsal switch in the command bar), then an evaluation round (E).
+  await p.keyboard.press("/");
+  // Controlled checkbox: the server confirms the switch over SSE, so click and wait for the state.
+  await p.getByLabel("Simular sin Wi-Fi (ensayo)").click();
+  for (let i = 0; i < 50 && !(await state()).force_offline; i++) await sleep(100);
+  await sleep(300);
+  await p.keyboard.press("Escape");
+  await p.keyboard.press("e");
+  await untilDone();
+  await shot(p, "07-sin-conexion");
+  await api("/api/connectivity", { force_offline: false });
 
-// 8. K'iche' -> Spanish live round with a short phrase, back online.
-await p.keyboard.press("d");
-await p.keyboard.press("/");
-await p.fill("#phrase", SHORT_QUC);
-await p.keyboard.press("Enter");
-await untilDone();
-await shot(p, "08-en-vivo-quc-es");
+  // 8. K'iche' -> Spanish live round with a short phrase, back online.
+  await p.keyboard.press("d");
+  await p.keyboard.press("/");
+  await p.fill("#phrase", SHORT_QUC);
+  await p.keyboard.press("Enter");
+  await untilDone();
+  await shot(p, "08-en-vivo-quc-es");
 
-// 9. Model card panel (M).
-await p.keyboard.press("m");
-await shot(p, "09-ficha-del-modelo");
-await p.keyboard.press("Escape");
+  // 9. Model card panel (M).
+  await p.keyboard.press("m");
+  await shot(p, "09-ficha-del-modelo");
+  await p.keyboard.press("Escape");
+}
 
 await browser.close();
 await writeFile(OUT + "timings.txt", times.join("\n") + "\n");
