@@ -9,33 +9,33 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
 
 ## Antes de la demo
 
-- [ ] **Datos, índice y modelos al día:**
+- [ ] **Datos, índice y modelos al día** (una vez, con internet):
 
   ```bash
   make data-pull && make index
   make pull-model TAG=tzij-2026-10-mix-s7
-  ollama list            # tzij-2026-10-mix-s7 y embeddinggemma
   ```
 
-- [ ] **Ronda de especialidad con un David que no vio Focus.** `S` usa Firefox Focus, el producto
-  que se apartó como nicho. `tzij-2026-10-mix-s7`, el David en escena, nunca entrenó con Focus, así
-  que la ronda vale tal cual. Si cambias `LOCAL_MODEL_TAG`, usa la base `gemma4:e4b` u otro
-  fine-tune hecho sin ese producto: `tzij-2026-10-raft-bt-s3` sí lo vio y con él no hay ronda de
-  especialidad.
-- [ ] **Levantar todo y precalentar David.** `make up` carga David y EmbeddingGemma por 30 min (`keep_alive`)
-  y avisa con `!!` si falta algo.
+- [ ] **Levantar todo.** En una terminal:
 
   ```bash
   make up
   ```
 
-  Después haz una ronda de prueba, porque la primera traducción en frío tarda más:
+- [ ] **Precalentar y revisar.** En otra terminal:
 
   ```bash
-  curl -s -X POST http://127.0.0.1:8787/api/rounds -H 'Content-Type: application/json' \
-    -d '{"kind":"evaluacion","direction":"es-quc"}' >/dev/null && sleep 15 && make reset
+  make stage-on && make warmup && make preflight
   ```
 
+  `stage-on` solo avisa que Tzij no tiene nada en la nube (la secuencia es la misma en todos los
+  repos). `warmup` carga David y EmbeddingGemma y hace una traducción de David con recuperación y
+  MBR, y una llamada a Goliath, para que la primera ronda no sea en frío. `preflight` revisa
+  Ollama y los modelos, el índice contra el dataset, los mazos de evaluación y de especialidad, el
+  duelo, Gemini, el disco y una traducción de David dentro de 5 s. También falla si
+  `LOCAL_MODEL_TAG` es un David que entrenó con Firefox Focus (`tzij-2026-10-raft-bt-s3`, por
+  ejemplo): con él la ronda de especialidad (`S`) no vale. `tzij-2026-10-mix-s7` nunca vio Focus.
+  Tiene que terminar en «preflight ok»; cada `[FALLA]` dice cómo arreglarlo.
 - [ ] **Ventanas:**
   - **Proyector:** Chrome en pantalla completa (`⌃⌘F`) con `http://127.0.0.1:8787/presentador/`.
     Tiene que ser `127.0.0.1` y no la IP de la LAN, porque los controles solo responden desde la
@@ -54,6 +54,8 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
 
 - [ ] **Brillo, notificaciones y salvapantallas apagados.** Usa "No molestar" y
   `caffeinate -d &`.
+
+Después de la charla: `make stage-off` (en Tzij solo lo confirma: no hay nada en la nube que bajar).
 
 ## Teclas en el escenario
 

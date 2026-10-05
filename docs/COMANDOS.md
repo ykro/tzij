@@ -23,6 +23,16 @@ Abre `http://127.0.0.1:8787/presentador/`. Escanea el QR con el teléfono. Pulsa
 
 Para ensayar sin la nube ni GPU: `make up MOCK_AI=1` (o `MOCK_AI=1 make up`: lo que pases por la línea de comandos o el entorno gana sobre `.env`). En modo simulado David devuelve el mejor ejemplo recuperado de un índice pequeño de pares con licencia (`mock_data/`, embeddings por hashing) y nunca inventa K'iche'. No necesita Ollama, el índice ni el dataset.
 
+## Día de la charla
+
+```bash
+make up                                          # terminal 1: se queda corriendo
+make stage-on && make warmup && make preflight   # terminal 2: modelos cargados, todo en [ok]
+make reset                                       # marcador en cero
+# … la charla …
+make stage-off                                   # igual que en los otros repos (aquí no hay nada en la nube)
+```
+
 ## Todos los comandos
 
 | Comando | Qué hace |
@@ -52,6 +62,9 @@ Para ensayar sin la nube ni GPU: `make up MOCK_AI=1` (o `MOCK_AI=1 make up`: lo 
 | `make duel` | Levanta solo el servicio de duelo en `0.0.0.0:$DUEL_PORT`. |
 | `make up` | (`MOCK_AI=1 make up`: sin Ollama, índice ni dataset.) Arranca Ollama si hace falta, precarga David y EmbeddingGemma, compila las vistas si faltan y sirve todo en la LAN. |
 | `make reset` | Borra rondas y veredictos, con el servicio corriendo o no, en menos de 10 s. |
+| `make stage-on` / `make stage-off` | No hacen nada en la nube: Tzij no tiene servicios que escalar (todo lo que sale en escena corre en la laptop). Existen para que la secuencia del día de la charla sea la misma en todos los repos. |
+| `make warmup` | Carga David (con el `num_ctx` de las rondas) y EmbeddingGemma en Ollama, y hace una traducción de David con recuperación (+ MBR si `MBR_ON_STAGE=1`) y una llamada a Goliath, como en escena. No se registra en el marcador. |
+| `make preflight` | Revisión antes de subir: Ollama con `LOCAL_MODEL_TAG` y el modelo de embeddings; que David no haya entrenado con Firefox Focus; que el índice exista y sea del dataset de `LATEST`; frases para las rondas de evaluación y de especialidad (`test_niche`); `/api/health` del duelo si está corriendo; Gemini (una llamada mínima); 10 GB libres en disco; y una traducción de David cronometrada dentro del presupuesto p50 de 5 s. Una línea `[ok]` o `[FALLA]` por revisión, con el arreglo; el código de salida es el número de fallas. |
 | `make test` | Pruebas de Python (`MOCK_AI=1`, sin red) y de la web (vitest). |
 | `make deploy` | Despliega las partes en la nube (proyecto, job de datos, job e imagen de entrenamiento). El duelo y las vistas se quedan en la laptop. |
 | `make emulator` | Abre el validador en Chrome del emulador Android (`10.0.2.2`) y falla si el voto tarda más de 1 s en llegar a la pantalla. |

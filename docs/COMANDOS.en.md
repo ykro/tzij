@@ -23,6 +23,16 @@ Open `http://127.0.0.1:8787/presentador/`. Scan the QR code with a phone. Press 
 
 To rehearse without the cloud or a GPU: `make up MOCK_AI=1` (or `MOCK_AI=1 make up`: anything on the command line or in the environment wins over `.env`). In mock mode David returns its best retrieved example from a small index of licensed pairs (`mock_data/`, hashing embeddings) and never makes up K'iche'. It needs no Ollama, index or dataset.
 
+## Talk day
+
+```bash
+make up                                          # terminal 1: keeps running
+make stage-on && make warmup && make preflight   # terminal 2: models loaded, everything [ok]
+make reset                                       # scoreboard to zero
+# … the talk …
+make stage-off                                   # same as the other repos (nothing in the cloud here)
+```
+
 ## Every command
 
 | Command | What it does |
@@ -52,6 +62,9 @@ To rehearse without the cloud or a GPU: `make up MOCK_AI=1` (or `MOCK_AI=1 make 
 | `make duel` | Runs only the duel service on `0.0.0.0:$DUEL_PORT`. |
 | `make up` | (`MOCK_AI=1 make up`: no Ollama, index or dataset needed.) Starts Ollama if needed, warms David and EmbeddingGemma, builds the views if missing and serves everything on the LAN. |
 | `make reset` | Clears rounds and verdicts, whether the service is running or not, in under 10 s. |
+| `make stage-on` / `make stage-off` | Do nothing in the cloud: Tzij has no services to scale (everything on stage runs on the laptop). They exist so the talk-day sequence is the same in every repo. |
+| `make warmup` | Loads David (with the rounds' `num_ctx`) and EmbeddingGemma in Ollama, and makes one David translation with retrieval (+ MBR when `MBR_ON_STAGE=1`) and one Goliath call, as on stage. Nothing is recorded on the scoreboard. |
+| `make preflight` | Pre-stage check: Ollama with `LOCAL_MODEL_TAG` and the embedding model; David never trained on Firefox Focus; the index exists and comes from the `LATEST` dataset; phrases for the evaluation and specialty (`test_niche`) rounds; the duel's `/api/health` if it is running; Gemini (one tiny call); 10 GB free disk; and one timed David translation within the 5 s p50 budget. One `[ok]` or `[FALLA]` line per check, with the fix; the exit code is the number of failures. |
 | `make test` | Python tests (`MOCK_AI=1`, no network) and web tests (vitest). |
 | `make deploy` | Deploys the cloud parts (project, data job, training job and image). The duel and views stay on the laptop. |
 | `make emulator` | Opens the validator in Chrome on the Android emulator (`10.0.2.2`) and fails if a vote takes more than 1 s to reach the screen. |

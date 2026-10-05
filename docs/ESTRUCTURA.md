@@ -28,7 +28,7 @@ rag/           embedder.py (EmbeddingGemma vía Ollama), store.py (sqlite-vec),
                build_index.py, retrieve.py (híbrida BM25 + vectores con RRF, ejemplos + glosario)
 duel/
   duel_core/   clientes de Ollama y Gemini, duelo en paralelo, chrF++, costo, conectividad
-  tzij_duel/   servicio FastAPI: variants.py, prompts.py, deck.py, rounds.py, model_card.py, lan.py
+  tzij_duel/   servicio FastAPI: variants.py, prompts.py, deck.py, rounds.py, model_card.py, lan.py; warmup.py y preflight.py (día de la charla)
 evals/         run_eval.py → report.md, tune_retrieval.py → tuning.md, fertility.py → fertility.md, human_eval.md
 train/         train_lora.py (TRL + PEFT → merge → GGUF), submit_job.py (Cloud Run Job), chain.sh (trozos que siguen el adaptador anterior),
                finish_local.py, train_local.py, pull_model.sh, colab.ipynb, runs/

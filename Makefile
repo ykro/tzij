@@ -13,7 +13,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help llama-server demo-screens deploy tune-retrieval niche synthetic distill train-data-raft-bt-syn train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help llama-server demo-screens deploy tune-retrieval niche synthetic distill train-data-raft-bt-syn train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator stage-on stage-off warmup preflight
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -139,6 +139,20 @@ up: ## Start Ollama, warm David, build the views if needed and serve everything 
 reset: ## Clear rounds and verdicts (running service or state file), in well under 10 seconds
 	@curl -sf -X POST http://127.0.0.1:$(DUEL_PORT)/api/reset >/dev/null && echo "Marcador reiniciado (servicio en marcha)." \
 	  || (rm -f $(or $(DUEL_STATE_PATH),duel/state/rounds.json) && echo "Marcador reiniciado (archivo de estado borrado).")
+
+# Talk day: make stage-on && make warmup && make preflight (same sequence in every 2027 demo repo).
+# After the talk: make stage-off.
+stage-on: ## Talk day: nothing to scale (no cloud services; everything on stage runs on this laptop)
+	@echo "Tzij no tiene servicios en la nube que escalar: todo lo que sale en escena corre en la laptop."
+
+stage-off: ## After the talk: nothing to scale down (no cloud services)
+	@echo "Tzij no tiene servicios en la nube que escalar: no queda nada cobrando."
+
+warmup: ## Load David + the embedding model in Ollama, one David translation (retrieval + MBR) and one Goliath call
+	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.warmup
+
+preflight: ## Talk-day gate: Ollama + models, no Focus-trained David, index = dataset, decks, duel, Gemini, disk, David p50 <= 5 s
+	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.preflight
 
 emulator: ## Validator in Chrome on the Android emulator (ANDROID_SERIAL, default emulator-5556) + latency check
 	cd web && ANDROID_SERIAL=$${ANDROID_SERIAL:-emulator-5556} BASE_URL=$${BASE_URL:-http://127.0.0.1:$(DUEL_PORT)} node tests/emulator.mjs
