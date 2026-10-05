@@ -13,7 +13,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help llama-server demo-screens deploy tune-retrieval niche synthetic train-data-raft-bt-syn train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
+.PHONY: help llama-server demo-screens deploy tune-retrieval niche synthetic distill train-data-raft-bt-syn train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -74,6 +74,10 @@ train-data-raft-bt: ## RAFT data plus Gemini back-translated pairs (es->quc only
 train-data-raft-bt-syn: ## RAFT + back-translation + synthetic pairs capped at SYN (share of examples, tuned on dev) -> data/train/chat-raft-bt-syn<N>.jsonl
 	@test -n "$(SYN)" || (echo "usage: make train-data-raft-bt-syn SYN=0.3" && exit 1)
 	$(UV) run python -m pipeline.train_set --raft --bt --syn $(SYN)
+
+distill: ## Distillation in the test's domains: Gemini Spanish -> K'iche' with David's retrieved context, round-trip filtered (LIMIT=N) -> data/train/distilled/
+	$(UV) run python -m pipeline.distill gen
+	$(UV) run python -m pipeline.distill translate $(if $(LIMIT),--limit $(LIMIT))
 
 synthetic: ## Grounded synthetic pairs with Gemini (dictionary-anchored + UD slot filling, round-trip filtered) -> data/train/synthetic/
 	$(UV) run python -m pipeline.synthetic all

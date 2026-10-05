@@ -1,14 +1,16 @@
 """Monolingual K'iche' for back-translation (make monolingual -> data/monolingual/quc.jsonl).
 
-Human-written K'iche' only, from licensed train-side sources. Never from a test source (Bloom,
-BOUQuET), and any sentence that also appears in the test set or already has a Spanish pair in train
-is dropped. These sentences never enter retrieval or the test set: they become the K'iche' side of
+Human-written K'iche' only, from licensed sources. Never from a test book or BOUQuET: the Bloom
+books used here are the CC BY K'iche'-only titles (no Spanish side), never the bilingual books the
+test is built from, and any sentence that also appears in dev/test or already has a Spanish pair in
+train is dropped. These sentences never enter retrieval or the test set: they become the K'iche' side of
 back-translated training pairs (pipeline/back_translate.py).
 
 Sources:
   incubator_quc   Wikipedia in K'iche' (Wikimedia Incubator, Wp/quc), CC BY-SA 4.0
   spacescoop_quc  Space Scoop / UNAWE astronomy news for kids in K'iche', CC BY 4.0
   ud_kiche_iu     UD K'iche'-IU sentences that have no Spanish translation, CC BY-SA 4.0
+  bloom_mono_quc  Bloom Library CC BY books in K'iche' only (MINEDUC/USAID children's stories), CC BY 4.0
 """
 
 from __future__ import annotations
@@ -37,6 +39,7 @@ LICENSES = {
     "incubator_quc": "CC-BY-SA-4.0 (Wikimedia Incubator, Wp/quc)",
     "spacescoop_quc": "CC-BY-4.0 (Space Scoop, UNAWE; credit SpaceScoop.org)",
     "ud_kiche_iu": "CC-BY-SA-4.0 (UD K'iche'-IU; used with permission of ALMG and T. Can Pixabaj)",
+    "bloom_mono_quc": "CC-BY-4.0 (Bloom Library; per-book holder in the record)",
 }
 
 
@@ -106,6 +109,27 @@ def ud_monolingual() -> Iterable[tuple[str, str]]:
             yield text, "https://github.com/UniversalDependencies/UD_Kiche-IU"
 
 
+def bloom_monolingual() -> Iterable[tuple[str, str]]:
+    """CC BY Bloom books with K'iche' text and no aligned Spanish (the bilingual ones are the test source)."""
+    from pipeline.sources.bloom import ALLOWED_LICENSES, SKIP_FIELDS, _TranslationGroups
+
+    raw = REPO / "data" / "raw" / "bloom_kiche"
+    if not (raw / "books.json").exists():
+        return
+    books = {b["objectId"]: b for b in json.loads((raw / "books.json").read_text(encoding="utf-8"))}
+    for path in sorted((raw / "books").glob("*.htm")):
+        book = books.get(path.stem)
+        if not book or book.get("license") not in ALLOWED_LICENSES:
+            continue
+        parser = _TranslationGroups()
+        parser.feed(path.read_text(encoding="utf-8"))
+        groups = [g for g in parser.groups if "quc" in g and g["quc"][1] not in SKIP_FIELDS and g["quc"][0].strip()]
+        if any("es" in g and g["es"][0].strip() for g in groups):
+            continue  # bilingual book: test source
+        for g in groups:
+            yield g["quc"][0], f"https://bloomlibrary.org/book/{path.stem}"
+
+
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[¿¡\"'A-ZÁÉÍÓÚÑ])")
 _REFERENCE = re.compile(r"\[\d+\]")
 
@@ -145,6 +169,8 @@ def collect(processed: Path) -> dict:
     for article in json.loads(fetch_spacescoop(RAW).read_text()):
         candidates += [(s, "spacescoop_quc", article["url"]) for s in sentences(article["text"])]
     candidates += [(s, "ud_kiche_iu", url) for s, url in ud_monolingual()]
+    for text, url in bloom_monolingual():
+        candidates += [(s, "bloom_mono_quc", url) for s in sentences(text)]
     seen, kept, counts = set(), [], {}
     for text, source, url in candidates:
         text = normalize_kiche(text)

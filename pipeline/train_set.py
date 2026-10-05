@@ -73,18 +73,29 @@ def synthetic_records(cap: float, base_examples: int, dataset_dir: Path) -> list
 
 
 def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra: list[dict] | None = None,
-          synthetic: float = 0.0, es_weight: float = 1.0) -> dict:
+          synthetic: float = 0.0, es_weight: float = 1.0, bt_both: bool = False, distilled: list[dict] | None = None,
+          only_new: float = 0.0) -> dict:
     """es_weight > 1 repeats a stable share of the Spanish -> K'iche' examples (1.5 = every one once,
     half of them twice): the direction David is weakest in, and the one the niche measures."""
     records = [json.loads(line) for line in (dataset_dir / "train.jsonl").read_text(encoding="utf-8").splitlines()]
     sentences = [r for r in records if r["kind"] == "sentence" and r["split"] == "train"]
     # Back-translated pairs (Gemini Spanish -> human K'iche') only teach Spanish -> K'iche'.
     back_translated = [r for r in (extra or []) if r["direction"] == "es-quc"]
+    if bt_both:  # also K'iche' -> Spanish: human K'iche' in, the teacher's Spanish out (distillation of the strong direction)
+        back_translated += [{**r, "id": r["id"].removesuffix("-es-quc") + "-quc-es", "direction": "quc-es",
+                             "source_text": r["target_text"], "target_text": r["source_text"]} for r in list(back_translated)]
+    distilled = distilled or []
     religious = sum(r["domain"] == "religious" for r in sentences) / max(len(sentences), 1)
     if religious > RELIGIOUS_CAP + 1e-9:
         raise SystemExit(f"religious share {religious:.1%} exceeds the {RELIGIOUS_CAP:.0%} cap")
     synth = synthetic_records(synthetic, len(sentences) + len(back_translated), dataset_dir) if synthetic else []
-    rows = sentences + back_translated + synth
+    rows = sentences + back_translated + synth + distilled
+    if only_new:  # continuing a trained adapter: all new data plus a stable share of the web pairs as replay
+        import hashlib
+
+        keep = lambda r: int(hashlib.sha1(r["id"].encode()).hexdigest()[:8], 16) / 0xFFFFFFFF < only_new  # noqa: E731
+        rows = [r for r in sentences if keep(r)] + [r for r in back_translated if r.get("source_name") == "bloom_mono_quc"
+                                                    or r["direction"] == "quc-es"] + synth + distilled
     if es_weight > 1:
         import hashlib
 
@@ -104,7 +115,7 @@ def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra:
             fh.write(json.dumps({"messages": messages, "id": r["id"], "origin": r.get("origin", "web")},
                                 ensure_ascii=False) + "\n")
     total = len(rows)
-    return {"examples": total, "web_pairs": len(sentences),
+    return {"examples": total, "web_pairs": len(sentences), "distilled": len(distilled), "bt_both": bt_both, "only_new": only_new,
             "back_translated": len(back_translated), "synthetic": len(synth),
             "synthetic_share": round(len(synth) / max(total, 1), 4), "es_weight": es_weight,
             "es_quc_examples": sum(r["direction"] == "es-quc" for r in rows), "religious_share_of_web": round(religious, 4),
@@ -128,6 +139,12 @@ def raft_retriever(dataset_version: str):
     return retriever, s.rag_k
 
 
+def hashlib_sha(x: str) -> str:
+    import hashlib
+
+    return hashlib.sha1(x.encode()).hexdigest()
+
+
 if __name__ == "__main__":
     processed = REPO / "data" / "processed"
     version = (processed / "LATEST").read_text().strip()
@@ -145,6 +162,22 @@ if __name__ == "__main__":
         if "--es-weight" in sys.argv:  # --es-weight 1.5 = Spanish -> K'iche' examples up-weighted
             es_weight = float(sys.argv[sys.argv.index("--es-weight") + 1])
             out = out.with_name(f"{out.stem}-es{round(es_weight * 10)}.jsonl")
-        print({"dataset": version, "k": k, **build(processed / version, out, retriever, k, extra, synthetic, es_weight)})
+        bt_both = "--bt-both" in sys.argv
+        if bt_both:
+            out = out.with_name(f"{out.stem}-both.jsonl")
+        distilled = None
+        if "--distilled" in sys.argv:  # --distilled N: N distilled pairs (both directions), stable order
+            from pipeline.distill import records as distilled_records
+
+            n = int(sys.argv[sys.argv.index("--distilled") + 1])
+            pairs = sorted({r["pair_id"] for r in distilled_records()}, key=lambda x: hashlib_sha(x))[:n]
+            distilled = [r for r in distilled_records() if r["pair_id"] in set(pairs)]
+            out = out.with_name(f"{out.stem}-dst{n}.jsonl")
+        only_new = 0.0
+        if "--only-new" in sys.argv:  # --only-new 0.3: new data + 30% of the web pairs as replay
+            only_new = float(sys.argv[sys.argv.index("--only-new") + 1])
+            out = out.with_name(f"{out.stem}-new{round(only_new * 100)}.jsonl")
+        print({"dataset": version, "k": k, **build(processed / version, out, retriever, k, extra, synthetic, es_weight,
+                                                     bt_both, distilled, only_new)})
     else:
         print({"dataset": version, **build(processed / version)})

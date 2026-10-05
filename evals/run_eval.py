@@ -75,16 +75,20 @@ def load_dev_domain(dataset: Path, limit: int | None, per_source: int | None) ->
     indexed (they live in test.jsonl, which train and the index exclude). The test sample itself is untouched.
     """
     sample = {r["pair_id"] for r in load_test(dataset, None, int(os.environ.get("EVAL_PER_SOURCE", "150")), "test")}
-    records = [r for r in load_test(dataset, None, None, "test") if r["source_name"] == "bouquet"]
+    pool = load_test(dataset, None, None, "test")
+    records = [r for r in pool if r["source_name"] == "bouquet"]
     paragraph = lambda r: r.get("ref", "").rsplit("-S", 1)[0]  # "dev/P001-S1" -> "dev/P001"
     touched = {paragraph(r) for r in records if r["pair_id"] in sample}
     records = [r for r in records if r.get("ref", "").startswith("dev/") and paragraph(r) not in touched]
+    # Bloom: the bilingual pages left out of the test sample. They come from the same books as the test
+    # pages (no other bilingual CC BY books exist), so they say which data helps the domain, not the test number.
+    records += [r for r in pool if r["source_name"] == "bloom_kiche" and r["pair_id"] not in sample]
     if per_source:
-        by_dir: dict[str, list[dict]] = defaultdict(list)
+        groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
         for r in sorted(records, key=lambda r: hashlib.sha1(r["pair_id"].encode()).hexdigest()):
-            if len(by_dir[r["direction"]]) < per_source:
-                by_dir[r["direction"]].append(r)
-        records = [r for rs in by_dir.values() for r in rs]
+            if len(groups[(r["source_name"], r["direction"])]) < per_source:
+                groups[(r["source_name"], r["direction"])].append(r)
+        records = [r for rs in groups.values() for r in rs]
     if limit:
         records = [r for d in ("es-quc", "quc-es") for r in [x for x in records if x["direction"] == d][:limit]]
     return records
