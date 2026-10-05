@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
+import statistics
 import sys
 
 import httpx
@@ -32,6 +33,7 @@ from .variants import stage_variants, translate
 MIN_FREE_GB = 10
 P50_BUDGET_S = 5.0  # the stage budget David's variant was chosen under (evals/report.md)
 TIMED_PHRASE = "¿Dónde está el mercado del pueblo?"
+LATENCY_SAMPLES = 3  # the budget is a p50: compare it with a median, not with one noisy sample
 # Fine-tunes whose training data included Firefox Focus (trained before the niche was held out on
 # 2 Oct; docs/BITACORA.md section 6). With them the specialty round would test memorization.
 FOCUS_TRAINED = {
@@ -155,16 +157,23 @@ def check_david_latency(r: Report, s, retriever) -> None:
     if retriever is None:
         r.fail("Sin índice no se puede medir a David como en escena", "make index")
         return
-    res = asyncio.run(translate(david, TIMED_PHRASE, "es-quc", retriever=retriever, online=False))
-    if res.status != "ok":
-        r.fail(f"David falló: {res.status} {res.error or ''}"[:140], "make warmup y revisa Ollama")
+    async def timed() -> list:  # one event loop: the Ollama client is bound to it
+        return [await translate(david, TIMED_PHRASE, "es-quc", retriever=retriever, online=False)
+                for _ in range(LATENCY_SAMPLES)]
+
+    runs = asyncio.run(timed())
+    failed = [x for x in runs if x.status != "ok"]
+    if failed:
+        r.fail(f"David falló: {failed[0].status} {failed[0].error or ''}"[:140], "make warmup y revisa Ollama")
         return
-    seconds = (res.latency_ms or 0) / 1000
+    times = [(x.latency_ms or 0) / 1000 for x in runs]
+    seconds = statistics.median(times)
+    each = " / ".join(f"{t:.1f}" for t in times)
     if seconds <= P50_BUDGET_S:
-        r.ok(f"{seconds:.2f}s (presupuesto p50: {P50_BUDGET_S:.0f} s) «{res.text[:40]}»")
+        r.ok(f"mediana {seconds:.2f}s ({each} s; presupuesto p50: {P50_BUDGET_S:.0f} s) «{runs[-1].text[:40]}»")
     else:
         fix = "make warmup (¿modelo frío?); si sigue lento, MBR_ON_STAGE=0 en .env" if david.mbr else "make warmup (¿modelo frío?) y cierra apps pesadas"
-        r.fail(f"{seconds:.2f}s, más que el presupuesto p50 de {P50_BUDGET_S:.0f} s", fix)
+        r.fail(f"mediana {seconds:.2f}s ({each} s), más que el presupuesto p50 de {P50_BUDGET_S:.0f} s", fix)
 
 
 def main() -> int:

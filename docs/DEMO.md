@@ -16,10 +16,10 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
   make pull-model TAG=tzij-2026-10-mix-s7
   ```
 
-  `make niche-data` aparta Firefox Focus del dataset (el mazo `test_niche.jsonl` de la ronda de
-  especialidad) y reconstruye el índice sin él. Con `make data-pull && make index` solamente, la
-  ronda `S` no tiene frases y Focus queda en el índice. Si `data/processed/LATEST` ya es
-  `20261002-173447` y `make preflight` sale en verde, no hace falta nada de esto.
+  `make data-pull` baja `20261002-173447`, el dataset en escena: ya trae el mazo
+  `test_niche.jsonl` de la ronda de especialidad (Firefox Focus fuera de train y del índice).
+  `make niche-data` construye el índice. Si `data/processed/LATEST` ya es `20261002-173447` y
+  `make preflight` sale en verde, no hace falta nada de esto.
 
 - [ ] **Levantar todo.** En una terminal:
 
@@ -37,7 +37,7 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
   repos). `warmup` carga David y EmbeddingGemma y hace una traducción de David con recuperación y
   MBR, y una llamada a Goliath, para que la primera ronda no sea en frío. `preflight` revisa
   Ollama y los modelos, el índice contra el dataset, los mazos de evaluación y de especialidad, el
-  duelo, Gemini, el disco y una traducción de David dentro de 5 s. También falla si
+  duelo, Gemini, el disco y que la mediana de 3 traducciones de David quede dentro de 5 s. También falla si
   `LOCAL_MODEL_TAG` es un David que entrenó con Firefox Focus (`tzij-2026-10-raft-bt-s3`, por
   ejemplo): con él la ronda de especialidad (`S`) no vale. `tzij-2026-10-mix-s7` nunca vio Focus.
   Tiene que terminar en «preflight ok»; cada `[FALLA]` dice cómo arreglarlo.

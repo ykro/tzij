@@ -13,7 +13,7 @@ ollama pull gemma4:e4b && ollama pull embeddinggemma
 gcloud auth application-default login      # ADC for Vertex AI and Cloud Storage
 
 make data-pull     # download the latest dataset from the bucket (or `make data` to build it here)
-make niche-data    # hold out Firefox Focus (specialty round) and build the index (EmbeddingGemma + sqlite-vec + FTS5)
+make niche-data    # build the index (EmbeddingGemma + sqlite-vec + FTS5); the dataset already has the specialty round
 make pull-model TAG=tzij-2026-10-mix-s7   # the fine-tuned David (or LOCAL_MODEL_TAG=gemma4:e4b)
 make web           # build the views (needs internet once, for the fonts)
 make up            # Ollama + warmed-up David + service + views on the LAN
@@ -42,7 +42,7 @@ make stage-off                                   # same as the other repos (noth
 | `make data-cloud` | Runs the same pipeline as a Cloud Run Job (`infra/10-data-job.sh`) and writes a versioned dataset to `gs://…-tzij-data/datasets/`. |
 | `make data-pull` | Downloads the latest dataset the job produced. |
 | `make index` | Builds `rag/index/tzij.sqlite` from the `train` split only, with EmbeddingGemma via Ollama. |
-| `make niche-data` | Prepares the specialty round: on the base dataset `20261002-022500` (`make data-pull`) it holds out Firefox Focus as `test_niche.jsonl` and removes it from train (`python -m pipeline.niche build`), then rebuilds the index. If `LATEST` already has `test_niche.jsonl`, it only rebuilds the index. `make data-pull && make index` alone leave the `S` round with no phrases. |
+| `make niche-data` | Builds the index. If `LATEST` has no `test_niche.jsonl` (a new dataset from `make data` or `make data-cloud`), it first holds Firefox Focus out of the base dataset `20261002-022500` as `test_niche.jsonl` and removes it from train (`python -m pipeline.niche build`). The published dataset, `20261002-173447`, already has it. |
 | `make review-test` | (Optional) Exports the test set to `data/review/test_review_<version>.csv` for a native review. |
 | `make apply-review REVIEW_CSV=…` | Applies the verdicts (`ok` / `fix` / `reject`) to the test set. |
 | `make fertility` | Measures K'iche' vs Spanish token fertility and writes `evals/fertility.md`. |
@@ -64,8 +64,8 @@ make stage-off                                   # same as the other repos (noth
 | `make up` | (`MOCK_AI=1 make up`: no Ollama, index or dataset needed.) Starts Ollama if needed, warms David and EmbeddingGemma, builds the views if missing and serves everything on the LAN. |
 | `make reset` | Clears rounds and verdicts, whether the service is running or not, in under 10 s. |
 | `make stage-on` / `make stage-off` | Do nothing in the cloud: Tzij has no services to scale (everything on stage runs on the laptop). They exist so the talk-day sequence is the same in every repo. |
-| `make warmup` | Loads David (with the rounds' `num_ctx`) and EmbeddingGemma in Ollama, and makes one David translation with retrieval (+ MBR when `MBR_ON_STAGE=1`) and one Goliath call, as on stage. Nothing is recorded on the scoreboard. |
-| `make preflight` | Pre-stage check: Ollama with `LOCAL_MODEL_TAG` and the embedding model; David never trained on Firefox Focus; the index exists and comes from the `LATEST` dataset; phrases for the evaluation and specialty (`test_niche`) rounds; the duel's `/api/health` if it is running; Gemini (one tiny call); 10 GB free disk; and one timed David translation within the 5 s p50 budget. One `[ok]` or `[FALLA]` line per check, with the fix; the exit code is the number of failures. |
+| `make warmup` | Loads David (with the rounds' `num_ctx`) and EmbeddingGemma in Ollama, and makes one David translation with retrieval (+ MBR when `MBR_ON_STAGE=1`) and one Goliath call, as on stage; a call that fails with an error (a timeout, a 5xx) is retried up to 3 times. Nothing is recorded on the scoreboard. |
+| `make preflight` | Pre-stage check: Ollama with `LOCAL_MODEL_TAG` and the embedding model; David never trained on Firefox Focus; the index exists and comes from the `LATEST` dataset; phrases for the evaluation and specialty (`test_niche`) rounds; the duel's `/api/health` if it is running; Gemini (one tiny call); 10 GB free disk; and the median of 3 timed David translations within the 5 s p50 budget. One `[ok]` or `[FALLA]` line per check, with the fix; the exit code is the number of failures. |
 | `make test` | Python tests (`MOCK_AI=1`, no network) and web tests (vitest). |
 | `make deploy` | Deploys the cloud parts (project, data job, training job and image). The duel and views stay on the laptop. |
 | `make emulator` | Opens the validator in Chrome on the Android emulator (`10.0.2.2`) and fails if a vote takes more than 1 s to reach the screen. |

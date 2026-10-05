@@ -38,7 +38,7 @@ data-pull: ## Download the latest dataset produced by the Cloud Run Job
 index: ## Build the offline retrieval index (EmbeddingGemma via Ollama + sqlite-vec)
 	$(UV) run python -m rag.build_index
 
-niche-data: ## Specialty-round dataset: hold Firefox Focus out of 20261002-022500 (make data-pull first) as test_niche, then rebuild the index
+niche-data: ## Build the index; if LATEST has no test_niche.jsonl, first hold Firefox Focus out of 20261002-022500 (specialty round)
 	@if [ -f "data/processed/$$(cat data/processed/LATEST 2>/dev/null)/test_niche.jsonl" ]; then \
 	  echo "data/processed/LATEST ($$(cat data/processed/LATEST)) ya tiene test_niche.jsonl: no se rehace."; \
 	else \
@@ -150,7 +150,7 @@ stage-off: ## After the talk: nothing to scale down (no cloud services)
 warmup: ## Load David + the embedding model in Ollama, one David translation (retrieval + MBR) and one Goliath call
 	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.warmup
 
-preflight: ## Talk-day gate: Ollama + models, no Focus-trained David, index = dataset, decks, duel, Gemini, disk, David p50 <= 5 s
+preflight: ## Talk-day gate: Ollama + models, no Focus-trained David, index = dataset, decks, duel, Gemini, disk, David median of 3 <= 5 s (the p50 budget)
 	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.preflight
 
 emulator: ## Validator in Chrome on the Android emulator (ANDROID_SERIAL, default emulator-5556) + latency check

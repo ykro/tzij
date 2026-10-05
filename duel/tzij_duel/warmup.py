@@ -4,6 +4,9 @@
   2. one David translation with retrieval (+ MBR when MBR_ON_STAGE=1), exactly as on stage;
   3. one Goliath call (Gemini on Vertex AI).
 
+A call that fails with status "error" (a timeout, a 5xx) is retried up to ATTEMPTS times: a cold
+Ollama or a slow first Vertex call is exactly what warmup exists to absorb. "offline" is not retried.
+
 It runs in its own process with the duel's code (nothing is recorded on the scoreboard).
 Exit code 1 if anything failed.
 
@@ -27,6 +30,8 @@ from .variants import stage_variants, translate
 
 WARMUP_PHRASE = "Buenos días, ¿cómo está usted?"
 KEEP_ALIVE = "2h"  # same as `make up` and the duel service: warm up early, stay loaded
+ATTEMPTS = 3
+RETRY_DELAY_S = 3.0
 
 
 def line(label: str, result: str, ok: bool = True) -> bool:
@@ -58,6 +63,18 @@ def preload(s) -> bool:
     return ok
 
 
+async def with_retries(call, label: str, attempts: int = ATTEMPTS, delay_s: float = RETRY_DELAY_S,
+                       sleep=asyncio.sleep):
+    """Run `call()` (an async translate) until it isn't an "error", at most `attempts` times."""
+    for attempt in range(1, attempts + 1):
+        r = await call()
+        if r.status != "error" or attempt == attempts:
+            return r
+        print(f"  {label}: intento {attempt} de {attempts} falló ({(r.error or '')[:80]}); reintento", flush=True)
+        await sleep(delay_s)
+    return r
+
+
 async def duel_calls(s) -> bool:
     david, goliath = stage_variants(s)
     retriever = _load_retriever(s)
@@ -68,8 +85,8 @@ async def duel_calls(s) -> bool:
     if retriever is None:
         ok &= line("recuperación", "no hay índice: make index", ok=False)
     d, g = await asyncio.gather(
-        translate(david, WARMUP_PHRASE, "es-quc", retriever=retriever, online=online),
-        translate(goliath, WARMUP_PHRASE, "es-quc", retriever=None, online=online),
+        with_retries(lambda: translate(david, WARMUP_PHRASE, "es-quc", retriever=retriever, online=online), "David"),
+        with_retries(lambda: translate(goliath, WARMUP_PHRASE, "es-quc", retriever=None, online=online), "Goliath"),
     )
     for label, r in ((f"David ({david.model}, recuperación{mbr})", d), (f"Goliath ({goliath.model})", g)):
         good = r.status == "ok"

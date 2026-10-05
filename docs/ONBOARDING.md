@@ -155,12 +155,12 @@ La numeración agrupa los scripts (`0x` entrenamiento, `1x` datos). En el flujo 
 ```bash
 make data-cloud   # recomendado: Cloud Run Job → gs://…-tzij-data/datasets/<versión>/ + LATEST
 make data-pull    # lo baja a data/processed/<versión>/ y actualiza data/processed/LATEST
-make niche-data   # aparta Firefox Focus (test_niche, ronda de especialidad) y reconstruye el índice
+make niche-data   # construye el índice (y aparta Firefox Focus si LATEST no trae test_niche)
 # o, todo en la laptop:
 make data         # descarga a data/raw/, escribe data/processed/<versión>/ y data/DATASHEET.md
 ```
 
-`make data-pull` sola deja en `LATEST` el dataset base `20261002-022500`: sin `test_niche.jsonl` y con Firefox Focus en el índice, así que la ronda de especialidad no funciona. `make niche-data` corre `python -m pipeline.niche build` sobre ese dataset (nueva versión con Focus fuera de train y del índice, más los glosarios de CLDR y FLORES-Mayas) y después `make index`. Si `LATEST` ya tiene `test_niche.jsonl`, no rehace el dataset y solo reconstruye el índice.
+`make data-pull` baja el dataset publicado, `20261002-173447`, que ya trae `test_niche.jsonl` (Firefox Focus fuera de train y del índice, más los glosarios de CLDR y FLORES-Mayas). `make niche-data` entonces solo corre `make index`. Con un dataset nuevo sin `test_niche.jsonl` (de `make data` o `make data-cloud`), `make niche-data` primero corre `python -m pipeline.niche build` sobre el dataset base `20261002-022500` y crea una versión nueva.
 
 El pipeline (`pipeline/run.py`) hace: descarga por fuente (`pipeline/sources/*.py`, con caché cruda) → normalización (`data/normalize.py`) → limpieza con motivo de descarte (`pipeline/clean.py`) → etiquetas de dominio → deduplicación → split por fuente con chequeo de fugas y tope religioso (`pipeline/split.py`) → `train.jsonl` / `dev.jsonl` / `test.jsonl` (un registro por par y dirección) → `manifest.json` y datasheet. El job escribe el datasheet junto al dataset en GCS; para regenerar el del repo, usa `make datasheet` después de `make data-pull`.
 
@@ -378,7 +378,7 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 **La semana anterior**
 
 - [ ] `git pull`, `uv sync`, `make test` en verde.
-- [ ] Dataset y modelos al día: `make data-pull && make niche-data` (no basta `make data-pull && make index`: sin `make niche-data` no hay ronda de especialidad), `ollama list` (con `LOCAL_MODEL_TAG` y `embeddinggemma`).
+- [ ] Dataset y modelos al día: `make data-pull && make niche-data` (`LATEST` = `20261002-173447`, con `test_niche.jsonl`), `ollama list` (con `LOCAL_MODEL_TAG` y `embeddinggemma`).
 - [ ] `LOCAL_MODEL_TAG` coincide con la mejor variante local de `evals/report.md`.
 - [ ] Precios de Gemini en `.env` vigentes para la fecha de la charla. Desde el 1 de enero de 2027: `GEMINI_INPUT_USD_PER_M=1.50`, `GEMINI_OUTPUT_USD_PER_M=7.50`.
 - [ ] (Opcional) Si hubo revisión nativa, aplicarla con `make apply-review`. No es requisito: el conjunto de prueba ya está `auto_validated`.
