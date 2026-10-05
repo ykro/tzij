@@ -139,12 +139,6 @@ def raft_retriever(dataset_version: str):
     return retriever, s.rag_k
 
 
-def hashlib_sha(x: str) -> str:
-    import hashlib
-
-    return hashlib.sha1(x.encode()).hexdigest()
-
-
 if __name__ == "__main__":
     processed = REPO / "data" / "processed"
     version = (processed / "LATEST").read_text().strip()
@@ -166,12 +160,14 @@ if __name__ == "__main__":
         if bt_both:
             out = out.with_name(f"{out.stem}-both.jsonl")
         distilled = None
-        if "--distilled" in sys.argv:  # --distilled N: N distilled pairs (both directions), stable order
+        if "--distilled" in sys.argv:  # --distilled N: the first N distilled pairs (both directions)
             from pipeline.distill import records as distilled_records
 
             n = int(sys.argv[sys.argv.index("--distilled") + 1])
-            pairs = sorted({r["pair_id"] for r in distilled_records()}, key=lambda x: hashlib_sha(x))[:n]
-            distilled = [r for r in distilled_records() if r["pair_id"] in set(pairs)]
+            # File order: pairs.jsonl only grows at the end, so N = 2409 is always the first batch (mix-s7).
+            rows = distilled_records()
+            first = list(dict.fromkeys(r["pair_id"] for r in rows))[:n]
+            distilled = [r for r in rows if r["pair_id"] in set(first)]
             out = out.with_name(f"{out.stem}-dst{n}.jsonl")
         only_new = 0.0
         if "--only-new" in sys.argv:  # --only-new 0.3: new data + 30% of the web pairs as replay

@@ -200,9 +200,10 @@ make monolingual && make back-translate   # incluye los libros de Bloom solo en 
 make distill                              # español de Gemini → K'iche' filtrado: data/train/distilled/
 uv run python -m pipeline.train_set --raft --bt --bt-both --distilled 2409 --only-new 0.3
 #   → data/train/chat-raft-bt-both-dst2409-new30.jsonl: datos nuevos en las dos direcciones + 30 % de los pares web
-make train TAG=tzij-2026-10-mix-s0 TRAIN_DATA=data/train/chat-raft-bt-both-dst2409-new30.jsonl \
-  TRAIN_ARGS="… --shard=0/8 --init-adapter=gs://…-train-eu/tzij/runs/tzij-2026-10-tm-a-e2-s4/adapter"
-# … s1 a s7, cada uno con el adapter del anterior; después make train-finish TAG=tzij-2026-10-mix-s7
+#   (--distilled 2409 = los primeros 2,409 pares de pairs.jsonl: la primera tanda, `make distill LIMIT=6000`)
+train/chain.sh tzij-2026-10-mix data/train/chat-raft-bt-both-dst2409-new30.jsonl 0 7 8 tzij-2026-10-tm-a-e2-s4 --seed=2031
+#   → 8 jobs de Cloud Run (uno por octavo), cada uno sigue el adapter del anterior
+make train-finish TAG=tzij-2026-10-mix-s7
 ```
 
 Los hiperparámetros de cada trozo quedan en `train/runs/<tag>.json`. Las decisiones entre ejecuciones se toman con `make eval EVAL_ARGS="--split dev_domain --out evals/dev_domain_report.md"`, no con la prueba.

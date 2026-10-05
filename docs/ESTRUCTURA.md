@@ -30,7 +30,7 @@ duel/
   duel_core/   clientes de Ollama y Gemini, duelo en paralelo, chrF++, costo, conectividad
   tzij_duel/   servicio FastAPI: variants.py, prompts.py, deck.py, rounds.py, model_card.py, lan.py
 evals/         run_eval.py → report.md, tune_retrieval.py → tuning.md, fertility.py → fertility.md, human_eval.md
-train/         train_lora.py (TRL + PEFT → merge → GGUF), submit_job.py (Cloud Run Job),
+train/         train_lora.py (TRL + PEFT → merge → GGUF), submit_job.py (Cloud Run Job), chain.sh (trozos que siguen el adaptador anterior),
                finish_local.py, train_local.py, pull_model.sh, colab.ipynb, runs/
 infra/         env.sh, 01-train-service-account.sh, 02-train-image.sh, 03-train-job.sh, 10-data-job.sh
 web/           Next.js: app/presentador, app/validar, components/, lib/, tests/
