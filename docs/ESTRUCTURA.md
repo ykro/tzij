@@ -22,7 +22,8 @@ Fuente de los diagramas: [`diagrams/`](diagrams/) (HTML, SVG y PNG).
 data/          normalize.py (ortografía), SOURCES.md, DATASHEET.md (generado)
 pipeline/      run.py → sources/ (una por fuente) → clean.py → split.py → manifest/datasheet
                validate_test.py (validación automática), review.py / apply_review.py (revisión nativa opcional)
-               train_set.py (JSONL de chat, RAFT), monolingual.py + back_translate.py (retrotraducción), distill.py (destilación)
+               train_set.py (JSONL de chat, RAFT), monolingual.py + back_translate.py (retrotraducción), distill.py (destilación),
+               niche.py (ronda de especialidad: Firefox Focus fuera de train, `make niche-data`)
                Dockerfile + cloudbuild.yaml (imagen del Cloud Run Job de datos)
 rag/           embedder.py (EmbeddingGemma vía Ollama), store.py (sqlite-vec),
                build_index.py, retrieve.py (híbrida BM25 + vectores con RRF, ejemplos + glosario)

@@ -12,9 +12,14 @@ Duración total: unos 6 minutos (8 con el teléfono validador).
 - [ ] **Datos, índice y modelos al día** (una vez, con internet):
 
   ```bash
-  make data-pull && make index
+  make data-pull && make niche-data
   make pull-model TAG=tzij-2026-10-mix-s7
   ```
+
+  `make niche-data` aparta Firefox Focus del dataset (el mazo `test_niche.jsonl` de la ronda de
+  especialidad) y reconstruye el índice sin él. Con `make data-pull && make index` solamente, la
+  ronda `S` no tiene frases y Focus queda en el índice. Si `data/processed/LATEST` ya es
+  `20261002-173447` y `make preflight` sale en verde, no hace falta nada de esto.
 
 - [ ] **Levantar todo.** En una terminal:
 

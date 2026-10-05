@@ -40,7 +40,7 @@ En la especialidad David gana por +8.5 [IC 95 %: +4.7, +12.7] en un producto que
 cp .env.example .env                       # modelos, buckets y puertos; nunca se sube .env
 uv sync && ollama pull gemma4:e4b && ollama pull embeddinggemma
 gcloud auth application-default login      # ADC para Vertex AI y Cloud Storage
-make data-pull && make index && make web   # dataset, índice y vistas
+make data-pull && make niche-data && make web   # dataset con la ronda de especialidad, índice y vistas
 make pull-model TAG=tzij-2026-10-mix-s7 && make up
 open http://127.0.0.1:8787/presentador/    # E: frase de evaluación · /: frase en vivo
 ```

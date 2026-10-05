@@ -7,13 +7,15 @@ ENV_MK := $(shell test -f .env && sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$$/\1 
 export
 
 UV ?= uv
-# make train TRAIN_DATA=data/train/chat-raft.jsonl for the retrieval-augmented fine-tune.
-TRAIN_DATA ?= data/train/chat.jsonl
+# Training data of the stage David (tzij-2026-10-mix-s7): RAFT + Bloom back-translation in both directions
+# + the first 2,409 distilled pairs + 30% of the web pairs as replay (make train-data). The stage run continued
+# tzij-2026-10-tm-a-e2-s4 in 8 chunks: train/chain.sh, recipe in docs/ONBOARDING.md section 6.4.
+TRAIN_DATA ?= data/train/chat-raft-bt-both-dst2409-new30.jsonl
 REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help llama-server demo-screens deploy tune-retrieval niche synthetic distill train-data-raft-bt-syn train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator stage-on stage-off warmup preflight
+.PHONY: help demo-screens deploy tune-retrieval niche niche-data distill train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator stage-on stage-off warmup preflight
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -35,6 +37,14 @@ data-pull: ## Download the latest dataset produced by the Cloud Run Job
 
 index: ## Build the offline retrieval index (EmbeddingGemma via Ollama + sqlite-vec)
 	$(UV) run python -m rag.build_index
+
+niche-data: ## Specialty-round dataset: hold Firefox Focus out of 20261002-022500 (make data-pull first) as test_niche, then rebuild the index
+	@if [ -f "data/processed/$$(cat data/processed/LATEST 2>/dev/null)/test_niche.jsonl" ]; then \
+	  echo "data/processed/LATEST ($$(cat data/processed/LATEST)) ya tiene test_niche.jsonl: no se rehace."; \
+	else \
+	  $(UV) run python -m pipeline.niche build; \
+	fi
+	$(MAKE) index
 
 review-test: ## Export the test set as CSV for the native speaker -> data/review/
 	$(UV) run python -m pipeline.review
@@ -62,8 +72,8 @@ eval: ## Compare every available variant on the test set -> evals/report.md
 human-eval-sheet: ## Blind 50-item rating sheet from the latest eval run: [VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"] [RUN=id]
 	$(UV) run python -m evals.human_eval_sheet $(if $(VARIANTS),--variants "$(VARIANTS)") $(if $(RUN),--run $(RUN))
 
-train-data: ## Render the train split (sentences, both directions) as chat JSONL -> data/train/chat.jsonl
-	$(UV) run python -m pipeline.train_set
+train-data: ## Training data of the stage David: RAFT + back-translation (both directions) + 2,409 distilled pairs + 30% web replay -> data/train/chat-raft-bt-both-dst2409-new30.jsonl
+	$(UV) run python -m pipeline.train_set --raft --bt --bt-both --distilled 2409 --only-new 0.3
 
 train-data-raft: ## Train split with retrieved context in every prompt (RAFT) -> data/train/chat-raft.jsonl
 	$(UV) run python -m pipeline.train_set --raft
@@ -71,16 +81,9 @@ train-data-raft: ## Train split with retrieved context in every prompt (RAFT) ->
 train-data-raft-bt: ## RAFT data plus Gemini back-translated pairs (es->quc only) -> data/train/chat-raft-bt.jsonl
 	$(UV) run python -m pipeline.train_set --raft --bt
 
-train-data-raft-bt-syn: ## RAFT + back-translation + synthetic pairs capped at SYN (share of examples, tuned on dev) -> data/train/chat-raft-bt-syn<N>.jsonl
-	@test -n "$(SYN)" || (echo "usage: make train-data-raft-bt-syn SYN=0.3" && exit 1)
-	$(UV) run python -m pipeline.train_set --raft --bt --syn $(SYN)
-
 distill: ## Distillation in the test's domains: Gemini Spanish -> K'iche' with David's retrieved context, round-trip filtered (LIMIT=N) -> data/train/distilled/
 	$(UV) run python -m pipeline.distill gen
 	$(UV) run python -m pipeline.distill translate $(if $(LIMIT),--limit $(LIMIT))
-
-synthetic: ## Grounded synthetic pairs with Gemini (dictionary-anchored + UD slot filling, round-trip filtered) -> data/train/synthetic/
-	$(UV) run python -m pipeline.synthetic all
 
 monolingual: ## Licensed monolingual K'iche' (train-side sources only) -> data/monolingual/quc.jsonl
 	$(UV) run python -m pipeline.monolingual
@@ -88,15 +91,16 @@ monolingual: ## Licensed monolingual K'iche' (train-side sources only) -> data/m
 back-translate: ## Gemini Spanish for the monolingual K'iche' (one-time, cost recorded) -> data/train/back_translated_gemini.jsonl
 	$(UV) run python -m pipeline.back_translate
 
-train: ## LoRA fine-tune as a Cloud Run GPU Job (L4), record time and cost: make train TAG=tzij-2026-09 [TRAIN_ARGS="--epochs=1.5"]
+train: ## LoRA fine-tune of TRAIN_DATA as a Cloud Run GPU Job (L4), record time and cost: make train TAG=tzij-YYYY-MM [TRAIN_ARGS=...]
 	@test -n "$(TAG)" || (echo "usage: make train TAG=tzij-YYYY-MM" && exit 1)
 	@test -f $(TRAIN_DATA) || $(MAKE) train-data
 	$(UV) run python train/submit_job.py --app tzij --tag $(TAG) --data $(TRAIN_DATA) -- $(TRAIN_ARGS)
 
-train-local: train-data ## Same training on this Mac (MPS) when no cloud GPU is available: make train-local TAG=... [TRAIN_ARGS=...]
+train-local: ## Same training of TRAIN_DATA on this Mac (MPS) when no cloud GPU is available: make train-local TAG=... [TRAIN_ARGS=...]
 	@test -n "$(TAG)" || (echo "usage: make train-local TAG=tzij-YYYY-MM [TRAIN_ARGS=\"--epochs=1\"]" && exit 1)
+	@test -f $(TRAIN_DATA) || $(MAKE) train-data
 	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
-	  python train/train_local.py $(TAG) data/train/chat.jsonl $(TRAIN_ARGS)
+	  python train/train_local.py $(TAG) $(TRAIN_DATA) $(TRAIN_ARGS)
 
 train-finish: ## Merge + GGUF a cloud-trained adapter on this Mac and publish it (E4B doesn't fit Cloud Run's 32 GiB)
 	@test -n "$(TAG)" || (echo "usage: make train-finish TAG=tzij-YYYY-MM (the tag of a finished cloud training run)" && exit 1)
@@ -106,11 +110,6 @@ train-finish: ## Merge + GGUF a cloud-trained adapter on this Mac and publish it
 pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-09
 	@test -n "$(TAG)" || (echo "usage: make pull-model TAG=tzij-YYYY-MM" && exit 1)
 	MODELS_BUCKET=$(MODELS_BUCKET) train/pull_model.sh $(TAG)
-
-llama-server: ## llama.cpp server for the "@llama" eval variants (logit bias, 8 parallel slots) on LLAMA_SERVER_MODEL's GGUF from Ollama
-	@test -n "$(LLAMA_SERVER_MODEL)" || (echo "usage: make llama-server LLAMA_SERVER_MODEL=<ollama tag>" && exit 1)
-	GGUF="$$(ollama show --modelfile $(LLAMA_SERVER_MODEL) | sed -n 's/^FROM //p' | head -1)"; \
-	  train/.llama.cpp/bin/llama-server -m "$$GGUF" --jinja --parallel 8 -c 32768 -ngl 99 --port $${LLAMA_PORT:-8089}
 
 web: ## Build the presenter and validator views (static export; needs internet once for fonts)
 	cd web && npm ci --silent && npm run build

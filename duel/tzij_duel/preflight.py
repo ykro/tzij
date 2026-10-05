@@ -86,7 +86,7 @@ def check_index_and_decks(r: Report, s):
     print("Índice de recuperación y frases", flush=True)
     dataset = latest_dataset(s.processed_dir)
     if dataset is None:
-        r.fail("No hay dataset en data/processed/LATEST", "make data-pull")
+        r.fail("No hay dataset en data/processed/LATEST", "make data-pull && make niche-data")
     retriever = _load_retriever(s)
     if retriever is None:
         r.fail(f"El índice {s.rag_index.relative_to(REPO_ROOT)} no existe o no carga", "make index")
@@ -99,12 +99,12 @@ def check_index_and_decks(r: Report, s):
     if general:
         r.ok(f"Rondas de evaluación (E): {general} frases")
     else:
-        r.fail("No hay frases para las rondas de evaluación", "make data-pull (o revisa REQUIRE_VALIDATED_TEST)")
+        r.fail("No hay frases para las rondas de evaluación", "make data-pull && make niche-data (o revisa REQUIRE_VALIDATED_TEST)")
     niche_file = dataset / "test_niche.jsonl" if dataset else None
     if deck.niche_size and niche_file and niche_file.exists():
         r.ok(f"Ronda de especialidad (S, Firefox Focus): {deck.niche_size} frases en {niche_file.name}")
     else:
-        r.fail("Falta el mazo de especialidad (test_niche.jsonl) o está vacío", "make data-pull")
+        r.fail("Falta el mazo de especialidad (test_niche.jsonl) o está vacío", "make niche-data")
     return retriever
 
 

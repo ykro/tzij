@@ -155,13 +155,16 @@ La numeración agrupa los scripts (`0x` entrenamiento, `1x` datos). En el flujo 
 ```bash
 make data-cloud   # recomendado: Cloud Run Job → gs://…-tzij-data/datasets/<versión>/ + LATEST
 make data-pull    # lo baja a data/processed/<versión>/ y actualiza data/processed/LATEST
+make niche-data   # aparta Firefox Focus (test_niche, ronda de especialidad) y reconstruye el índice
 # o, todo en la laptop:
 make data         # descarga a data/raw/, escribe data/processed/<versión>/ y data/DATASHEET.md
 ```
 
+`make data-pull` sola deja en `LATEST` el dataset base `20261002-022500`: sin `test_niche.jsonl` y con Firefox Focus en el índice, así que la ronda de especialidad no funciona. `make niche-data` corre `python -m pipeline.niche build` sobre ese dataset (nueva versión con Focus fuera de train y del índice, más los glosarios de CLDR y FLORES-Mayas) y después `make index`. Si `LATEST` ya tiene `test_niche.jsonl`, no rehace el dataset y solo reconstruye el índice.
+
 El pipeline (`pipeline/run.py`) hace: descarga por fuente (`pipeline/sources/*.py`, con caché cruda) → normalización (`data/normalize.py`) → limpieza con motivo de descarte (`pipeline/clean.py`) → etiquetas de dominio → deduplicación → split por fuente con chequeo de fugas y tope religioso (`pipeline/split.py`) → `train.jsonl` / `dev.jsonl` / `test.jsonl` (un registro por par y dirección) → `manifest.json` y datasheet. El job escribe el datasheet junto al dataset en GCS; para regenerar el del repo, usa `make datasheet` después de `make data-pull`.
 
-Dataset actual: `20260930-220035`. Train 7,025 pares, dev 111, prueba 1,654 (300 de Bloom, 1,354 de BOUQuET). Proporción religiosa en train: 30.0 %.
+Dataset actual: `20261002-173447` (derivado de `20261002-022500` con `make niche-data`). Train 8,453 pares (2,541 oraciones y 5,912 entradas de diccionario y glosario), dev 115, prueba 1,654 (300 de Bloom, 1,354 de BOUQuET), nicho 144 (Firefox Focus, solo español → Kʼicheʼ). Proporción religiosa en las oraciones de train: 30.0 %.
 
 ### 6.2 `make index`
 
@@ -169,7 +172,7 @@ Dataset actual: `20260930-220035`. Train 7,025 pares, dev 111, prueba 1,654 (300
 make index    # necesita Ollama con embeddinggemma
 ```
 
-Indexa solo el split `train` (`pipeline.split.RETRIEVAL_SPLITS`) y se niega a indexar cualquier otro. Guarda el modelo de embeddings y la versión del dataset dentro del índice. El índice actual tiene 14,050 entradas (7,025 por dirección). Los embeddings se cachean en `rag/.cache/embeddings.sqlite`, así que reconstruir es rápido.
+Indexa solo el split `train` (`pipeline.split.RETRIEVAL_SPLITS`) y se niega a indexar cualquier otro. Guarda el modelo de embeddings y la versión del dataset dentro del índice. El índice actual es del dataset `20261002-173447` y tiene 16,906 entradas (8,453 por dirección). Los embeddings se cachean en `rag/.cache/embeddings.sqlite`, así que reconstruir es rápido.
 
 ### 6.3 `make fertility` (opcional)
 
@@ -178,8 +181,10 @@ Mide tokens por palabra con el `tokenizer.json` de `google/<GEMMA_BASE_MODEL>` y
 ### 6.4 `make train`
 
 ```bash
-make train TAG=tzij-2026-09 TRAIN_ARGS="--epochs=1"
+make train TAG=tzij-YYYY-MM TRAIN_ARGS="…"   # una tarea de Cloud Run con TRAIN_DATA; los argumentos van a train/train_lora.py
 ```
+
+Sin `TRAIN_DATA`, `make train` y `make train-local` entrenan con los datos del David en escena (`data/train/chat-raft-bt-both-dst2409-new30.jsonl`, que arma `make train-data` si falta). La receta completa de `tzij-2026-10-mix-s7`, con los 8 trozos encadenados, está más abajo.
 
 El primer David ajustado (`tzij-2026-10-raft-bt-s3`) se entrenó con RAFT + retrotraducción, en 4 trozos de 1/4 de época para no pasar el límite de 1 h:
 
@@ -198,7 +203,7 @@ El David actual (`tzij-2026-10-mix-s7`) continúa el adaptador `tzij-2026-10-tm-
 ```bash
 make monolingual && make back-translate   # incluye los libros de Bloom solo en K'iche' (1,998 pares nuevos)
 make distill                              # español de Gemini → K'iche' filtrado: data/train/distilled/
-uv run python -m pipeline.train_set --raft --bt --bt-both --distilled 2409 --only-new 0.3
+make train-data   # = python -m pipeline.train_set --raft --bt --bt-both --distilled 2409 --only-new 0.3
 #   → data/train/chat-raft-bt-both-dst2409-new30.jsonl: datos nuevos en las dos direcciones + 30 % de los pares web
 #   (--distilled 2409 = los primeros 2,409 pares de pairs.jsonl: la primera tanda, `make distill LIMIT=6000`)
 train/chain.sh tzij-2026-10-mix data/train/chat-raft-bt-both-dst2409-new30.jsonl 0 7 8 tzij-2026-10-tm-a-e2-s4 --seed=2031
@@ -208,7 +213,7 @@ make train-finish TAG=tzij-2026-10-mix-s7
 
 Los hiperparámetros de cada trozo quedan en `train/runs/<tag>.json`. Las decisiones entre ejecuciones se toman con `make eval EVAL_ARGS="--split dev_domain --out evals/dev_domain_report.md"`, no con la prueba.
 
-1. `make train-data` convierte las oraciones de `train` (ambas direcciones) en JSONL de chat con el mismo prompt del duelo, sin contexto de recuperación, y vuelve a comprobar el tope religioso. Salen 5,180 ejemplos.
+1. `make train-data` arma los datos del David en escena: el 30 % de los pares web de `train`, la retrotraducción en las dos direcciones y los primeros 2,409 pares destilados, cada uno con el mismo prompt y el mismo contexto recuperado que recibe David en el duelo (RAFT). Vuelve a comprobar el tope religioso. Salen 10,692 ejemplos. (Sin `--raft`, `python -m pipeline.train_set` arma la versión sin contexto de `tzij-2026-09`, el callejón sin salida de la [bitácora, sección 2](BITACORA.md).)
 2. `train/submit_job.py` sube el JSONL a `gs://…-train-eu/tzij/data/<tag>/`, construye o reutiliza la imagen (`02`), actualiza el job (`03`), lo ejecuta con `--epochs`, etc., espera y escribe `train/runs/<tag>.json` con duración, máquina y costo estimado.
 3. Dentro del job, `train/train_lora.py` baja los pesos (`GEMMA_WEIGHTS_URI=hf://google`, con caché en el bucket), entrena la LoRA (r=16, alpha=32, lr 2e-4, solo el decodificador de texto) y guarda el adapter en el volumen.
 
@@ -313,7 +318,7 @@ Escribe `evals/runs/<run>/human_eval_sheet.csv` (sin nombres de modelo, filas me
 ## 10. Pruebas y ensayo
 
 ```bash
-make test        # 113 pruebas de Python (MOCK_AI=1, sin red) + 4 de la web (vitest)
+make test        # 127 pruebas de Python (MOCK_AI=1, sin red) + 5 de la web (vitest)
 make screenshots # con el servicio corriendo: capturas en web/test-results/screens/
 ```
 
@@ -366,14 +371,14 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 | Errores 429 de Hugging Face en Cloud Run | Descargas anónimas desde IPs compartidas | Mismo arreglo: el token |
 | `make train` termina en `JOB_STATE_FAILED` por memoria | Esperado con E4B: el entrenamiento terminó, el merge no cabe en 32 GiB | Revisa `train/runs/<tag>.json` (`training: succeeded`) y corre `make train-finish TAG=…` |
 | El job de entrenamiento no termina en 1 h | Demasiadas épocas para el límite de GPU de Cloud Run | `TRAIN_ARGS="--epochs=1"` |
-| `make eval` termina con `No retrieval index` / `No dataset` | Falta `make index` / `make data-pull` | Córrelos primero |
+| `make eval` termina con `No retrieval index` / `No dataset` | Falta `make index` / `make data-pull && make niche-data` | Córrelos primero |
 
 ## 13. Checklist del día de la charla
 
 **La semana anterior**
 
 - [ ] `git pull`, `uv sync`, `make test` en verde.
-- [ ] Dataset y modelos al día: `make data-pull`, `make index`, `ollama list` (con `LOCAL_MODEL_TAG` y `embeddinggemma`).
+- [ ] Dataset y modelos al día: `make data-pull && make niche-data` (no basta `make data-pull && make index`: sin `make niche-data` no hay ronda de especialidad), `ollama list` (con `LOCAL_MODEL_TAG` y `embeddinggemma`).
 - [ ] `LOCAL_MODEL_TAG` coincide con la mejor variante local de `evals/report.md`.
 - [ ] Precios de Gemini en `.env` vigentes para la fecha de la charla. Desde el 1 de enero de 2027: `GEMINI_INPUT_USD_PER_M=1.50`, `GEMINI_OUTPUT_USD_PER_M=7.50`.
 - [ ] (Opcional) Si hubo revisión nativa, aplicarla con `make apply-review`. No es requisito: el conjunto de prueba ya está `auto_validated`.

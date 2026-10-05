@@ -32,7 +32,7 @@ Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish 
 - Only download sources whose license or terms allow this use. Nothing behind a login or forbidden by terms. Uncertain → `needs permission`, left out.
 - Tag each item's `domain`. Religious texts: tag `religious`, keep out of the test set, cap at 30% of training data.
 - `data/normalize.py`: official K'iche' alphabet (ALMG), unify glottal stop characters (`'`, `’`, `ʼ`) before indexing, training or evaluating. Unit-tested.
-- No synthetic K'iche' data: Gemini does not master K'iche' and would teach David its mistakes. Every record has `origin=web`.
+- No synthetic K'iche' in the dataset, the retrieval index, dev or test: Gemini does not master K'iche' and would teach David its mistakes. Every dataset record has `origin=web`. Gemini-made pairs (back-translation, distillation) exist only in training files, tagged by origin and filtered (`docs/DECISIONES.md`).
 
 ## Retrieval or fine-tuning
 

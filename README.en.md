@@ -42,7 +42,7 @@ On the specialty round David wins by +8.5 [95% CI: +4.7, +12.7] on a product he 
 cp .env.example .env                       # models, buckets and ports; .env is never committed
 uv sync && ollama pull gemma4:e4b && ollama pull embeddinggemma
 gcloud auth application-default login      # ADC for Vertex AI and Cloud Storage
-make data-pull && make index && make web   # dataset, index and views
+make data-pull && make niche-data && make web   # dataset with the specialty round, index and views
 make pull-model TAG=tzij-2026-10-mix-s7 && make up
 open http://127.0.0.1:8787/presentador/    # E: evaluation phrase · /: live phrase
 ```

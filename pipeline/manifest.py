@@ -8,8 +8,10 @@ counts by construction.
 
 from __future__ import annotations
 
+import json
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
+from pathlib import Path
 
 from pipeline.record import DIRECTIONS, RELIGIOUS, SENTENCE, Pair
 from pipeline.sources.base import Source
@@ -96,5 +98,57 @@ def build_manifest(
             "auto_validated_by_source": dict(validated_by_source),
             "auto_rejected": dict(test_rejections or {}),
             "criteria": list(CRITERIA),
+        },
+    }
+
+
+COUNTED_SPLITS = ("train", "dev", "test", "test_niche")
+
+
+def recount(manifest: dict, dataset_dir: Path) -> dict:
+    """The manifest with every count recomputed from the split files next to it.
+
+    A derived version (pipeline/niche.py) rewrites train and adds test_niche, so counts copied from
+    the parent version would be stale. Source metadata, drop reasons and the test validation summary
+    are kept as they are (they describe how the parent was built). Returns a new dict.
+    """
+    by_split: dict[str, int] = {}
+    per_direction: dict[str, dict[str, int]] = {}
+    by_source: dict[str, dict] = defaultdict(lambda: defaultdict(int))
+    by_domain: dict[str, dict] = defaultdict(lambda: defaultdict(int))
+    by_kind: dict[str, dict] = defaultdict(lambda: defaultdict(int))
+    sentences: dict[str, list[dict]] = defaultdict(list)
+    for split in COUNTED_SPLITS:
+        path = dataset_dir / f"{split}.jsonl"
+        if not path.exists():
+            continue
+        records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        per_direction[split] = {d: sum(r["direction"] == d for r in records) for d in DIRECTIONS}
+        # One pair = one es-quc record (test_niche has only that direction).
+        pairs = [r for r in records if r["direction"] == "es-quc"]
+        by_split[split] = len(pairs)
+        for r in pairs:
+            by_source[r["source_name"]][split] += 1
+            by_domain[r["domain"]][split] += 1
+            by_kind[r["kind"]][split] += 1
+            if r["kind"] == SENTENCE:
+                sentences[split].append(r)
+    train_sentences = sentences["train"]
+    religious = sum(r["domain"] == RELIGIOUS for r in train_sentences) / max(len(train_sentences), 1)
+    finetune = [r for name in FINETUNE_SPLITS for r in sentences[name]]
+    threshold = manifest.get("finetune", {}).get("threshold_sentence_pairs", FINETUNE_THRESHOLD)
+    return {
+        **manifest,
+        "pairs_by_split": by_split,
+        "records_by_split_and_direction": per_direction,
+        "pairs_by_source": {k: dict(v) for k, v in sorted(by_source.items())},
+        "pairs_by_domain": {k: dict(v) for k, v in sorted(by_domain.items())},
+        "pairs_by_kind": {k: dict(v) for k, v in sorted(by_kind.items())},
+        "religious_share_of_train_sentences": round(religious, 4),
+        "finetune": {
+            "threshold_sentence_pairs": threshold,
+            "sentence_pairs_outside_test": len(finetune),
+            "non_religious_sentence_pairs_outside_test": sum(r["domain"] != RELIGIOUS for r in finetune),
+            "threshold_met": len(finetune) >= threshold,
         },
     }

@@ -9,7 +9,7 @@ On stage it competes against Goliath, a frontier model (Gemini) used as anyone w
 | | David | Goliath |
 | --- | --- | --- |
 | Model | `LOCAL_MODEL_TAG` (now `tzij-2026-10-mix-s7`, a LoRA on Gemma 4 E4B) served by Ollama | `GEMINI_MODEL` (now `gemini-3.8-flash`) on Vertex AI |
-| Extra knowledge | Hybrid retrieval index: ~7,000 dictionary entries and example pairs per direction (BM25 over SQLite FTS5 + EmbeddingGemma in sqlite-vec, fused with RRF; exact and fuzzy glossary) | None |
+| Extra knowledge | Hybrid retrieval index: 8,453 dictionary entries and example pairs per direction (BM25 over SQLite FTS5 + EmbeddingGemma in sqlite-vec, fused with RRF; exact and fuzzy glossary) | None |
 | Decoding | MBR: 4 samples at temperature 0.7, keep the one with the highest mean chrF++ against the others (`MBR_ON_STAGE=1`) | One answer, temperature 0.2 |
 | Runs on | The presenter's laptop, offline | Google Cloud, needs internet |
 | Cost per translation | $0 (hardware already paid for) | Tokens × list price (shown live) |
@@ -18,8 +18,9 @@ On stage it competes against Goliath, a frontier model (Gemini) used as anyone w
 variant in `evals/report.md` with p50 under the 5 s stage budget. It never saw Firefox Focus, so
 it also plays the specialty round.
 
-Run `final-20261002`, dataset `20261002-022500`, 600 held-out sentences (Bloom + BOUQuET,
-references `auto_validated`). Retrieval tuned on dev only; test used once.
+Run `final-20261002`, dataset `20261002-173447` (its test split is identical to that of
+`20261002-022500`, where the rows before `mix-s7` were run), 600 held-out sentences (Bloom +
+BOUQuET, references `auto_validated`). Retrieval tuned on dev only; test used once.
 
 | Variant | es→quc | quc→es | both | p50 | p95 | cost / 1,000 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -77,16 +78,18 @@ the same retrieval. The David that goes on stage is the best local variant with 
 ## Data
 
 Everything comes from licensed web sources listed in `data/SOURCES.md`; counts, splits and
-drop reasons are in `data/DATASHEET.md` (generated). Dataset `20261002-022500`:
+drop reasons are in `data/DATASHEET.md` (generated). Dataset `20261002-173447`, on stage, derived
+from `20261002-022500` by holding out the Pontoon product Firefox Focus as `test_niche.jsonl`
+(144 es→quc pairs, `pipeline/niche.py`):
 
-- **Train / retrieval:** 7,169 pairs per direction from UD K'iche'-IU (ALMG dictionary
-  examples and 104 bilingual stories, used with ALMG's permission), the UT Austin COERLL
-  course, the UDHR, Mozilla Pontoon, the Totonicapán New Testament (capped at 30% of training
-  sentences), and the GATITOS, PanLex and Wiktionary dictionaries. 115 dev pairs for tuning.
+- **Train / retrieval:** 8,453 pairs per direction (2,541 sentence pairs, the rest dictionary and
+  glossary entries) from UD K'iche'-IU (ALMG dictionary examples and 104 bilingual stories, used
+  with ALMG's permission), the UT Austin COERLL course, the UDHR, Mozilla Pontoon (without
+  Firefox Focus), the Totonicapán New Testament (capped at 30% of training sentences), and the
+  GATITOS, PanLex and Wiktionary dictionaries. 115 dev pairs for tuning.
 - **Translation memory added for the niche** (lexicon rows, retrieval only, never trained): Unicode
   CLDR K'iche' emoji names (Unicode License V3, 1,164 pairs) and the FLORES-Mayas glossary
-  (Apache-2.0, 407 pairs; never used with a FLORES-based test). Dataset `20261002-173447` holds
-  out the Pontoon product Firefox Focus as `test_niche.jsonl`.
+  (Apache-2.0, 407 pairs; never used with a FLORES-based test). Both are counted in the 8,453.
 - **Held-out test:** 1,654 pairs per direction from MINEDUC children's books on Bloom
   Library and Meta's BOUQuET benchmark (evaluation only, per its terms). No test source is
   ever used for training or retrieval; train pairs repeating a test sentence are removed.
@@ -101,11 +104,12 @@ drop reasons are in `data/DATASHEET.md` (generated). Dataset `20261002-022500`:
   - **distillation** (`origin=distilled_gemini`, `pipeline/distill.py`): everyday Spanish written
     by Gemini in BOUQuET's domains, translated into K'iche' with David's retrieved context and
     kept only if it passes the ALMG alphabet, length and round-trip filters (2,409 pairs in
-    training).
+    training). A second batch of 1,877 pairs ($6.98, included in the ~$14 of Gemini and the
+    ~$24.3 of the data round) was generated but not used in `tzij-2026-10-mix-s7`.
 - **Orthography.** Glottal stops unified to `'` and lax vowels folded (`data/normalize.py`);
   the screen shows the modifier letter apostrophe `ʼ`.
-- **Fine-tuning threshold** (2,000 clean sentence pairs outside test): met with 2,849, of
-  which 2,029 are non-religious.
+- **Fine-tuning threshold** (2,000 clean sentence pairs outside test): met with 2,656, of
+  which 1,894 are non-religious (2,849 and 2,029 before Firefox Focus was held out).
 - **Training recipe of the previous David, `tzij-2026-10-raft-bt-s3`.** LoRA (r=16, alpha=32, lr 2e-4) on Gemma 4
   E4B, 1 epoch over 5,579 examples: the train split in both directions plus the back-translated
   pairs, religious ≤30%. Every prompt carries the same hybrid retrieval context David sees on
@@ -147,7 +151,7 @@ translations and can be wrong in ways a non-speaker cannot detect.
 
 ## Known limitations
 
-- Small data: about 2,000 non-religious sentence pairs. Religious and software
+- Small data: about 1,900 non-religious sentence pairs. Religious and software
   (Firefox) registers are over-represented compared with everyday speech.
 - K'iche' varies by region (Nahualá, Totonicapán, Santa Cruz del Quiché, Cantel); the data
   mixes varieties and the model does not choose one on purpose.

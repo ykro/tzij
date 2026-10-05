@@ -69,12 +69,14 @@ Round-2 search (October 2): new candidates checked.
   - Rosetta Swadesh (25 words, English) and Wikidata labels (names): negligible.
 - **Checked:** Common Voice now has a quc locale, but it has 0 sentences.
 
-Synthetic and back-translated training data are not sources: they are derived from the
+Back-translated and distilled training data are not sources: they are derived from the
 sources above. Back-translation (`origin=back_translated_gemini`, Spanish side only) is described in
-`pipeline/back_translate.py`; grounded synthetic pairs (`origin=synthetic`, dictionary-anchored
-and UD slot filling, round-trip filtered) in `pipeline/synthetic.py`, with model, prompt, seed,
-cost and rejection counts in `data/train/synthetic/meta.json`. Neither ever enters dev, test,
-the niche slices or the retrieval index.
+`pipeline/back_translate.py`; distillation (`origin=distilled_gemini`: Gemini-written everyday
+Spanish translated into K'iche' with David's retrieved context, ALMG-alphabet, length and
+round-trip filtered) in `pipeline/distill.py`, with model, prompt, seed, cost and rejection counts
+in `data/train/distilled/meta.json`. Neither ever enters dev, test, the niche slices or the
+retrieval index. Dictionary-anchored synthetic pairs were tried and dropped
+(`docs/BITACORA.md`, section 7).
 
 ## Needs permission (14)
 

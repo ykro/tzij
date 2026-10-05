@@ -154,13 +154,14 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
 - **A/B en dev,** con el mismo presupuesto (2 trozos, unos 2,700 ejemplos, español → Kʼicheʼ ×1.5,
   sin Firefox Focus):
 
-  | | chrF++ dev | Costo L4 |
-  | --- | ---: | ---: |
-  | sin sintéticos | **34.2** | $1.30 |
-  | con 20 % de sintéticos | 33.8 | $1.14 |
+  | | Ejecución | chrF++ dev | Costo L4 |
+  | --- | --- | ---: | ---: |
+  | sin sintéticos | `tzij-2026-10-n2a-s1` | **34.2** | $1.30 |
+  | con 20 % de sintéticos | `tzij-2026-10-n2b-s1` | 33.8 | $1.14 |
 
 - **Decisión:** se quedan fuera del entrenamiento. Bajaron la pérdida de entrenamiento porque son
-  texto fácil, pero no mejoraron dev.
+  texto fácil, pero no mejoraron dev. El código (`pipeline/synthetic.py`, `make synthetic`) ya no
+  está en el repo.
 
 ## 8. Sesgo de logits hacia el diccionario: no ayudó (2 de octubre)
 
@@ -179,7 +180,9 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
   | MBR 8 multi-prompt + sesgo 2 | 33.8 | 5.2 s |
 
 - **Decisión:** el sesgo queda fuera (−1.2 frente al mismo MBR sin sesgo). El MBR multi-prompt
-  suma +0.8, pero su p50 de 7.1 s pasa el límite de 5 s del escenario, así que tampoco entra.
+  suma +0.8, pero su p50 de 7.1 s pasa el límite de 5 s del escenario, así que tampoco entra. El
+  código (`make llama-server`, el cliente de llama-server, el sesgo y el MBR multi-prompt) ya no
+  está en el repo.
 - **Costo:** $0.
 
 ## 9. Más épocas y más español → Kʼicheʼ: empate (4 de octubre)
@@ -246,11 +249,11 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
 - **Punto de partida:** el adaptador `tzij-2026-10-tm-a-e2-s4` (2 épocas, datos sin Firefox
   Focus, sección 9). Tres ejecuciones en paralelo en 3 L4 de Cloud Run. Cada una entrena los datos
   nuevos más el 30 % de los pares web como repaso (`pipeline/train_set.py --only-new 0.3`).
-- **E1, Bloom retrotraducido** (`tzij-2026-10-bl`, 4 trozos, $2.33): Gemini tradujo al español los
+- **E1, Bloom retrotraducido** (`tzij-2026-10-bl-s0` … `-s3`, 4 trozos, $2.33): Gemini tradujo al español los
   libros de Bloom solo en Kʼicheʼ ($0.36; 1,998 pares nuevos, 2,397 pares retrotraducidos en
   total). Esta vez entrenan las dos direcciones (`--bt-both`): Kʼicheʼ → español aprende el
   español de Gemini para Kʼicheʼ escrito por personas.
-- **E2, destilación** (`tzij-2026-10-dst`, 5 trozos, $2.28; `make distill`,
+- **E2, destilación** (`tzij-2026-10-dst-s0` … `-s4`, 5 trozos, $2.28; `make distill`,
   [`pipeline/distill.py`](../pipeline/distill.py)):
   - Gemini escribió 10,585 frases cotidianas en español en los 8 dominios de BOUQuET y en cuentos
     infantiles, sobre 28 temas de Guatemala en 3 registros ($1.16);
@@ -259,17 +262,18 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
     y vuelta (umbral: la mediana del chrF++ de ida y vuelta de los pares de dev escritos por
     personas, 46.6). Traducir y filtrar costó $5.43;
   - entrenan las dos direcciones y nunca entran al dataset, al índice, a dev ni a la prueba.
-- **E3, las dos cosas** (`tzij-2026-10-mix`, 8 trozos, $3.91).
+- **E3, las dos cosas** (`tzij-2026-10-mix-s0` … `-s7`, 8 trozos, $3.91).
 - **Resultado en `dev_domain`** (contra el adaptador de partida, 22.1; bootstrap pareado, 2,000
   remuestreos, IC 95 %):
 
   | Ejecución | Δ ambas [IC 95 %] | Por dirección |
   | --- | ---: | --- |
-  | E1, Bloom (`bl`) | +1.5 [+0.7, +2.2] | Kʼicheʼ → español +4.3 [+3.2, +5.4] (Bloom +5.6); español → Kʼicheʼ −1.2 |
-  | E2, destilación (`dst`) | +2.1 [+1.5, +2.8] | español → Kʼicheʼ +3.0 |
-  | E3, las dos (`mix`): **25.8** | **+3.6** [+2.9, +4.3] | +3.7 en cada dirección |
+  | E1, Bloom (`tzij-2026-10-bl-s3`) | +1.5 [+0.7, +2.2] | Kʼicheʼ → español +4.3 [+3.2, +5.4] (Bloom +5.6); español → Kʼicheʼ −1.2 |
+  | E2, destilación (`tzij-2026-10-dst-s4`) | +2.1 [+1.5, +2.8] | español → Kʼicheʼ +3.0 |
+  | E3, las dos (`tzij-2026-10-mix-s7`): **25.8** | **+3.6** [+2.9, +4.3] | +3.7 en cada dirección |
 
-  E3 le saca +2.2 a E1 y +1.5 a E2: los efectos se suman. En el nicho, E2 ya ganaba a Goliath
+  E3 le saca +2.2 a E1 y +1.5 a E2: los efectos se suman. Con el primer trozo de E2
+  (`tzij-2026-10-dst-s0`) ya iba +1.5. En el nicho, E2 (`tzij-2026-10-dst-s4`) ya ganaba a Goliath
   (34.7 contra 28.9, +5.9 [+1.9, +10.3]; terminología 71 % contra 46 %).
 - **Decisión:** `tzij-2026-10-mix-s7` es el nuevo David en escena (publicado en el bucket de
   modelos).
@@ -290,9 +294,10 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
   David gana en chrF++. En terminología, +15 puntos, pero el intervalo incluye el cero: es un
   empate. La base con el mismo índice usa más términos correctos (78 %) y empata en chrF++. El
   David anterior entrenó con Focus y no podía jugar esta ronda; este sí.
-- **Una segunda tanda de destilación** (1,877 pares más, $6.98) todavía no entra al
-  entrenamiento. Parte de ese costo fue volver a traducir frases que ya se habían rechazado: ahora
-  los rechazos quedan en `data/train/distilled/rejected.jsonl` y no se pagan dos veces.
+- **Una segunda tanda de destilación** (1,877 pares más, $6.98, incluidos en los $12.42 de
+  destilación de abajo) se generó pero no entró a `mix-s7`. Parte de ese costo fue volver a
+  traducir frases que ya se habían rechazado: ahora los rechazos quedan en
+  `data/train/distilled/rejected.jsonl` y no se pagan dos veces.
 - **Costo:** $8.52 de L4 (E1 $2.33, E2 $2.28, E3 $3.91) y $13.94 de Gemini (español $1.16,
   retrotraducción $0.36, destilación $12.42). Con la medición de Gemini Pro (sección 10), la ronda
   costó unos $24.3.

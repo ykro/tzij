@@ -1,17 +1,19 @@
-"""Render the training split as chat JSONL for the LoRA fine-tune (make train-data / train-data-raft).
+"""Render the training split as chat JSONL for the LoRA fine-tune (make train-data).
 
 Two flavors:
-  plain  bare prompt, no retrieval context (tzij-2026-09).
+  plain  bare prompt, no retrieval context (`tzij-2026-09`, a dead end: docs/BITACORA.md section 2).
   raft   retrieval-augmented fine-tuning: the prompt carries the top-k dictionary entries and
          example pairs exactly as the duel builds it at inference, so the model learns to *use*
          the context. The sentence being trained on is excluded from its own retrieval, or the
          answer would be sitting in the prompt.
 
-Only `train` sentence pairs, both directions, rendered with the exact prompt the
-duel uses (without retrieval context: the fine-tuned model has to carry the
-language itself; the FT+RAG variant adds context at inference). Religious
-text is already capped at 30% by the pipeline; this script checks it again,
-because a fine-tune is where that bias would stick.
+Options for raft: --bt (Gemini back-translated pairs), --bt-both (also K'iche' -> Spanish),
+--distilled N (the first N distilled pairs), --only-new SHARE (new data + SHARE of the web pairs as
+replay), --es-weight W. The stage David `tzij-2026-10-mix-s7` was trained on
+`--raft --bt --bt-both --distilled 2409 --only-new 0.3` (make train-data).
+
+Only `train` sentence pairs, both directions. Religious text is already capped at 30% by the
+pipeline; this script checks it again, because a fine-tune is where that bias would stick.
 """
 
 from __future__ import annotations
@@ -30,50 +32,10 @@ OUT = REPO / "data" / "train" / "chat.jsonl"
 OUT_RAFT = REPO / "data" / "train" / "chat-raft.jsonl"
 OUT_RAFT_BT = REPO / "data" / "train" / "chat-raft-bt.jsonl"
 BACK_TRANSLATED = REPO / "data" / "train" / "back_translated_gemini.jsonl"
-SYNTHETIC_DIR = REPO / "data" / "train" / "synthetic"
-
-
-def held_out_keys(dataset_dir: Path) -> set[str]:
-    from data.normalize import match_key
-
-    keys = set()
-    for path in [dataset_dir / "dev.jsonl", dataset_dir / "test.jsonl", *dataset_dir.glob("test_*.jsonl")]:
-        for line in path.read_text(encoding="utf-8").splitlines():
-            r = json.loads(line)
-            keys |= {match_key(r["source_text"]), match_key(r["target_text"])}
-    return keys
-
-
-def synthetic_records(cap: float, base_examples: int, dataset_dir: Path) -> list[dict]:
-    """Synthetic pairs (pipeline/synthetic.py) as train records in both directions, capped so they
-    are at most `cap` of the final training examples. Stable selection: by hash of the pair id.
-    Pairs anchored on a dictionary entry that is no longer in train (e.g. held out for the niche), or
-    repeating any dev/test text, are dropped: synthetic data never reaches an evaluation slice."""
-    import hashlib
-
-    from data.normalize import match_key
-
-    train_ids = {json.loads(line)["id"] for line in (dataset_dir / "train.jsonl").read_text(encoding="utf-8").splitlines()}
-    held = held_out_keys(dataset_dir)
-    pairs = []
-    for name in ("dictionary_anchored.jsonl", "ud_slots.jsonl"):
-        path = SYNTHETIC_DIR / name
-        if path.exists():
-            pairs += [p for p in map(json.loads, path.read_text(encoding="utf-8").splitlines())
-                      if (p.get("entry_id") is None or p["entry_id"] in train_ids)
-                      and match_key(p["es"]) not in held and match_key(p["quc"]) not in held]
-    pairs.sort(key=lambda p: hashlib.sha1(p["pair_id"].encode()).hexdigest())
-    budget = int(cap / (1 - cap) * base_examples) // 2  # pairs; each pair gives two examples
-    out = []
-    for p in pairs[:budget]:
-        for direction, src, tgt in (("es-quc", p["es"], p["quc"]), ("quc-es", p["quc"], p["es"])):
-            out.append({"id": f"{p['pair_id']}-{direction}", "pair_id": p["pair_id"], "direction": direction,
-                        "source_text": src, "target_text": tgt, "origin": "synthetic", "method": p["method"]})
-    return out
 
 
 def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra: list[dict] | None = None,
-          synthetic: float = 0.0, es_weight: float = 1.0, bt_both: bool = False, distilled: list[dict] | None = None,
+          es_weight: float = 1.0, bt_both: bool = False, distilled: list[dict] | None = None,
           only_new: float = 0.0) -> dict:
     """es_weight > 1 repeats a stable share of the Spanish -> K'iche' examples (1.5 = every one once,
     half of them twice): the direction David is weakest in, and the one the niche measures."""
@@ -88,14 +50,13 @@ def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra:
     religious = sum(r["domain"] == "religious" for r in sentences) / max(len(sentences), 1)
     if religious > RELIGIOUS_CAP + 1e-9:
         raise SystemExit(f"religious share {religious:.1%} exceeds the {RELIGIOUS_CAP:.0%} cap")
-    synth = synthetic_records(synthetic, len(sentences) + len(back_translated), dataset_dir) if synthetic else []
-    rows = sentences + back_translated + synth + distilled
+    rows = sentences + back_translated + distilled
     if only_new:  # continuing a trained adapter: all new data plus a stable share of the web pairs as replay
         import hashlib
 
         keep = lambda r: int(hashlib.sha1(r["id"].encode()).hexdigest()[:8], 16) / 0xFFFFFFFF < only_new  # noqa: E731
         rows = [r for r in sentences if keep(r)] + [r for r in back_translated if r.get("source_name") == "bloom_mono_quc"
-                                                    or r["direction"] == "quc-es"] + synth + distilled
+                                                    or r["direction"] == "quc-es"] + distilled
     if es_weight > 1:
         import hashlib
 
@@ -116,8 +77,7 @@ def build(dataset_dir: Path, out: Path = OUT, retriever=None, k: int = 6, extra:
                                 ensure_ascii=False) + "\n")
     total = len(rows)
     return {"examples": total, "web_pairs": len(sentences), "distilled": len(distilled), "bt_both": bt_both, "only_new": only_new,
-            "back_translated": len(back_translated), "synthetic": len(synth),
-            "synthetic_share": round(len(synth) / max(total, 1), 4), "es_weight": es_weight,
+            "back_translated": len(back_translated), "es_weight": es_weight,
             "es_quc_examples": sum(r["direction"] == "es-quc" for r in rows), "religious_share_of_web": round(religious, 4),
             "out": str(out.relative_to(REPO))}
 
@@ -148,10 +108,6 @@ if __name__ == "__main__":
         if "--bt" in sys.argv:
             extra = [json.loads(line) for line in BACK_TRANSLATED.read_text(encoding="utf-8").splitlines()]
             out = OUT_RAFT_BT
-        synthetic = 0.0
-        if "--syn" in sys.argv:  # --syn 0.3 = synthetic pairs capped at 30% of training examples
-            synthetic = float(sys.argv[sys.argv.index("--syn") + 1])
-            out = out.with_name(f"{out.stem}-syn{round(synthetic * 100)}.jsonl")
         es_weight = 1.0
         if "--es-weight" in sys.argv:  # --es-weight 1.5 = Spanish -> K'iche' examples up-weighted
             es_weight = float(sys.argv[sys.argv.index("--es-weight") + 1])
@@ -173,7 +129,7 @@ if __name__ == "__main__":
         if "--only-new" in sys.argv:  # --only-new 0.3: new data + 30% of the web pairs as replay
             only_new = float(sys.argv[sys.argv.index("--only-new") + 1])
             out = out.with_name(f"{out.stem}-new{round(only_new * 100)}.jsonl")
-        print({"dataset": version, "k": k, **build(processed / version, out, retriever, k, extra, synthetic, es_weight,
+        print({"dataset": version, "k": k, **build(processed / version, out, retriever, k, extra, es_weight,
                                                      bt_both, distilled, only_new)})
     else:
         print({"dataset": version, **build(processed / version)})

@@ -52,3 +52,35 @@ def test_compare_and_term_accuracy_verdicts():
     terms = {i: [["agregar", "chaya'"]] for i in ids}
     t = term_compare(ids, good, bad, terms)
     assert t["david"] == 1.0 and t["goliath"] == 0.0 and t["ci"][0] > 0
+
+
+def test_recount_follows_the_files_of_a_derived_version(tmp_path):
+    import json
+
+    from pipeline.datasheet import render_datasheet
+    from pipeline.manifest import recount
+
+    def write(split, recs):
+        both = [r for rec in recs for r in (rec, {**rec, "id": rec["id"].replace("es-quc", "quc-es"),
+                                                  "direction": "quc-es"})]
+        (tmp_path / f"{split}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in both))
+
+    write("train", [_rec("s1", "a", "b", domain="everyday"), _rec("r1", "a", "b", domain="religious"),
+                    _rec("l1", "a", "b", kind="lexicon", source="cldr_quc", domain="dictionary")])
+    write("dev", [_rec("d1", "a", "b", domain="everyday")])
+    write("test", [_rec("t1", "a", "b", source="bloom_kiche", domain="education")])
+    (tmp_path / "test_niche.jsonl").write_text(json.dumps(_rec("n1", "a", "b")) + "\n")  # es->quc only
+    stale = {"version": "20261002-000001", "created_at": "2026-10-02", "git_sha": "x", "sources": [], "dropped": {},
+             "religious_cap": 0.3, "pairs_by_split": {"train": 99}, "finetune": {"threshold_sentence_pairs": 2},
+             "test": {"sentence_pairs": 1, "pairs_per_direction": 1}, "derived_from": "20261002-000000",
+             "niche": {"product": "focus", "niche_pairs_es_quc": 1, "train_records_removed": 2,
+                       "religious_pairs_dropped_for_cap": 0, "terminology_added": {}}}
+    m = recount(stale, tmp_path)
+    assert m["pairs_by_split"] == {"train": 3, "dev": 1, "test": 1, "test_niche": 1}
+    assert m["records_by_split_and_direction"]["test_niche"] == {"es-quc": 1, "quc-es": 0}
+    assert m["pairs_by_kind"]["lexicon"] == {"train": 1}
+    assert m["religious_share_of_train_sentences"] == 0.5
+    assert m["finetune"] == {"threshold_sentence_pairs": 2, "sentence_pairs_outside_test": 3,
+                             "non_religious_sentence_pairs_outside_test": 2, "threshold_met": True}
+    sheet = render_datasheet(m)
+    assert "Pairs: train 3, dev 1, test 1, test_niche 1." in sheet and "## Niche (specialty round)" in sheet

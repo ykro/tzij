@@ -13,7 +13,7 @@ ollama pull gemma4:e4b && ollama pull embeddinggemma
 gcloud auth application-default login      # ADC para Vertex AI y Cloud Storage
 
 make data-pull     # baja el último dataset del bucket (o `make data` para generarlo aquí)
-make index         # índice de recuperación con EmbeddingGemma + sqlite-vec + FTS5
+make niche-data    # aparta Firefox Focus (ronda de especialidad) y construye el índice (EmbeddingGemma + sqlite-vec + FTS5)
 make pull-model TAG=tzij-2026-10-mix-s7   # el David ajustado (o LOCAL_MODEL_TAG=gemma4:e4b)
 make web           # compila las vistas (necesita internet una vez, por las tipografías)
 make up            # Ollama + David precargado + servicio + vistas en la LAN
@@ -42,6 +42,7 @@ make stage-off                                   # igual que en los otros repos 
 | `make data-cloud` | Corre el mismo pipeline como Cloud Run Job (`infra/10-data-job.sh`) y escribe un dataset versionado en `gs://…-tzij-data/datasets/`. |
 | `make data-pull` | Baja el último dataset que produjo el job. |
 | `make index` | Construye `rag/index/tzij.sqlite` solo con el split `train`, usando EmbeddingGemma vía Ollama. |
+| `make niche-data` | Prepara la ronda de especialidad: sobre el dataset base `20261002-022500` (`make data-pull`) aparta Firefox Focus como `test_niche.jsonl` y lo saca de train (`python -m pipeline.niche build`), y reconstruye el índice. Si `LATEST` ya tiene `test_niche.jsonl`, solo reconstruye el índice. `make data-pull && make index` solos dejan la ronda `S` sin frases. |
 | `make review-test` | (Opcional) Exporta el conjunto de prueba a `data/review/test_review_<versión>.csv` para una revisión nativa. |
 | `make apply-review REVIEW_CSV=…` | Aplica los veredictos (`ok` / `fix` / `reject`) al conjunto de prueba. |
 | `make fertility` | Mide la fertilidad de tokens de K'iche' vs español y escribe `evals/fertility.md`. |
@@ -49,13 +50,13 @@ make stage-off                                   # igual que en los otros repos 
 | `make tune-retrieval` | Ajusta la recuperación (modo, k, orden, glosario difuso) solo con el split dev y escribe `evals/tuning.md`. |
 | `make eval [EVAL_ARGS=…]` | Compara todas las variantes disponibles y escribe `evals/report.md`. Con `EVAL_ARGS="--split dev_domain --out evals/dev_domain_report.md"` mide en el split `dev_domain` (párrafos de BOUQuET y páginas de Bloom fuera de la muestra de prueba), donde se toman las decisiones entre ejecuciones. |
 | `make human-eval-sheet` | Genera una hoja de evaluación humana a ciegas (50 frases) de la última ejecución; `VARIANTS="gemma4:e4b+rag,gemini-3.8-flash"` elige variantes. |
-| `make train-data` | Convierte las oraciones de `train` en JSONL de chat (`data/train/chat.jsonl`). |
-| `make train-data-raft` | Como `train-data`, pero con el contexto recuperado en cada prompt, excluyendo el propio par (RAFT): `data/train/chat-raft.jsonl`. |
+| `make train-data` | Los datos del David en escena: RAFT (contexto recuperado en cada prompt, sin el propio par), retrotraducción en las dos direcciones, los primeros 2,409 pares destilados y el 30 % de los pares web: `data/train/chat-raft-bt-both-dst2409-new30.jsonl` (el `TRAIN_DATA` por defecto). |
+| `make train-data-raft` | Solo los pares de `train` en RAFT: `data/train/chat-raft.jsonl`. |
 | `make monolingual` | K'iche' monolingüe con licencia, solo de fuentes de entrenamiento (incluye los libros de Bloom solo en K'iche'): `data/monolingual/quc.jsonl`. |
 | `make back-translate` | Gemini traduce ese K'iche' al español una sola vez y registra el costo: `data/train/back_translated_gemini.jsonl`. |
 | `make train-data-raft-bt` | Datos RAFT + pares retrotraducidos (solo español → K'iche'): `data/train/chat-raft-bt.jsonl`. |
-| `make train TAG=tzij-AAAA-MM [TRAIN_ARGS=…]` | Fine-tune LoRA como Cloud Run Job con una L4. Registra duración y costo en `train/runs/<tag>.json`. |
-| `make train-local TAG=…` | El mismo entrenamiento en la Mac (MPS), por si no hay GPU en la nube. |
+| `make train TAG=tzij-AAAA-MM [TRAIN_ARGS=…]` | Fine-tune LoRA de `TRAIN_DATA` (por defecto, los datos de `make train-data`) como Cloud Run Job con una L4. Registra duración y costo en `train/runs/<tag>.json`. La receta en trozos del David en escena es `train/chain.sh` ([ONBOARDING, sección 6.4](ONBOARDING.md)). |
+| `make train-local TAG=…` | El mismo entrenamiento de `TRAIN_DATA` en la Mac (MPS), por si no hay GPU en la nube. |
 | `make train-finish TAG=…` | Hace el merge y el GGUF del adapter entrenado en la nube, en la Mac, y lo publica en el bucket de modelos. |
 | `make pull-model TAG=…` | Baja el GGUF del bucket y lo registra en Ollama. |
 | `make web` | Compila las vistas del presentador y del validador (export estático). |
@@ -71,9 +72,6 @@ make stage-off                                   # igual que en los otros repos 
 | `make screenshots` | Capturas de Playwright de ambas vistas a 1920×1080 y 390×844 (el servicio debe estar corriendo). |
 | `make niche RUN=niche DAVID=<variante>` | David contra Goliath en el nicho (producto de Pontoon apartado, memoria de traducción): `evals/niche_results.md`. |
 | `make distill [LIMIT=N]` | Destilación en los dominios de la prueba: Gemini escribe español cotidiano y lo traduce al K'iche' con el contexto recuperado de David; solo quedan los pares que pasan el alfabeto de la ALMG, la longitud y la ida y vuelta. Escribe `data/train/distilled/` (los rechazos en `rejected.jsonl`, para no pagarlos dos veces). Solo entrenamiento ([bitácora, sección 11](BITACORA.md)). |
-| `make synthetic` | Pares sintéticos con Gemini, anclados al diccionario y a UD, filtrados con ida y vuelta: `data/train/synthetic/`. No entran al entrenamiento ([bitácora, sección 7](BITACORA.md)). |
-| `make train-data-raft-bt-syn` | RAFT + retrotraducción + sintéticos con tope `SYN`: `data/train/chat-raft-bt-syn<N>.jsonl`. |
-| `make llama-server` | Servidor de llama.cpp para las variantes `@llama` de la evaluación (sesgo de logits, 8 ranuras en paralelo) con el GGUF de `LLAMA_SERVER_MODEL` en Ollama. |
 | `make demo-screens` | Capturas de [DEMO.md](DEMO.md) con las teclas del escenario (necesita `make up` con la variante de escenario; `EMULATOR=0` omite el teléfono). |
 
 `make deploy` despliega solo lo que vive en la nube: prepara el proyecto (APIs, Artifact Registry, buckets, secreto `hf-token`) con `infra/00-project.sh`, despliega el Cloud Run Job de datos y el job de entrenamiento con su imagen. **El servicio de duelo y las vistas no se despliegan, a propósito:** corren en la laptop porque la charla mide lo que pasa sin internet.
