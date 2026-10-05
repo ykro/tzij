@@ -13,8 +13,8 @@ Steps, all recorded in data/train/distilled/meta.json:
    gets (examples + glossary from our licensed index), so the K'iche' follows our data's spelling
    and vocabulary.
 4. Filters: ALMG alphabet only; length ratio; round trip (Gemini back into Spanish, no context) must
-   reach the MEDIAN chrF++ of the same round trip on real dev pairs (stricter than the 25th
-   percentile used for pipeline/synthetic.py, because Gemini reads its own K'iche' back easily).
+   reach the MEDIAN chrF++ of the same round trip on real dev pairs (the median rather than a lower
+   percentile, because Gemini reads its own K'iche' back easily). Computed once, kept in meta.json.
 
 Use: training only, both directions (es->quc: the teacher's K'iche'; quc->es: synthetic source, the
 original Spanish as target). Never in the retrieval index, dev, test or the niche. Every record has
@@ -41,8 +41,8 @@ sys.path[:0] = [str(REPO), str(REPO / "duel")]
 from data.normalize import match_key, normalize_kiche, normalize_spanish, outside_alphabet  # noqa: E402
 from duel_core import chrf_pp  # noqa: E402
 from pipeline.niche import tokens  # noqa: E402
-from pipeline.synthetic import Gemini  # noqa: E402
 from tzij_duel.prompts import translation_messages  # noqa: E402
+from tzij_duel.settings import get_settings  # noqa: E402
 
 OUT_DIR = REPO / "data" / "train" / "distilled"
 SPANISH = OUT_DIR / "spanish.jsonl"
@@ -53,6 +53,7 @@ ORIGIN = "distilled_gemini"
 SEED = 2027
 GEN_PROMPT = "tzij-distill-gen-v1"
 TR_PROMPT = "tzij-distill-translate-v1"
+RT_PROMPT = "tzij-roundtrip-v1"
 NGRAM = 6
 
 DOMAINS = {
@@ -83,6 +84,61 @@ GEN_SYSTEM = ("Escribes oraciones en español natural de Guatemala para entrenar
 TR_SYSTEM = ("You are an expert K'iche' (Mayan, Guatemala) translator. Modern ALMG orthography: glottal stop as an "
              "ASCII apostrophe ('), no Spanish letters (c, f, d, g, h outside 'ch', ñ, v, z) except in proper names. "
              "Use the reference examples and glossary when they apply. Answer only with JSON: {\"quc\": \"...\"}.")
+RT_SYSTEM = ("You translate K'iche' (Mayan, Guatemala) into Spanish. Translate each item faithfully, "
+             "one Spanish sentence per item. Answer only with a JSON array of strings, same order and length.")
+
+
+class Gemini:
+    """Async Gemini (Vertex AI) for JSON answers, with token usage and cost."""
+
+    def __init__(self, concurrency: int = 12) -> None:
+        from google import genai
+
+        self.s = get_settings()
+        self.client = genai.Client(vertexai=True, project=self.s.project, location=self.s.location)
+        self.sem = asyncio.Semaphore(concurrency)
+        self.usage = {"calls": 0, "input_tokens": 0, "output_tokens": 0, "failed": 0}
+
+    @property
+    def model(self) -> str:
+        return self.s.gemini_model
+
+    def cost(self) -> float:
+        return (self.usage["input_tokens"] * self.s.gemini_input_usd_per_m
+                + self.usage["output_tokens"] * self.s.gemini_output_usd_per_m) / 1e6
+
+    async def json(self, system: str, user: str, temperature: float):
+        from google.genai import types
+
+        config = types.GenerateContentConfig(
+            system_instruction=system, temperature=temperature, seed=SEED,
+            response_mime_type="application/json",
+            thinking_config=types.ThinkingConfig(thinking_level=self.s.gemini_thinking_level)
+            if self.s.gemini_thinking_level else None,
+        )
+        async with self.sem:
+            for attempt in range(5):
+                try:
+                    res = await self.client.aio.models.generate_content(model=self.model, contents=user, config=config)
+                    meta = res.usage_metadata
+                    self.usage["calls"] += 1
+                    self.usage["input_tokens"] += getattr(meta, "prompt_token_count", 0) or 0
+                    self.usage["output_tokens"] += ((getattr(meta, "candidates_token_count", 0) or 0)
+                                                    + (getattr(meta, "thoughts_token_count", 0) or 0))
+                    return json.loads(res.text or "null")
+                except json.JSONDecodeError:
+                    break
+                except Exception:  # transient quota/network
+                    await asyncio.sleep(2 * (attempt + 1))
+        self.usage["failed"] += 1
+        return None
+
+    async def round_trip(self, quc: list[str]) -> list[str] | None:
+        items = "\n".join(f"{i + 1}. {q}" for i, q in enumerate(quc))
+        out = await self.json(RT_SYSTEM, f"K'iche' items:\n{items}", temperature=0.0)
+        if not isinstance(out, list) or len(out) != len(quc):
+            return None
+        return [normalize_spanish(str(x)) for x in out]
 
 
 def _meta() -> dict:
@@ -97,6 +153,25 @@ def _save_meta(meta: dict) -> None:
 def _dataset() -> Path:
     processed = REPO / "data" / "processed"
     return processed / (processed / "LATEST").read_text().strip()
+
+
+async def round_trip_threshold(g: Gemini, dataset: Path) -> float:
+    """Median round-trip chrF++ of real dev pairs (K'iche' -> Gemini Spanish vs the human Spanish).
+    Computed once and kept in meta.json, so every batch is filtered with the same bar."""
+    import statistics
+
+    meta = _meta()
+    if "round_trip_threshold" in meta.get("translate", {}):
+        return meta["translate"]["round_trip_threshold"]
+    dev = [json.loads(line) for line in (dataset / "dev.jsonl").read_text(encoding="utf-8").splitlines()]
+    dev = [r for r in dev if r["kind"] == "sentence" and r["direction"] == "es-quc"]
+    scores = []
+    for i in range(0, len(dev), 4):
+        batch = dev[i:i + 4]
+        rt = await g.round_trip([r["target_text"] for r in batch])
+        if rt:
+            scores += [chrf_pp(t, r["source_text"]) for t, r in zip(rt, batch)]
+    return round(statistics.median(scores), 1)
 
 
 def held_out(dataset: Path) -> tuple[set[str], set[tuple[str, ...]]]:
@@ -151,7 +226,6 @@ async def translate(limit: int | None = None) -> dict:
     dataset = _dataset()
     keys, grams = held_out(dataset)
     retriever, k = raft_retriever(dataset.name)
-    threshold = json.loads((REPO / "data" / "train" / "synthetic" / "meta.json").read_text())["round_trip"]["median"]
 
     seen, rows, drop = set(), [], {"duplicate": 0, "held_out": 0}
     for x in map(json.loads, SPANISH.read_text(encoding="utf-8").splitlines()):
@@ -173,6 +247,7 @@ async def translate(limit: int | None = None) -> dict:
     todo = [x for x in rows if match_key(x["es"]) not in done]
 
     g = Gemini(concurrency=16)
+    threshold = await round_trip_threshold(g, dataset)
     stats = {"translated": 0, "alphabet": 0, "length": 0, "round_trip": 0, "kept": 0, "failed": 0}
 
     async def one(x: dict) -> dict | None:
@@ -218,6 +293,7 @@ async def translate(limit: int | None = None) -> dict:
     prev = meta.get("translate", {})
     meta["translate"] = {"model": g.model, "prompt_version": TR_PROMPT, "seed": SEED, "k": k,
                          "round_trip_threshold": threshold, "threshold_rule": "median round-trip chrF++ of real dev pairs",
+                         "round_trip_prompt_version": RT_PROMPT,
                          "spanish_candidates": len(rows), **drop, **stats,
                          "pairs_total": len(PAIRS.read_text().splitlines()) if PAIRS.exists() else 0,
                          "cost_usd": round(prev.get("cost_usd", 0) + g.cost(), 4), "seconds": round(time.perf_counter() - t0, 1)}

@@ -57,15 +57,6 @@ class Settings:
     rag_select: str = field(default_factory=lambda: _env("RAG_SELECT", "rank"))
     # MBR decoding: number of samples (0 = off). Eval variants "+mbrN" use it; on stage only if p50 <= 5 s.
     mbr_samples: int = field(default_factory=lambda: int(_env("MBR_SAMPLES", "0")))
-    # Dictionary forms biased per input in the "+bias" llama-server variant (constraints.py).
-    max_constraints: int = field(default_factory=lambda: int(_env("MAX_CONSTRAINTS", "3")))
-    # llama.cpp llama-server (logit bias + parallel slots); eval variants "@llama" only when set.
-    llama_server_url: str = field(default_factory=lambda: _env("LLAMA_SERVER_URL", ""))
-    llama_server_model: str = field(default_factory=lambda: _env("LLAMA_SERVER_MODEL", ""))
-    llama_mbr_samples: int = field(default_factory=lambda: int(_env("LLAMA_MBR_SAMPLES", "8")))
-    llama_temperature: float = field(default_factory=lambda: float(_env("LLAMA_TEMPERATURE", "0.7")))
-    llama_min_p: float = field(default_factory=lambda: float(_env("LLAMA_MIN_P", "0.02")))
-    llama_bias: float = field(default_factory=lambda: float(_env("LLAMA_BIAS", "2")))
     mock_ai: bool = field(default_factory=lambda: _flag("MOCK_AI"))
     force_offline: bool = field(default_factory=lambda: _flag("FORCE_OFFLINE"))
     state_path: Path = field(default_factory=lambda: REPO_ROOT / _env("DUEL_STATE_PATH", "duel/state/rounds.json"))
