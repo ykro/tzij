@@ -45,6 +45,8 @@ def load_test(dataset: Path, limit: int | None, per_source: int | None = None, s
     Sampling by a hash of the pair id keeps the same pairs in every run, so reports
     from different days compare the same sentences.
     """
+    if split == "dev_domain":
+        return load_dev_domain(dataset, limit, per_source)
     records = [json.loads(line) for line in (dataset / f"{split}.jsonl").read_text(encoding="utf-8").splitlines()]
     # auto_rejected pairs failed pipeline/validate_test.py; they never count.
     # The niche keeps its short UI terms (kind=lexicon) too: the slice is the whole held-out product.
@@ -62,6 +64,29 @@ def load_test(dataset: Path, limit: int | None, per_source: int | None = None, s
             if len(by_direction[r["direction"]]) < limit:
                 by_direction[r["direction"]].append(r)
         records = [r for rs in by_direction.values() for r in rs]
+    return records
+
+
+def load_dev_domain(dataset: Path, limit: int | None, per_source: int | None) -> list[dict]:
+    """Dev in the test's own domain: BOUQuET's dev-split paragraphs that share no sentence with the test sample.
+
+    The `dev` split (UD, Pontoon, COERLL, UDHR) is not the domain of the test (Bloom stories, BOUQuET), so
+    decisions there didn't carry over. BOUQuET is evaluation-only: these sentences are never trained on or
+    indexed (they live in test.jsonl, which train and the index exclude). The test sample itself is untouched.
+    """
+    sample = {r["pair_id"] for r in load_test(dataset, None, int(os.environ.get("EVAL_PER_SOURCE", "150")), "test")}
+    records = [r for r in load_test(dataset, None, None, "test") if r["source_name"] == "bouquet"]
+    paragraph = lambda r: r.get("ref", "").rsplit("-S", 1)[0]  # "dev/P001-S1" -> "dev/P001"
+    touched = {paragraph(r) for r in records if r["pair_id"] in sample}
+    records = [r for r in records if r.get("ref", "").startswith("dev/") and paragraph(r) not in touched]
+    if per_source:
+        by_dir: dict[str, list[dict]] = defaultdict(list)
+        for r in sorted(records, key=lambda r: hashlib.sha1(r["pair_id"].encode()).hexdigest()):
+            if len(by_dir[r["direction"]]) < per_source:
+                by_dir[r["direction"]].append(r)
+        records = [r for rs in by_dir.values() for r in rs]
+    if limit:
+        records = [r for d in ("es-quc", "quc-es") for r in [x for x in records if x["direction"] == d][:limit]]
     return records
 
 
@@ -350,7 +375,7 @@ def main() -> None:
     parser.add_argument("--run", default="", help="resume an existing run id")
     parser.add_argument("--cloud-concurrency", type=int, default=8)
     parser.add_argument("--out", default="")
-    parser.add_argument("--split", choices=["test", "dev", "test_niche"], default="test",
+    parser.add_argument("--split", choices=["test", "dev", "dev_domain", "test_niche"], default="test",
                         help="dev = tuning and stop decisions between data rounds; test = final numbers only")
     asyncio.run(main_async(parser.parse_args()))
 

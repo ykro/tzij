@@ -57,7 +57,7 @@ Goliath: **36.9** en toda la prueba, $0.29 por cada 1,000 traducciones, y nada s
 - **Por qué falló:** el modelo aprendió a traducir sin glosario y en escena lo recibe. Lo que
   aprendió choca con lo que le damos.
 - **Lección:** si David va a usar recuperación en escena, tiene que entrenar con ella (iteración 4).
-- **Costo:** $0.70, más $0.41 de una primera corrida cancelada porque no cabía en la hora máxima
+- **Costo:** $0.70, más $0.41 de una primera ejecución cancelada porque no cabía en la hora máxima
   de una tarea de GPU.
 
 ## 3. Recuperación híbrida (1 de octubre)
@@ -87,7 +87,7 @@ Goliath: **36.9** en toda la prueba, $0.29 por cada 1,000 traducciones, y nada s
   - con recuperación híbrida, 18.3: **−1.1** frente a la base híbrida;
   - con el mismo presupuesto (1/4 de época), la retrotraducción aporta +1.1 (15.7 contra 14.6
     sin ella).
-- **Costo:** $0.12 de Gemini, una sola vez. $3.09 de L4 (5 jobs), más $0.27 de la corrida que se
+- **Costo:** $0.12 de Gemini, una sola vez. $3.09 de L4 (5 jobs), más $0.27 de la ejecución que se
   quedó sin memoria.
 
 ## 5. MBR: elegir por consenso (2 de octubre)
