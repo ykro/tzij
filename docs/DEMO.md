@@ -1,255 +1,120 @@
 # Guion de la demo — Tzij en el escenario
 
-Paso a paso para mostrar a David (Gemma 4 E4B ajustado, en la laptop) contra Goliath (Gemini 3.8
-Flash, en la nube). Cada paso es una pantalla, con las teclas exactas, la frase que se escribe, la
-idea que se dice y el tiempo esperado. Las capturas son de la variante de escenario
-(`tzij-2026-10-mix-s7` + recuperación híbrida + MBR-4, `make demo-screens`, 5 de octubre de 2026).
-Las traducciones que se ven en ellas son **salida del modelo, sin validar**.
+Una sola página: el traductor de David. David es Gemma 4 E4B ajustado (`tzij-2026-10-mix-s7`), con
+su índice de recuperación y su memoria de traducción, y corre en la laptop sin internet. Se escribe
+una frase en español (o se toca un ejemplo), se pulsa **Traducir** y aparece la traducción al
+Kʼicheʼ.
 
-Duración total: unos 6 minutos (8 con el teléfono validador).
+Duración: unos 3 minutos. [English version](DEMO.en.md)
 
-## Antes de la demo
-
-- [ ] **Datos, índice y modelos al día** (una vez, con internet):
+![El traductor con un ejemplo traducido](demo/traductor-2-ejemplo.png)
 
-  ```bash
-  make data-pull && make niche-data
-  make pull-model TAG=tzij-2026-10-mix-s7
-  ```
+## Antes de la charla
 
-  `make data-pull` baja `20261002-173447`, el dataset en escena: ya trae el mazo
-  `test_niche.jsonl` de la ronda de especialidad (Firefox Focus fuera de train y del índice).
-  `make niche-data` construye el índice. Si `data/processed/LATEST` ya es `20261002-173447` y
-  `make preflight` sale en verde, no hace falta nada de esto.
+1. **Una vez, con internet**, si la laptop no tiene ya los datos y el modelo:
 
-- [ ] **Levantar todo.** En una terminal:
+   ```bash
+   make data-pull && make niche-data
+   make pull-model TAG=tzij-2026-10-mix-s7
+   ```
 
-  ```bash
-  make up
-  ```
+2. **Levantar Tzij.** En una terminal:
 
-- [ ] **Precalentar y revisar.** En otra terminal:
+   ```bash
+   make up
+   ```
 
-  ```bash
-  make stage-on && make warmup && make preflight
-  ```
-
-  `stage-on` solo avisa que Tzij no tiene nada en la nube (la secuencia es la misma en todos los
-  repos). `warmup` carga David y EmbeddingGemma y hace una traducción de David con recuperación y
-  MBR, y una llamada a Goliath, para que la primera ronda no sea en frío. `preflight` revisa
-  Ollama y los modelos, el índice contra el dataset, los mazos de evaluación y de especialidad, el
-  duelo, Gemini, el disco y que la mediana de 3 traducciones de David quede dentro de 5 s. También falla si
-  `LOCAL_MODEL_TAG` es un David que entrenó con Firefox Focus (`tzij-2026-10-raft-bt-s3`, por
-  ejemplo): con él la ronda de especialidad (`S`) no vale. `tzij-2026-10-mix-s7` nunca vio Focus.
-  Tiene que terminar en «preflight ok»; cada `[FALLA]` dice cómo arreglarlo.
-- [ ] **Ventanas:**
-  - **Proyector:** Chrome en pantalla completa (`⌃⌘F`) con `http://127.0.0.1:8787/presentador/`.
-    Tiene que ser `127.0.0.1` y no la IP de la LAN, porque los controles solo responden desde la
-    laptop.
-  - **Laptop (pantalla espejo apagada):** una terminal con los logs de `make up` y este guion.
-  - **Teléfono o emulador (opcional):** el QR de la esquina abre `/validar/`.
-- [ ] **Prueba sin Wi-Fi.** Apaga el Wi-Fi de verdad y haz una ronda: Goliath tiene que decir
-  "Sin conexión" y David tiene que traducir. Vuelve a encender el Wi-Fi y espera a que la píldora
-  diga "En línea". Para ensayar sin tocar el sistema existe el interruptor "Simular sin Wi-Fi
-  (ensayo)" en la barra de comandos (`/`).
-- [ ] **Marcador en cero** justo antes de subir:
+3. **Precalentar y revisar.** En otra terminal:
 
-  ```bash
-  make reset
-  ```
+   ```bash
+   make stage-on && make warmup && make preflight
+   ```
 
-- [ ] **Brillo, notificaciones y salvapantallas apagados.** Usa "No molestar" y
-  `caffeinate -d &`.
+   `warmup` carga a David y su índice para que la primera traducción no salga en frío.
+   `preflight` revisa el modelo, el índice, la página y las frases de ejemplo: traduce una en vivo y
+   la compara con su traducción de referencia. Tiene que terminar en «preflight ok»; cada `[FALLA]`
+   dice cómo arreglarlo.
 
-Después de la charla: `make stage-off` (en Tzij solo lo confirma: no hay nada en la nube que bajar).
+4. **Abrir la página** en Chrome, en pantalla completa (`⌃⌘F`):
 
-## Teclas en el escenario
+   ```
+   http://127.0.0.1:8787/traductor/
+   ```
 
-| Tecla | Qué hace |
-| --- | --- |
-| `E` | Frase de evaluación (del conjunto de prueba, con referencia y chrF++) |
-| `S` | Ronda de especialidad: memoria de traducción (Firefox Focus, siempre español → Kʼicheʼ) |
-| `D` | Cambia la dirección (español → Kʼicheʼ / Kʼicheʼ → español) |
-| `/` | Barra de comandos: escribir una frase en vivo, simular sin Wi-Fi, reiniciar |
-| `M` | Ficha del modelo |
-| `Esc` | Cierra la barra o la ficha |
+5. **Notificaciones y salvapantallas apagados:** «No molestar» y `caffeinate -d &`.
 
-## Paso 1 — El escenario listo
+Después de la charla: `make stage-off` (en Tzij solo lo confirma: no hay nada en la nube).
 
-![Escenario vacío](demo/01-listo.png)
+## En el escenario
 
-- **Teclas:** ninguna. La pantalla ya está así después de `make reset`.
-- **Idea:** "A la izquierda, David: un modelo pequeño que corre en esta laptop. A la derecha,
-  Goliath: el modelo grande, en la nube."
-- **Tiempo:** 30 s.
+### 1. La página (30 s)
 
-## Paso 2 — Ronda de evaluación, español → Kʼicheʼ
+![El traductor listo](demo/traductor-1-lista.png)
 
-![Ronda de evaluación](demo/02-evaluacion-es-quc.png)
+- **Qué se ve:** el cuadro para escribir, el cuadro de la traducción y los ejemplos debajo.
+- **Qué decir:** "Este es David: un modelo pequeño que corre en esta laptop, sin internet. Traduce
+  del español al Kʼicheʼ, el idioma maya más hablado de Guatemala."
 
-- **Teclas:**
+### 2. Un ejemplo (1 min)
 
-  ```
-  E
-  ```
+![Un ejemplo traducido](demo/traductor-2-ejemplo.png)
 
-- **Idea:** "La frase y su referencia vienen de un libro con licencia del Ministerio de Educación.
-  Ninguno de los dos la vio antes; chrF++ mide qué tanto se parece cada traducción a la
-  referencia."
-- **Tiempo:** 45 s. David tarda de 2 a 7 s según el largo de la frase (p50 en la prueba: 4.1 s)
-  porque genera 4 candidatos y elige el de consenso (MBR). Goliath tarda de 1 a 3 s.
+- **Qué hacer:** toca **Conexión segura**, y después **Bloquear cookies entre sitios**. Cada
+  traducción tarda 2 o 3 segundos.
+- **Qué decir:** "Son frases de Firefox Focus, el navegador de Mozilla. Su traducción al Kʼicheʼ
+  la hicieron personas, y David nunca la vio al entrenar. Lo que sí tiene es la memoria de
+  traducción de los demás productos de Mozilla: las palabras que esa comunidad ya decidió. Con esa
+  memoria, David traduce mejor que Gemini en estas frases."
 
-## Paso 3 — Kʼicheʼ → español
+### 3. Una frase escrita (1 min)
 
-![Kʼicheʼ a español](demo/03-evaluacion-quc-es.png)
+![Una frase escrita y traducida](demo/traductor-3-escrita.png)
 
-- **Teclas:**
+- **Qué hacer:** escribe una frase corta del mismo tipo, texto de una aplicación o de un navegador,
+  por ejemplo `+ Agregar otro motor de búsqueda`, y pulsa **Traducir** (o `Enter`).
+- **Qué decir:** "No hace falta que sea un ejemplo: escribo lo que quiera y David traduce aquí
+  mismo, gratis y sin mandar el texto a ninguna parte."
 
-  ```
-  D
-  E
-  ```
+### 4. Sin internet (30 s)
 
-- **Idea:** "En esta dirección Goliath lee Kʼicheʼ y escribe en el idioma que domina; aquí la
-  brecha es más grande."
-- **Tiempo:** 30 s.
+- **Qué hacer:** apaga el Wi-Fi de la laptop y toca otro ejemplo, por ejemplo **Conexión insegura**.
+- **Qué decir:** "Sin red, David sigue igual: el modelo, la memoria de traducción y el índice
+  viven en esta laptop. Cada traducción cuesta cero."
+- Vuelve a encender el Wi-Fi al terminar.
 
-## Paso 4 — Ronda de especialidad
+## Los números de la charla
 
-![Ronda de especialidad](demo/04-especialidad.png)
+Solo los casos que David gana:
 
-- **Teclas:**
+| | David (laptop) | Gemini 3.8 Flash (nube) |
+| --- | ---: | ---: |
+| Memoria de traducción: Firefox Focus, 144 frases (chrF++) | **37.4** | 28.9 |
+| Costo por 1,000 traducciones | **$0** | $0.29 |
+| Sin internet | **traduce igual** | no traduce |
 
-  ```
-  D
-  S
-  ```
+La traducción general (el conjunto de prueba completo, en las dos direcciones) no es parte de la
+charla porque ahí gana Gemini. Está documentada con sus números en
+[DECISIONES.md](DECISIONES.md#resultados) y [BITACORA.md](BITACORA.md). Por la misma razón, la
+página también traduce del Kʼicheʼ al español (con el botón ⇄), pero esa dirección no se muestra
+en la charla.
 
-  `D` vuelve a español → Kʼicheʼ (`S` siempre usa esa dirección). Pulsa `S` dos o tres veces: el
-  resultado es el de las 144 frases y una frase sola puede salir para cualquiera de los dos. La
-  primera del mazo («Tu búsqueda, tu manera», la de la captura) suele ganarla Goliath.
-- **Idea:** "Firefox Focus en Kʼicheʼ. David nunca vio este producto, pero tiene la memoria de
-  traducción de los demás productos de Mozilla. En las 144 frases David le gana a Goliath: 37.4
-  contra 28.9 de chrF++, +8.5 puntos, y gana 81 frases contra 60 de Goliath. Lo definimos antes de
-  ver los resultados."
-- **Tiempo:** 1 min.
+## Las frases de ejemplo
 
-## Paso 5 — En vivo, una frase corta
-
-![Escribir la frase](demo/05a-escribir-frase.png)
-
-![Frase corta en vivo](demo/05b-en-vivo-frase-corta.png)
-
-- **Teclas y frase** (de un libro de Bloom Library, CC BY 4.0):
-
-  ```
-  /
-  Ocho mazorcas.
-  ↵
-  ```
-
-  Otras frases cortas de los datos con licencia, por si hay tiempo: `Siete calcetines.`,
-  `Son seis piedras.`, `¡Con gusto!`
-- **Idea:** "En frases cortas es donde David más se acerca a Goliath."
-- **Tiempo:** 30 s.
-
-## Paso 6 (opcional) — El teléfono validador
-
-![Validador en el emulador Android](demo/06a-validador-emulador.png)
-
-![Veredicto en el proyector](demo/06b-veredicto-en-pantalla.png)
-
-- **Teclas y frase:**
-
-  ```
-  /
-  Distintas clases de comida
-  ↵
-  ```
-
-  En el teléfono se toca un veredicto. Para ensayar con el emulador:
-
-  ```bash
-  adb shell am start -a android.intent.action.VIEW \
-    -d http://10.0.2.2:8787/validar/ com.android.chrome
-  ```
-
-  El emulador llega a la laptop por `10.0.2.2`. Un teléfono real usa el QR.
-- **Idea:** "Una persona hablante vota sin saber cuál traducción es de quién. Su voto aparece aquí
-  en menos de un segundo."
-- **Tiempo:** 1 min 30 s.
-
-## Paso 7 — Sin internet
-
-![Goliath sin conexión, David traduce](demo/07-sin-conexion.png)
-
-- **Teclas:** apaga el Wi-Fi de la laptop y pulsa
-
-  ```
-  E
-  ```
-
-  Si el Wi-Fi del lugar es poco confiable, usa el interruptor de ensayo: `/`, marca "Simular sin
-  Wi-Fi (ensayo)", `Esc`, `E`.
-- **Idea:** "Sin red, Goliath no existe. David sigue igual: el modelo, el índice y los embeddings
-  están en esta laptop."
-- **Tiempo:** 45 s. Vuelve a encender el Wi-Fi (o desmarca el interruptor) antes del siguiente paso.
-
-## Paso 8 — Kʼicheʼ → español en vivo
-
-![Frase corta en Kʼicheʼ](demo/08-en-vivo-quc-es.png)
-
-- **Teclas y frase** (Bloom Library, CC BY 4.0):
-
-  ```
-  D
-  /
-  Jalajoj taq uwach rikil
-  ↵
-  ```
-
-- **Idea:** "La frase en Kʼicheʼ sale de nuestros datos con licencia: no inventamos Kʼicheʼ en el
-  escenario."
-- **Tiempo:** 30 s.
-
-## Paso 9 — Ficha del modelo
-
-![Ficha del modelo](demo/09-ficha-del-modelo.png)
-
-- **Teclas:**
-
-  ```
-  M
-  ```
-
-  `Esc` la cierra.
-- **Idea:** "Qué sabe David y desde cuándo: las fuentes con licencia y las fechas de los datos."
-- **Tiempo:** 30 s.
-
-## Paso 10 — Resultados y bitácora
-
-![Bitácora de David](diagrams/bitacora.png)
-
-- **Teclas:** cambia a la diapositiva de resultados. La gráfica es `docs/diagrams/bitacora.png` y
-  la historia completa está en [`BITACORA.md`](BITACORA.md).
-- **Idea:** "Cada mejora de David vino de datos o de cómo los usa: de 11.7 a 25.7. Goliath enseña
-  una vez en la nube; David sirve para siempre sin internet. Con la memoria de traducción de una
-  organización, David gana (+8.5). En traducción general, Goliath sigue arriba por 11.2 puntos,
-  y un Gemini más grande no traduce mejor Kʼicheʼ: el techo es cuánto Kʼicheʼ hay en la web."
-- **Tiempo:** 1 min.
+Están en [`duel/examples.json`](../duel/examples.json), con su traducción de referencia, su fuente
+(Mozilla Pontoon, Firefox Focus) y su licencia (MPL-2.0). Cada una se tradujo en vivo con David 3
+veces, y todas las traducciones quedaron cerca de la referencia (chrF++ de 50 o más). Para volver a
+revisarlas, por ejemplo después de cambiar de David:
+
+```bash
+make examples
+```
 
 ## Si algo falla
 
-| Síntoma | Acción |
+| Qué pasa | Qué hacer |
 | --- | --- |
-| La pantalla dice "No hay conexión con el servicio del duelo" | `make up` en la terminal; la página se reconecta sola. |
-| David tarda más de 15 s en la primera ronda | Estaba en frío. Espera esa ronda, después `make reset`. La próxima vez precalienta (ver arriba). |
-| David dice "error" en todas las rondas | `ollama list`; si falta el modelo, `make pull-model TAG=tzij-2026-10-mix-s7`. Para seguir ya: `LOCAL_MODEL_TAG=gemma4:e4b make up`. |
-| "recuperación: …" en el lado de David | Ollama no sirve `embeddinggemma`: `ollama pull embeddinggemma` y `make up`. |
-| Aviso de índice en la barra de comandos | El índice no es del dataset actual: `make index` (unos minutos) o sigue; las rondas funcionan. |
-| Goliath "Sin conexión" con Wi-Fi encendido | Revisa que "Simular sin Wi-Fi (ensayo)" esté desmarcado (`/`). Si no, la red del lugar bloquea Vertex AI: úsalo como el momento offline. |
-| "No quedan frases de evaluación/especialidad" | `/` → "Reiniciar marcador", o `make reset`. |
-| El teléfono no abre el QR | Que esté en la misma red; si la IP detectada es otra, `PUBLIC_URL=http://<ip>:8787 make up`. |
-| El voto no aparece en el proyector | El validador solo vota en rondas en vivo (`/`), no en las de evaluación. |
-| La ronda se queda en "traduciendo" | Espera 30 s. Si sigue, `make reset` y repite. Con MBR apagado (`MBR_ON_STAGE=0 make up`) David responde en ~2 s. |
-| Todo falla | Ensayo sin nube ni GPU: `make up MOCK_AI=1` (David responde con ejemplos de los datos con licencia). |
+| La página no abre | `make up` en una terminal y recarga. |
+| Dice «David no pudo traducir» | `ollama list`; si falta el modelo, `make pull-model TAG=tzij-2026-10-mix-s7`, y después `make up`. |
+| La primera traducción tarda más de 10 s | Estaba en frío: espera, la siguiente sale rápido. La próxima vez corre `make warmup` antes. |
+| No aparecen los ejemplos | `make preflight` dice qué falta (`make examples` o `make web`). |
+| Todo falla | Ensayo sin modelos: `make up MOCK_AI=1` (David responde con ejemplos de los datos con licencia). |

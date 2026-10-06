@@ -29,14 +29,15 @@ rag/           embedder.py (EmbeddingGemma vía Ollama), store.py (sqlite-vec),
                build_index.py, retrieve.py (híbrida BM25 + vectores con RRF, ejemplos + glosario)
 duel/
   duel_core/   clientes de Ollama y Gemini, duelo en paralelo, chrF++, costo, conectividad
-  tzij_duel/   servicio FastAPI: variants.py, prompts.py, deck.py, rounds.py, model_card.py, lan.py; warmup.py y preflight.py (día de la charla)
+  tzij_duel/   servicio FastAPI: variants.py, prompts.py, deck.py, rounds.py, model_card.py, lan.py; examples.py (frases de ejemplo del traductor, `make examples`); warmup.py y preflight.py (día de la charla)
+  examples.json  frases de ejemplo de /traductor/, revisadas en vivo con David
 evals/         run_eval.py → report.md, tune_retrieval.py → tuning.md, fertility.py → fertility.md, human_eval.md
 train/         train_lora.py (TRL + PEFT → merge → GGUF), submit_job.py (Cloud Run Job), chain.sh (trozos que siguen el adaptador anterior),
                finish_local.py, train_local.py, pull_model.sh, colab.ipynb, runs/
 infra/         env.sh, 01-train-service-account.sh, 02-train-image.sh, 03-train-job.sh, 10-data-job.sh
-web/           Next.js: app/presentador, app/validar, components/, lib/, tests/
+web/           Next.js: app/traductor (la demo), app/presentador, app/validar, components/, lib/, tests/
 tests/         pruebas del pipeline, normalización, recuperación y fertilidad
-docs/          ONBOARDING.md, DEMO.md, BITACORA.md, DECISIONES.md, COMANDOS.md, ESTRUCTURA.md, CREDITOS.md,
+docs/          ONBOARDING.md, DEMO.md (+ .en), BITACORA.md, DECISIONES.md, COMANDOS.md, ESTRUCTURA.md, CREDITOS.md,
                diagrams/, demo/ (toda traducción en una captura es salida del modelo, sin validar)
 MODEL_CARD.md  qué es David, con qué datos, resultados y límites
 ```

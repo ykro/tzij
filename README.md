@@ -42,14 +42,14 @@ uv sync && ollama pull gemma4:e4b && ollama pull embeddinggemma
 gcloud auth application-default login      # ADC para Vertex AI y Cloud Storage
 make data-pull && make niche-data && make web   # dataset con la ronda de especialidad, índice y vistas
 make pull-model TAG=tzij-2026-10-mix-s7 && make up
-open http://127.0.0.1:8787/presentador/    # E: frase de evaluación · /: frase en vivo
+open http://127.0.0.1:8787/traductor/      # el traductor de David: escribe o toca un ejemplo
 ```
 
 Para ensayar sin la nube ni GPU: `make up MOCK_AI=1` ([detalle](docs/COMANDOS.md)).
 
 ## Documentación
 
-- [docs/DEMO.md](docs/DEMO.md): guion de la demo, con capturas, teclas, qué decir y tiempos.
+- [docs/DEMO.md](docs/DEMO.md): guion de la demo (el traductor de David), con capturas, qué decir y tiempos.
 - [docs/ONBOARDING.md](docs/ONBOARDING.md): requisitos, instalación, nube, datos, entrenamiento, pruebas, solución de problemas y checklist del día.
 - [docs/BITACORA.md](docs/BITACORA.md): la historia de David iteración por iteración, con costo, incluido lo que no funcionó.
 - [docs/DECISIONES.md](docs/DECISIONES.md): lo que enseña la demo en detalle, cada decisión técnica, resultados completos y versiones.

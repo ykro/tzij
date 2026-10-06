@@ -1,5 +1,5 @@
-// Screenshots for docs/DEMO.md: the demo, step by step, driven with the same keys the presenter
-// uses on stage. Needs `make up` running with the stage variant (real models, not MOCK_AI).
+// Screenshots of the duel (presenter view), step by step, driven with its keys. The talk uses the
+// translator page instead (tests/translator.mjs, docs/DEMO.md). Needs `make up` running with the stage variant (real models, not MOCK_AI).
 //   cd web && node tests/demo.mjs            (EMULATOR=0 skips the Android validator step;
 //                                             ONLY=validator retakes just that step, 06a/06b)
 // Output: docs/demo/NN-*.png
