@@ -238,7 +238,7 @@ function Column({ side, state, model, outLang, hasReference, started, ready }: {
           <p className={`tx__out${outLang === "quc" ? " kiche" : ""}`} lang={outLang}>{displayIn(result.text, outLang)}</p>
         ) : (
           <p className="tx__idle">{started ? "" : side === "david"
-            ? (ready ? "Toca una frase de ejemplo o escribe la tuya." : "David se está encendiendo en su GPU en la nube. La primera vez tarda un par de minutos; después responde en segundos.")
+            ? (ready ? "Toca una frase de ejemplo o escribe la tuya." : "David se está encendiendo en su GPU en la nube: tarda unos 3 minutos. Después responde en segundos.")
             : "Aquí sale la traducción de Goliath, para compararla."}</p>
         )}
       </div>

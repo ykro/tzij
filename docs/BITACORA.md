@@ -311,7 +311,7 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
   `20261002-173447` y MBR-4. La página pasa a otro servicio de Cloud Run (`tzij`, público), que
   llama a David con un token de identidad y a Gemini. En la laptop no queda ningún modelo.
 - **Por qué:** la demo tiene que abrirse desde un navegador, sin correr nada el día de la charla.
-- **David se despierta solo:** al abrir la página, «Preparando a David…» unos 3 minutos (la
+- **David se despierta solo:** al abrir la página, «Preparando a David…» unos 3 minutos (3 min 24 s medido desde cero; la
   instancia, el modelo a la GPU, EmbeddingGemma, el índice y una traducción de prueba) y después
   «David listo». Mientras la página está abierta, lo mantiene despierto.
 - **Medido desde la página** con los ejemplos (33 traducciones): David 0.9 s de mediana, Gemini
