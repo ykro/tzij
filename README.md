@@ -1,40 +1,39 @@
-# Tzij — traductor español ↔ K'iche' que funciona sin internet
+# Tzij — traductor español ↔ K'iche': un modelo pequeño contra Gemini
 
 Demo de la charla **"David vs. Goliath: cómo un modelo pequeño le gana a un modelo frontier"**. Tzij ("palabra" en K'iche') traduce entre español y K'iche' (ISO 639-3 `quc`), el idioma maya más hablado de Guatemala.
 
-- **David** es Gemma 4 E4B ajustado con LoRA (`tzij-2026-10-mix-s7`). Corre en Ollama, en la laptop, con un índice de recuperación híbrido hecho solo con datos K'iche' con licencia y con decodificación MBR.
+- **David** es Gemma 4 E4B ajustado con LoRA (`tzij-2026-10-mix-s7`), con un índice de recuperación híbrido hecho solo con datos K'iche' con licencia y con decodificación MBR. Corre en Ollama, en su propia GPU (una NVIDIA L4 en Cloud Run) que se apaga sola cuando nadie lo usa.
 - **Goliath** es Gemini 3.8 Flash en Vertex AI, usado como lo usa cualquiera.
 
-La demo es una sola página, `/traductor/`: escribes una frase (o tocas un ejemplo) y David y Goliath la traducen al mismo tiempo, lado a lado, cada uno con su tiempo y su costo. En los ejemplos, frases de la interfaz de Firefox Focus, la página muestra también la traducción correcta, la que hicieron personas, y qué tanto se parece a ella cada una. Sin internet, Goliath dice "Sin conexión" y David sigue traduciendo.
+La demo es una sola página pública en Cloud Run (`make page-url`): escribes una frase (o tocas un ejemplo) y David y Goliath la traducen al mismo tiempo, lado a lado. En los ejemplos, frases de la interfaz de Firefox Focus, la página muestra también la traducción correcta, la que hicieron personas, y qué tanto se parece a ella cada una. No hay nada que correr el día de la charla: se abre la página unos minutos antes y ella despierta a David.
 
 [English version](README.en.md)
 
-![La página del traductor: David y Goliath traducen la misma frase de Firefox Focus](docs/demo/traductor-3-ejemplo.png)
+![La página: David y Goliath traducen la misma frase de Firefox Focus](docs/demo/pagina-3-ejemplo.png)
 
 ## Qué vas a aprender
 
 1. **Datos con licencia y split por fuente:** cada registro K'iche' lleva URL y licencia, y una fuente entera es de prueba o de entrenamiento.
 2. **Qué compra cada paso:** la recuperación es el mayor salto; el fine-tune empezó a sumar (+5.7) cuando sus datos se parecieron al dominio de la prueba.
-3. **Goliath enseña una vez:** Gemini retrotraduce K'iche' con licencia y escribe datos de destilación por unos $14, y David sirve para siempre sin internet.
+3. **Goliath enseña una vez:** Gemini retrotraduce K'iche' con licencia y escribe datos de destilación por unos $14; después David traduce sin él.
 4. **Un nicho pre-registrado:** con una memoria de traducción que Goliath no tiene, David gana por +8.5 chrF++.
-5. **Offline por diseño:** modelo, embeddings, índice, servicio y página viven en la laptop.
+5. **Un modelo pequeño en la nube:** David, su índice y su decodificación en una sola imagen, en una GPU de Cloud Run que se enciende al abrir la página y se apaga sola.
 
-## La demo: el traductor
+## La demo: la página
 
 | | David | Goliath |
 | --- | --- | --- |
 | Qué es | Gemma 4 E4B ajustado (`tzij-2026-10-mix-s7`) + recuperación híbrida + MBR-4 | Gemini 3.8 Flash, sin datos extra |
-| Dónde corre | En la laptop (Ollama) | En la nube (Vertex AI) |
-| Costo de cada traducción | $0 | El real de la llamada (unos $0.0001 por frase corta) |
-| Sin internet | Traduce igual | "Sin conexión" |
+| Dónde corre | Cloud Run con 1× NVIDIA L4 (`tzij-david`, privado) | Vertex AI |
 
-- **Ejemplos:** 12 frases de Firefox Focus en español, con su traducción correcta al K'iche' (Mozilla Pontoon, licencia MPL-2.0). Cada una se tradujo en vivo 3 veces con los dos modelos, y solo quedaron las que David tradujo siempre cerca de la correcta (chrF++ de 50 o más) y por lo menos 15 puntos más cerca que Goliath. Están en [`duel/examples.json`](duel/examples.json), con las salidas y los puntajes medidos; `make examples` las vuelve a revisar.
-- **"Se parece a la correcta":** es chrF++ contra la traducción hecha por personas, en porcentaje. Solo sale con los ejemplos: una frase escrita no tiene traducción correcta con qué comparar, así que la página muestra las dos traducciones, el tiempo y el costo.
+- **Ejemplos:** 11 frases de Firefox Focus en español, con su traducción correcta al K'iche' (Mozilla Pontoon, licencia MPL-2.0). Cada una se tradujo 3 veces con el David de la nube y con Goliath, como lo hace la página, y solo quedaron las que David tradujo siempre cerca de la correcta (chrF++ de 50 o más) y por lo menos 15 puntos más cerca que Goliath. Están en [`duel/examples.json`](duel/examples.json), con las salidas y los puntajes medidos; `make examples` las vuelve a revisar.
+- **"Se parece a la correcta":** es chrF++ contra la traducción hecha por personas, en porcentaje. Solo sale con los ejemplos: una frase escrita no tiene traducción correcta con qué comparar, así que la página muestra las dos traducciones.
+- **David se despierta solo:** su GPU tiene mínimo 0 instancias. Al abrir la página, dice «Preparando a David…» unos 3 minutos y después «David listo»; mientras la página siga abierta, lo mantiene despierto.
 - **Dirección:** los ejemplos y la demo son español → K'iche', el caso que David gana. La página también traduce del K'iche' al español (botón ⇄), pero esa dirección no se muestra en la charla (ver [abajo](#por-qué-la-demo-usa-solo-el-modelo-final)).
 
 El guion, con capturas y tiempos, está en [docs/DEMO.md](docs/DEMO.md).
 
-![Arquitectura: laptop sin internet frente a Google Cloud](docs/diagrams/architecture.png)
+![Arquitectura: todo en Google Cloud](docs/diagrams/architecture.png)
 
 ## Resultados (evaluación)
 
@@ -44,9 +43,6 @@ Medido con `make eval` (ejecución `final-20261002`, dataset `20261002-173447`) 
 | --- | ---: | ---: |
 | **Especialidad:** memoria de traducción, Firefox Focus, 144 frases es → quc (chrF++) | **37.4** | 28.9 |
 | General: 600 frases de prueba de Bloom y BOUQuET, las dos direcciones (chrF++) | 25.7 | **36.9** |
-| Latencia p50 / p95 en la prueba general | 4.14 s / 13.4 s | 1.73 s / 4.71 s |
-| Costo por 1,000 traducciones | **$0** | $0.29 |
-| Sin internet | **traduce igual** | no produce nada |
 
 En la especialidad David gana por **+8.5** [IC 95 %: +4.7, +12.7] en un producto que nunca vio. En traducción general Goliath va arriba por 11.2 puntos; la brecha es K'iche' general, no un tipo de frase ([experimento 10](#lo-que-dijo-cada-experimento)).
 
@@ -56,6 +52,8 @@ Todos los números salen de [`evals/`](evals/), [`train/runs/`](train/runs/) y l
 
 ### Resumen
 
+Los experimentos se corrieron con David en la laptop (Apple Silicon, Ollama), antes de pasar todo a la nube: las latencias de estas tablas son de esa máquina. En la nube, ver [David en la GPU de Cloud Run](#david-en-la-gpu-de-cloud-run).
+
 | # | Experimento | Variante | chrF++ prueba (600) | Otra medida | Latencia p50 | Costo único | Resultado |
 | ---: | --- | --- | ---: | --- | ---: | ---: | --- |
 | 0 | Base, sin datos | `gemma4:e4b` | 11.7 | — | 1.31 s | $0 | Punto de partida |
@@ -63,7 +61,7 @@ Todos los números salen de [`evals/`](evals/), [`train/runs/`](train/runs/) y l
 | 2 | Fine-tune sin contexto de recuperación | `tzij-2026-09` + recuperación | 17.6* | — | — | $0.70 (+$0.41 cancelado) | Callejón sin salida |
 | 3 | Recuperación híbrida (BM25 + vectores) | `gemma4:e4b+hybrid` | 19.4 | dev 30.9 → 32.5 | 1.75 s | $0 | Se queda |
 | 4 | RAFT + retrotraducción de Gemini, 1 época | `tzij-2026-10-raft-bt-s3+hybrid` | 18.3 | — | 1.72 s | $3.09 L4 + $0.12 Gemini | Sola no ayuda |
-| 5 | + MBR (4 muestras) | `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | 21.5 | — | 3.96 s | $0 | David en escena del 2 al 5 de octubre |
+| 5 | + MBR (4 muestras) | `tzij-2026-10-raft-bt-s3+hybrid+mbr4` | 21.5 | — | 3.96 s | $0 | El David de la demo del 2 al 5 de octubre |
 | 6 | El nicho pre-registrado (Firefox Focus) | `gemma4:e4b+hybrid+mbr4` | — | especialidad 30.2 vs 28.9 | — | $0 | Empate en chrF++, gana en terminología |
 | 7 | Datos sintéticos anclados en el diccionario | `tzij-2026-10-n2b-s1` | — | dev 33.8 vs 34.2 | — | $2.09 Gemini + $1.14 L4 | Fuera |
 | 8 | Sesgo de logits hacia el diccionario | `n2a-s1` + llama-server | — | dev 33.8 vs 35.0 | 5.2 s | $0 | Fuera |
@@ -75,9 +73,9 @@ Todos los números salen de [`evals/`](evals/), [`train/runs/`](train/runs/) y l
 
 ### Todas las variantes en la prueba
 
-Las 600 frases de prueba, ejecución `final-20261002` ([evals/report.md](evals/report.md)).
+Las 600 frases de prueba, ejecución `final-20261002` ([evals/report.md](evals/report.md)). Latencias en la laptop; la última columna es el costo de la API de Gemini.
 
-| Variante | es → quc | quc → es | Las dos | p50 | p95 | Costo / 1,000 |
+| Variante | es → quc | quc → es | Las dos | p50 | p95 | API / 1,000 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | `gemma4:e4b` | 7.5 | 16.7 | 11.7 | 1.31 s | 3.56 s | $0 |
 | `gemma4:e4b+rag` | 18.2 | 18.8 | 18.5 | 1.84 s | 4.76 s | $0 |
@@ -129,7 +127,7 @@ Con el David final, la diferencia en chrF++ ya no incluye el cero. En terminolog
 
 **1. Recuperación por vectores.** Índice local de unos 7,000 pares y entradas de diccionario con licencia, con EmbeddingGemma y `sqlite-vec`; David recibe 6 ejemplos y 6 entradas de glosario por frase. 11.7 → 18.5 (español → K'iche': 7.5 → 18.2). *Aprendimos:* un modelo pequeño no sabe K'iche', pero copia y adapta bien lo que le damos. Ningún otro paso movió tanto a David.
 
-**2. Fine-tune sin contexto (`tzij-2026-09`).** LoRA r=16, 1 época con 5,180 ejemplos, entrenado sin el contexto de recuperación; 22 min de L4 en Cloud Run, $0.70. Solo, sube a la base de 11.5 a 15.2; con recuperación saca 17.6, 0.8 por debajo de la base con recuperación (18.4). *Aprendimos:* si David va a usar recuperación en escena, tiene que entrenar con ella.
+**2. Fine-tune sin contexto (`tzij-2026-09`).** LoRA r=16, 1 época con 5,180 ejemplos, entrenado sin el contexto de recuperación; 22 min de L4 en Cloud Run, $0.70. Solo, sube a la base de 11.5 a 15.2; con recuperación saca 17.6, 0.8 por debajo de la base con recuperación (18.4). *Aprendimos:* si David va a usar recuperación al traducir, tiene que entrenar con ella.
 
 **3. Recuperación híbrida.** BM25 (SQLite FTS5) junto a los vectores, fusionados con Reciprocal Rank Fusion, glosario exacto y difuso, y el ejemplo más parecido al final. Se ajustó solo con dev ([evals/tuning.md](evals/tuning.md)):
 
@@ -144,9 +142,9 @@ Con el David final, la diferencia en chrF++ ya no incluye el cero. En terminolog
 
 En la prueba: 18.5 → 19.4. *Aprendimos:* BM25 encuentra las palabras raras y los nombres que los embeddings difuminan, y el orden del contexto importa: poner el ejemplo más parecido al final aportó +1.7 por sí solo. k=8 empata dentro del ruido con prompts 25 % más largos, así que se quedó k=6.
 
-**4. RAFT + retrotraducción.** El fine-tune ve el mismo contexto recuperado que David recibe en escena (RAFT). Gemini tradujo al español 405 oraciones K'iche' con licencia (399 pares, $0.12), que solo entrenan español → K'iche'. 1 época con 5,579 ejemplos en 4 trozos de 1/4 de época, por el límite de 1 h de una tarea de GPU en Cloud Run ($3.09 de L4). Con recuperación híbrida: 18.3, −1.1 frente a la base híbrida. Con el mismo presupuesto de 1/4 de época, la retrotraducción sí aportó: 15.7 contra 14.6. *Aprendimos:* el fine-tune con estos datos todavía no le ganaba a la base con buena recuperación.
+**4. RAFT + retrotraducción.** El fine-tune ve el mismo contexto recuperado que David recibe al traducir (RAFT). Gemini tradujo al español 405 oraciones K'iche' con licencia (399 pares, $0.12), que solo entrenan español → K'iche'. 1 época con 5,579 ejemplos en 4 trozos de 1/4 de época, por el límite de 1 h de una tarea de GPU en Cloud Run ($3.09 de L4). Con recuperación híbrida: 18.3, −1.1 frente a la base híbrida. Con el mismo presupuesto de 1/4 de época, la retrotraducción sí aportó: 15.7 contra 14.6. *Aprendimos:* el fine-tune con estos datos todavía no le ganaba a la base con buena recuperación.
 
-**5. MBR.** David genera 4 traducciones a temperatura 0.7 y se queda con la de mayor chrF++ promedio contra las otras. 18.3 → 21.5 (+3.2), y el fine-tune pasa a sumar +0.8 sobre la base con MBR. El p50 sube de 1.7 a 4.0 s. *Aprendimos:* el consenso es la segunda mayor ganancia y no cuesta dinero; cabe en el presupuesto de 5 s del escenario y se apaga con `MBR_ON_STAGE=0`.
+**5. MBR.** David genera 4 traducciones a temperatura 0.7 y se queda con la de mayor chrF++ promedio contra las otras. 18.3 → 21.5 (+3.2), y el fine-tune pasa a sumar +0.8 sobre la base con MBR. El p50 sube de 1.7 a 4.0 s. *Aprendimos:* el consenso es la segunda mayor ganancia y no cuesta dinero; cabía en el presupuesto de 5 s de la laptop y se apaga con `DAVID_MBR=0`.
 
 **6. El nicho.** Una primera definición (palabras raras del diccionario) no funcionó: Goliath ganaba igual. En dev se vio dónde ganaba David (Pontoon 48.3 contra 26.2 de Gemini; COERLL 39.3 contra 30.7; UD 36.3 contra 45.0) y con eso se pre-registró Firefox Focus. Con la base: 30.2 contra 28.9, un empate en chrF++, pero 78 % contra 46 % en terminología. *Aprendimos:* el terreno de David es una memoria de traducción que Goliath no tiene; fue el primer corte donde David no iba atrás.
 
@@ -187,6 +185,19 @@ Dos épocas contra una: +0.9 [−1.0, +2.9] sin MBR y +0.5 [−1.2, +2.4] con MB
 
 En la prueba, 25.7: +4.1 [+3.6, +4.7] sobre el David anterior, y la brecha con Goliath baja de 15.4 a 11.2. En la especialidad, 37.4 contra 28.9. *Aprendimos:* los dos efectos se suman. Goliath sirve de maestro una vez, por $13.94, y después David traduce sin él. Una segunda tanda de destilación (1,877 pares, $6.98) se generó, pero no entró en `mix-s7`.
 
+### David en la GPU de Cloud Run
+
+La página corre en Cloud Run y David en otro servicio de Cloud Run con una NVIDIA L4 (`europe-west4`), con el modelo, EmbeddingGemma y el índice dentro de la imagen. Medido desde la página con los 11 ejemplos, 3 veces cada uno (`duel/examples.json`):
+
+| | David (L4, `tzij-david`) | Goliath (Vertex AI) |
+| --- | ---: | ---: |
+| Tiempo, mediana de 33 traducciones | 0.9 s | 2.0 s |
+| Traducciones donde David respondió primero | 26 de 33 | — |
+| Arranque desde cero (GPU apagada) | unos 3 min | — |
+| Costo de una traducción | unos $0.0004 (L4 + 8 vCPU + 32 GiB a $0.000395 por segundo mientras la instancia está encendida) | unos $0.0001 (tokens) |
+
+David suele responder antes, pero no siempre; y en la nube cuesta más por traducción que Gemini, y la GPU cobra mientras está encendida (unos $1.42 por hora; se apaga sola unos 15 minutos después de la última petición). Por eso la página no muestra tiempo ni costo: compara solo las traducciones. Sin la página abierta, David no cobra nada.
+
 ### Costo de entrenar a David
 
 | Ejecuciones | Jobs | Duración de los jobs | Costo de L4 |
@@ -204,32 +215,32 @@ Gemini como maestro: $0.12 (primera retrotraducción) + $2.09 (sintéticos, desc
 La página muestra un solo David: `tzij-2026-10-mix-s7` + recuperación híbrida + MBR-4. Las demás variantes quedan medidas arriba, pero no salen en la demo, por estas razones:
 
 - **Es el mejor en las dos medidas.** 25.7 en la prueba general, contra 21.5 del David anterior y 20.7 de la mejor base, y 37.4 en la especialidad, contra 30.2 de la base con el mismo índice.
-- **Es el único que puede jugar la especialidad limpiamente.** Los fine-tunes anteriores (`tzij-2026-09`, `raft-s0`, `raft-bt-s0` … `s3`) entrenaron con Firefox Focus antes de que se apartara; con ellos los ejemplos medirían memoria, no traducción. `make preflight` falla si `LOCAL_MODEL_TAG` es uno de esos.
-- **MBR-4 cabe en el escenario.** Sin MBR, `mix-s7` responde en 1.64 s y saca 25.1 (35.9 en la especialidad); con MBR-4, 4.14 s y 25.7 (37.4). Los 4 s quedan dentro del presupuesto de 5 s. El MBR multi-prompt del experimento 8 sacaba más en dev, pero tardaba 7.1 s.
-- **La demo enseña el caso que David gana.** En la memoria de traducción, David traduce mejor que Goliath, gratis y sin internet; eso es lo que la página compara. En traducción general Goliath sigue arriba (36.9 contra 25.7), y es más claro en K'iche' → español (−16.4). Esos números están arriba y en la [bitácora](docs/BITACORA.md), pero la charla no muestra esa dirección ni esas frases.
-- **Una comparación por frase tiene que ser justa con los dos.** Los ejemplos se eligieron entre frases que ninguno de los dos vio, y se verificaron en vivo con los dos modelos. Las salidas y los puntajes medidos están en [`duel/examples.json`](duel/examples.json).
+- **Es el único que puede jugar la especialidad limpiamente.** Los fine-tunes anteriores (`tzij-2026-09`, `raft-s0`, `raft-bt-s0` … `s3`) entrenaron con Firefox Focus antes de que se apartara; con ellos los ejemplos medirían memoria, no traducción.
+- **MBR-4 vale la pena.** Sin MBR, `mix-s7` saca 25.1 (35.9 en la especialidad); con MBR-4, 25.7 (37.4). En la laptop tardaba 4.14 s; en la L4 de Cloud Run, la página lo recibe en 0.9 s (mediana). El MBR multi-prompt del experimento 8 sacaba más en dev, pero tardaba 7.1 s en la laptop.
+- **La demo enseña el caso que David gana.** En la memoria de traducción, David traduce mejor que Goliath; eso es lo que la página compara. En traducción general Goliath sigue arriba (36.9 contra 25.7), y es más claro en K'iche' → español (−16.4). Esos números están arriba y en la [bitácora](docs/BITACORA.md), pero la charla no muestra esa dirección ni esas frases.
+- **Una comparación por frase tiene que ser justa con los dos.** Los ejemplos se eligieron entre frases que ninguno de los dos vio, y se verificaron en vivo con los dos modelos. Las salidas, los puntajes y los tiempos medidos están en [`duel/examples.json`](duel/examples.json).
 
 ## Arranque rápido
 
 ```bash
-cp .env.example .env                       # modelos, buckets y puertos; nunca se sube .env
-uv sync && ollama pull gemma4:e4b && ollama pull embeddinggemma
-gcloud auth application-default login      # ADC para Vertex AI y Cloud Storage
-make data-pull && make niche-data && make web   # dataset con Firefox Focus apartado, índice y página
-make pull-model TAG=tzij-2026-10-mix-s7 && make up
-open http://127.0.0.1:8787/traductor/      # David y Goliath lado a lado
+cp .env.example .env                       # modelos, buckets y regiones; nunca se sube .env
+uv sync
+gcloud auth login && gcloud auth application-default login
+make deploy                                # proyecto, jobs, David en su GPU y la página
+open "$(make -s page-url)"                 # David y Goliath lado a lado
+make test                                  # pruebas con modelos simulados (MOCK_AI=1): sin GPU ni nube
 ```
 
-Para ensayar sin la nube ni GPU: `make up MOCK_AI=1` ([detalle](docs/COMANDOS.md)).
+Ningún modelo se baja a la laptop. Para medir contra el David de la nube (`make eval`, `make index`), `make david-proxy` ([detalle](docs/COMANDOS.md)).
 
 ## Documentación
 
-- [docs/DEMO.md](docs/DEMO.md): guion de la demo (el traductor), con capturas, qué decir y tiempos.
-- [docs/ONBOARDING.md](docs/ONBOARDING.md): requisitos, instalación, nube, datos, entrenamiento, pruebas, solución de problemas y checklist del día.
+- [docs/DEMO.md](docs/DEMO.md): guion de la demo (la página), con capturas, qué decir y tiempos.
+- [docs/ONBOARDING.md](docs/ONBOARDING.md): requisitos, instalación, nube, datos, entrenamiento, pruebas, solución de problemas y el día de la charla.
 - [docs/BITACORA.md](docs/BITACORA.md): la historia de David iteración por iteración, con fechas y costo.
 - [docs/DECISIONES.md](docs/DECISIONES.md): cada decisión técnica, resultados completos y versiones.
-- [docs/COMANDOS.md](docs/COMANDOS.md): arranque paso a paso y todos los comandos `make`.
-- [docs/ESTRUCTURA.md](docs/ESTRUCTURA.md): qué corre en la laptop y en la nube, pipeline y mapa del repositorio.
+- [docs/COMANDOS.md](docs/COMANDOS.md): desplegar, medir y todos los comandos `make`.
+- [docs/ESTRUCTURA.md](docs/ESTRUCTURA.md): qué corre dónde en la nube, pipeline y mapa del repositorio.
 - [docs/CREDITOS.md](docs/CREDITOS.md): fuentes de datos, dueños y licencias.
 - [MODEL_CARD.md](MODEL_CARD.md): qué es David, con qué datos, resultados y límites.
 - [evals/report.md](evals/report.md): reporte de evaluación por fuente, longitud, dominio y fallos.

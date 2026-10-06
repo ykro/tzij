@@ -82,7 +82,7 @@ def svg(data: dict) -> str:
     ly = H - 30
     parts += [f'<line x1="40" y1="{ly - 16}" x2="960" y2="{ly - 16}" stroke="rgba(45,49,66,0.10)"/>',
               f'<line x1="40" y1="{ly}" x2="62" y2="{ly}" stroke="#8c2f39" stroke-width="2.2"/>',
-              f'<text x="68" y="{ly + 3}" fill="#4f5d75" font-size="8.5" font-family="{sans}">David (laptop, sin internet), 600 frases de prueba</text>',
+              f'<text x="68" y="{ly + 3}" fill="#4f5d75" font-size="8.5" font-family="{sans}">David, 600 frases de prueba</text>',
               f'<text x="960" y="{ly + 3}" fill="#7a8399" font-size="8" font-family="{mono}" text-anchor="end">docs/BITACORA.md · evals/report.md</text>',
               "</svg>"]
     return "\n".join(parts)

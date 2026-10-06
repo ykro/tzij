@@ -2,25 +2,28 @@
 
 ## What it is
 
-David is a small Gemma model that translates between Spanish and K'iche' (`quc`) on a
-laptop, with no internet, helped by a retrieval index built from licensed K'iche' data.
-In the demo it translates side by side with Goliath, a frontier model (Gemini) used as anyone would use it, on the translator page (`/traductor/`).
+David is a small Gemma model that translates between Spanish and K'iche' (`quc`), helped by a
+retrieval index built from licensed K'iche' data. It is served from its own GPU on Cloud Run.
+In the demo it translates side by side with Goliath, a frontier model (Gemini) used as anyone would
+use it, on one public page.
 
 | | David | Goliath |
 | --- | --- | --- |
 | Model | `LOCAL_MODEL_TAG` (now `tzij-2026-10-mix-s7`, a LoRA on Gemma 4 E4B) served by Ollama | `GEMINI_MODEL` (now `gemini-3.8-flash`) on Vertex AI |
 | Extra knowledge | Hybrid retrieval index: 8,453 dictionary entries and example pairs per direction (BM25 over SQLite FTS5 + EmbeddingGemma in sqlite-vec, fused with RRF; exact and fuzzy glossary) | None |
-| Decoding | MBR: 4 samples at temperature 0.7, keep the one with the highest mean chrF++ against the others (`MBR_ON_STAGE=1`) | One answer, temperature 0.2 |
-| Runs on | The presenter's laptop, offline | Google Cloud, needs internet |
-| Cost per translation | $0 (hardware already paid for) | Tokens × list price (shown on the page) |
+| Decoding | MBR: 4 samples at temperature 0.7, keep the one with the highest mean chrF++ against the others (`DAVID_MBR=1`) | One answer, temperature 0.2 |
+| Runs on | Cloud Run `tzij-david` (`europe-west4`): 1× NVIDIA L4, Ollama, private, scales to zero | Vertex AI (`global`) |
+| Cost per translation | About $0.0004 on the L4 ($0.000395/s while the instance is up) | About $0.0001 (tokens × list price) |
 
-**In the demo now:** `tzij-2026-10-mix-s7` + hybrid retrieval + MBR (4 samples), the best local
-variant in `evals/report.md` with p50 under the 5 s stage budget. It never saw Firefox Focus, so
+**In the demo now:** `tzij-2026-10-mix-s7` + hybrid retrieval + MBR (4 samples), the best David
+variant in `evals/report.md`. It never saw Firefox Focus, so
 it can be measured on the specialty test, and the demo's example sentences come from there.
 
 Run `final-20261002`, dataset `20261002-173447` (its test split is identical to that of
 `20261002-022500`, where the rows before `mix-s7` were run), 600 held-out sentences (Bloom +
-BOUQuET, references `auto_validated`). Retrieval tuned on dev only; test used once.
+BOUQuET, references `auto_validated`). Retrieval tuned on dev only; test used once. Gemma variants
+were measured on a laptop (Apple Silicon, Ollama) before David moved to the cloud; latencies are
+from that machine. On the Cloud Run L4, the page gets David's MBR-4 translation in a median 0.9 s.
 
 | Variant | es→quc | quc→es | both | p50 | p95 | cost / 1,000 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -31,7 +34,7 @@ BOUQuET, references `auto_validated`). Retrieval tuned on dev only; test used on
 | `tzij-2026-10-raft-bt-s3` + hybrid | 18.4 | 18.3 | 18.3 | 1.7 s | 4.7 s | $0 |
 | `tzij-2026-10-raft-bt-s3` + hybrid + MBR4 (previous David) | 21.9 | 21.2 | 21.5 | 4.0 s | 14.2 s | $0 |
 | `tzij-2026-10-mix-s7` + hybrid | 26.9 | 23.2 | 25.1 | 1.6 s | 4.3 s | $0 |
-| `tzij-2026-10-mix-s7` + hybrid + MBR4 (**David on stage**) | 27.0 | 24.3 | **25.7** | 4.1 s | 13.4 s | $0 |
+| `tzij-2026-10-mix-s7` + hybrid + MBR4 (**the demo's David**) | 27.0 | 24.3 | **25.7** | 4.1 s | 13.4 s | $0 |
 | Gemini 3.8 Flash (**Goliath**) | 33.4 | 40.7 | **36.9** | 1.7 s | 4.7 s | $0.29 |
 | Gemini 3.8 Flash + same retrieval (vector) | 34.6 | 40.1 | 37.2 | 2.1 s | 6.5 s | $0.95 |
 
@@ -43,7 +46,7 @@ What the numbers say, for the talk:
 
 - **Where David holds a translation memory Goliath lacks, he wins.** In the pre-registered niche
   (`evals/niche.md`): Firefox Focus, 144 es→quc pairs David never saw, with Mozilla's other
-  products and two terminology lists in his index. The stage David scores 37.4 vs 28.9 chrF++,
+  products and two terminology lists in his index. The demo's David scores 37.4 vs 28.9 chrF++,
   +8.5 [+4.7, +12.7]. On terminology they tie (61% vs 46%, +15 [−2, +32]); the base model with the
   same index uses the right term 78% of the time but ties on chrF++ (30.2). Results:
   `evals/niche_results.md`.
@@ -62,23 +65,23 @@ What the numbers say, for the talk:
 - **The fine-tune pays off when its data looks like the test's domain:** `tzij-2026-10-mix-s7`
   beats the base model with the same retrieval by +5.7 (25.1 vs 19.4) and the previous David by
   +4.1 [+3.6, +4.7].
-- **Goliath teaches once in the cloud, David serves forever offline.** One-time costs: first
+- **Goliath teaches once; afterwards David translates without it.** One-time costs: first
   back-translation $0.12 and fine-tune $3.09 (5 L4 Cloud Run jobs); the data round behind the
   current David about $24.3 (L4 $8.52; Gemini back-translation, distillation and a Gemini Pro
   measurement; `docs/BITACORA.md`, sections 10–11).
-- **Where David wins outright:** cost ($0 vs $0.29 per 1,000 translations, and the cloud price
-  doubles in 2027) and availability. With no internet Goliath produces nothing, and David's
-  scores are unchanged: model, index and embeddings all live on the laptop.
+- **Served in the cloud, David is not cheaper.** On the L4 a translation costs about $0.0004
+  against about $0.0001 for Gemini, and the GPU bills about $1.42 per hour while it's up. The
+  demo compares translation quality, where David wins.
 
 Variants compared in `make eval` (results in `evals/report.md`): each Gemma in
 `BASE_MODEL_TAGS` and each fine-tuned tag in `FINETUNED_MODEL_TAGS`, plain, with vector
 retrieval, with hybrid retrieval and with hybrid retrieval + MBR; Gemini alone and Gemini with
-the same retrieval. The David that goes on stage is the best local variant with p50 ≤ 5 s.
+the same retrieval. The David in the demo is the best David variant.
 
 ## Data
 
 Everything comes from licensed web sources listed in `data/SOURCES.md`; counts, splits and
-drop reasons are in `data/DATASHEET.md` (generated). Dataset `20261002-173447`, on stage, derived
+drop reasons are in `data/DATASHEET.md` (generated). Dataset `20261002-173447`, the demo's, derived
 from `20261002-022500` by holding out the Pontoon product Firefox Focus as `test_niche.jsonl`
 (144 es→quc pairs, `pipeline/niche.py`):
 
@@ -112,13 +115,13 @@ from `20261002-022500` by holding out the Pontoon product Firefox Focus as `test
   which 1,894 are non-religious (2,849 and 2,029 before Firefox Focus was held out).
 - **Training recipe of the previous David, `tzij-2026-10-raft-bt-s3`.** LoRA (r=16, alpha=32, lr 2e-4) on Gemma 4
   E4B, 1 epoch over 5,579 examples: the train split in both directions plus the back-translated
-  pairs, religious ≤30%. Every prompt carries the same hybrid retrieval context David sees on
-  stage, with the pair itself excluded from its own context (RAFT, 0 answer leaks). Batch 2 ×
+  pairs, religious ≤30%. Every prompt carries the same hybrid retrieval context David sees when
+  translating, with the pair itself excluded from its own context (RAFT, 0 answer leaks). Batch 2 ×
   grad-accum 8, max 1,024 tokens, in 4 chunks of 1/4 epoch (`-s0` … `-s3`, each continuing the
   previous adapter) as Cloud Run Jobs on one L4 in europe-west4, to stay under the 1 h GPU task
-  limit. Merge and GGUF (Q4_K_M) finished on the laptop because the 16 GB merged checkpoint
-  doesn't fit the job's 32 GiB. Runs in `train/runs/`.
-- **Training recipe of `tzij-2026-10-mix-s7` (on stage).** The same RAFT recipe for 2 epochs on
+  limit. Merge and GGUF (Q4_K_M) ran outside the job because the 16 GB merged checkpoint
+  doesn't fit its 32 GiB (today: a Cloud Batch VM with 64 GB, `make train-finish`). Runs in `train/runs/`.
+- **Training recipe of `tzij-2026-10-mix-s7` (the demo's David).** The same RAFT recipe for 2 epochs on
   data without Firefox Focus (`tzij-2026-10-tm-a-e2-s4`), continued in 8 chunks (`-s0` … `-s7`)
   with the Bloom back-translation in both directions, the distilled pairs and 30% of the web
   pairs as replay: 10,692 examples. Decisions were made on the `dev_domain` split
@@ -139,8 +142,9 @@ from `20261002-022500` by holding out the Pontoon product Firefox Focus as `test
 
 ## Intended use
 
-A live demonstration that a small, offline model with the right data can compete with a
-frontier model on a language the big models barely know. Also teaching material: the code
+A live demonstration that a small model with the right data can beat a
+frontier model where it holds data the big model lacks (a translation memory), on a language the
+big models barely know. Also teaching material: the code
 shows how the data was gathered, licensed, split and evaluated.
 
 ## Not intended for

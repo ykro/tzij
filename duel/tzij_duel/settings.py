@@ -55,7 +55,7 @@ class Settings:
     # Extra retrieval options, off until dev says otherwise: trigram list (RRF) and n-gram coverage selection.
     rag_trigram: bool = field(default_factory=lambda: _env("RAG_TRIGRAM", "0") == "1")
     rag_select: str = field(default_factory=lambda: _env("RAG_SELECT", "rank"))
-    # MBR decoding: number of samples (0 = off). Eval variants "+mbrN" use it; David's service when MBR_ON_STAGE=1.
+    # MBR decoding: number of samples (0 = off). Eval variants "+mbrN" use it; David's service when DAVID_MBR=1.
     mbr_samples: int = field(default_factory=lambda: int(_env("MBR_SAMPLES", "0")))
     mock_ai: bool = field(default_factory=lambda: _flag("MOCK_AI"))
     # The page's backend calls David's GPU service here (Cloud Run, private). Empty: David runs in

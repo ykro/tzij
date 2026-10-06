@@ -101,7 +101,7 @@ Same test pairs, sliced. `David` = best local variant (`tzij-2026-10-tm-a-e2-s4+
 
 - David scores higher than Goliath on **106 of 227** sentences (47%) and within 5 chrF++ points on 51 (22%).
 - Cost of these 230 translations: David $0, Goliath $0.04.
-- With no internet, Goliath produces nothing (shown as offline on stage); David's numbers above are unchanged because everything it uses — model, index, embeddings — is on the laptop.
+- Gemma variants in this run were measured on a laptop with Ollama, before David moved to a Cloud Run GPU: their latency is that machine's and they had no per-token cost.
 
 ## Failures
 

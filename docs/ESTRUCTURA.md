@@ -4,17 +4,20 @@ Qué corre dónde y dónde está cada cosa en el código. Volver al [README](../
 
 ## Arquitectura
 
-![Arquitectura: laptop sin internet frente a Google Cloud](diagrams/architecture.png)
+![Arquitectura: todo en Google Cloud](diagrams/architecture.png)
 
-- **En la laptop, dentro del límite sin internet:** el servicio de Tzij (FastAPI en `:8787`) sirve la página del traductor (`/traductor/`, la demo) y su API. Cada frase va a David y, si hay internet, a Goliath. David corre en Ollama (`tzij-2026-10-mix-s7`, LoRA sobre Gemma 4 E4B). El índice es un archivo SQLite con `sqlite-vec` (vectores de EmbeddingGemma) y FTS5 (BM25).
-- **La vista del duelo** (`/presentador/` y `/validar/`, de una versión anterior de la charla) sigue en el servicio, pero no es parte de la demo.
-- **En Google Cloud:** Goliath (`gemini-3.8-flash` en Vertex AI, `global`) y dos Cloud Run Jobs, uno para los datos y otro para el fine-tune en GPU. Sus salidas quedan en Cloud Storage. La laptop solo baja datasets y modelos mientras se prepara, no durante la charla.
+Todo corre en Google Cloud (proyecto `ai-experiments-487722`); la laptop solo abre la página.
+
+- **La página** (Cloud Run `tzij`, `europe-west4`, pública): la exportación estática de `web/` y su servicio en Python (`duel/tzij_duel/page.py`). Por cada frase pide la traducción de David y la de Goliath por separado, así cada columna se llena en cuanto su modelo responde, y mide los dos tiempos desde el mismo lugar.
+- **David** (Cloud Run `tzij-david`, `europe-west4`, privado, 1× NVIDIA L4): Ollama con `tzij-2026-10-mix-s7` (LoRA sobre Gemma 4 E4B, Q4_K_M) y EmbeddingGemma, el índice de recuperación (SQLite con `sqlite-vec` y FTS5) y la decodificación MBR-4, en un solo contenedor (`david/Dockerfile`, servicio `duel/tzij_duel/david_app.py`). Solo la cuenta de servicio de la página puede llamarlo. Se apaga solo cuando nadie usa la página (mínimo 0 instancias) y la página lo despierta al abrirse.
+- **Goliath:** `gemini-3.8-flash` en Vertex AI (`global`), llamado desde el servicio de la página.
+- **Datos y entrenamiento:** un Cloud Run Job arma los datasets en Cloud Storage; el fine-tune corre en un Cloud Run Job con una L4, y el merge + GGUF de E4B en una VM de Cloud Batch con 64 GB. Los modelos quedan en el bucket de modelos y la imagen de David los lleva adentro.
 
 Fuente de los diagramas: [`diagrams/`](diagrams/) (HTML, SVG y PNG).
 
 ## Pipeline
 
-![De los datos con licencia a la variante que sube al escenario](diagrams/pipeline.png)
+![De los datos con licencia al modelo de la página](diagrams/pipeline.png)
 
 ## Mapa del repositorio
 
@@ -28,18 +31,23 @@ pipeline/      run.py → sources/ (una por fuente) → clean.py → split.py �
 rag/           embedder.py (EmbeddingGemma vía Ollama), store.py (sqlite-vec),
                build_index.py, retrieve.py (híbrida BM25 + vectores con RRF, ejemplos + glosario)
 duel/
-  duel_core/   clientes de Ollama y Gemini, las dos traducciones en paralelo, chrF++, costo, conectividad
-  tzij_duel/   servicio FastAPI (main.py: /api/translate y /api/examples para el traductor): variants.py, prompts.py, examples.py, model_card.py; deck.py, rounds.py y lan.py (vista del duelo); warmup.py y preflight.py (día de la charla)
-  examples.json  frases de ejemplo de /traductor/ (`make examples`), revisadas en vivo con David y Goliath
-evals/         run_eval.py → report.md, tune_retrieval.py → tuning.md, fertility.py → fertility.md, human_eval.md
-train/         train_lora.py (TRL + PEFT → merge → GGUF), submit_job.py (Cloud Run Job), chain.sh (trozos que siguen el adaptador anterior),
-               finish_local.py, train_local.py, pull_model.sh, colab.ipynb, runs/
-infra/         env.sh, 01-train-service-account.sh, 02-train-image.sh, 03-train-job.sh, 10-data-job.sh
-web/           Next.js: app/traductor (la demo; lib/translator.ts), app/presentador y app/validar (vista del duelo), components/, lib/, tests/
+  duel_core/   clientes de Ollama y Gemini, chrF++, costo, conectividad
+  tzij_duel/   page.py (servicio de la página), david_app.py (servicio de David en la GPU), remote.py (la página llama a David
+               con un token de identidad), variants.py, prompts.py, examples.py, settings.py, dataset.py
+  examples.json  frases de ejemplo de la página (`make examples`), revisadas contra David en la nube y Goliath
+david/         Dockerfile (Ollama + modelos + índice + servicio), cloudbuild.yaml, start.sh
+page/          Dockerfile (Next.js exportado + servicio de la página), cloudbuild.yaml
+evals/         run_eval.py → report.md, tune_retrieval.py → tuning.md, niche_report.py → niche_results.md,
+               fertility.py → fertility.md, human_eval.md
+train/         train_lora.py (TRL + PEFT → merge → GGUF), finish.py (adaptador → GGUF), submit_job.py (Cloud Run Jobs),
+               chain.sh (trozos que siguen el adaptador anterior), colab.ipynb, runs/
+infra/         env.sh, 00-project.sh, 01-train-service-account.sh, 02-train-image.sh, 03-train-job.sh,
+               04-finish-batch.sh (merge de E4B en Cloud Batch), 10-data-job.sh, 20-david.sh, 21-page.sh
+web/           Next.js: app/page.tsx (la página), lib/translator.ts, components/Brand.tsx, tests/
 tests/         pruebas del pipeline, normalización, recuperación y fertilidad
 docs/          ONBOARDING.md, DEMO.md (+ .en), BITACORA.md, DECISIONES.md, COMANDOS.md, ESTRUCTURA.md, CREDITOS.md,
                diagrams/, demo/ (toda traducción en una captura es salida del modelo, sin validar)
 MODEL_CARD.md  qué es David, con qué datos, resultados y límites
 ```
 
-Archivos generados que no se suben a git: `data/raw/`, `data/processed/`, `data/review/`, `data/train/`, `rag/index/`, `evals/runs/`, `models/`, `web/out/`.
+Archivos generados que no se suben a git: `data/raw/`, `data/processed/`, `data/review/`, `data/train/`, `rag/index/`, `evals/runs/`, `web/out/`.

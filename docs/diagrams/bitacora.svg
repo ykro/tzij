@@ -42,6 +42,6 @@
 <text x="886.7" y="433" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Bloom + destilación</text>
 <line x1="40" y1="474" x2="960" y2="474" stroke="rgba(45,49,66,0.10)"/>
 <line x1="40" y1="490" x2="62" y2="490" stroke="#8c2f39" stroke-width="2.2"/>
-<text x="68" y="493" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">David (laptop, sin internet), 600 frases de prueba</text>
+<text x="68" y="493" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">David, 600 frases de prueba</text>
 <text x="960" y="493" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end">docs/BITACORA.md · evals/report.md</text>
 </svg>

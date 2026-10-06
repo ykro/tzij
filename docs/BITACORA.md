@@ -21,18 +21,19 @@ de `evals/runs/`.*
 | 2 | 1 oct | Fine-tune sin contexto de recuperación (`tzij-2026-09`) | 17.6* | −0.8* | $0.70 | **Callejón sin salida** |
 | 3 | 1 oct | Recuperación híbrida (BM25 + vectores, RRF) | 19.4 | +0.9 | $0 | Ajustada en dev |
 | 4 | 2 oct | RAFT + retrotraducción de Gemini | 18.3 | −1.1 | $0.12 + $3.09 | Sola no ayuda |
-| 5 | 2 oct | + MBR (4 muestras) | **21.5** | +3.2 | $0 | En escena |
+| 5 | 2 oct | + MBR (4 muestras) | **21.5** | +3.2 | $0 | El David de la demo hasta el 5 de octubre |
 | 6 | 2 oct | El nicho: memoria de traducción (Firefox Focus) | 30.2 vs 28.9 | +1.3 | $0 | **Empate en chrF++; David gana en terminología (78 % contra 46 %)** |
 | 7 | 2 oct | Datos sintéticos anclados en el diccionario | 33.8 vs 34.2 en dev | −0.4 | $2.09 + $1.14 | **No ayudaron: fuera** |
 | 8 | 2 oct | Sesgo de logits hacia el diccionario (llama-server) | 33.8 vs 35.0 en dev | −1.2 | $0 | **No ayudó: fuera** |
-| 9 | 4 oct | Más épocas (hasta 2) y más español → Kʼicheʼ | 37.5 vs 36.6 en dev | +0.9 | $6.16 | **Empate en dev: el David en escena no cambia** |
+| 9 | 4 oct | Más épocas (hasta 2) y más español → Kʼicheʼ | 37.5 vs 36.6 en dev | +0.9 | $6.16 | **Empate en dev: el David de la demo no cambia** |
 | 10 | 4 oct | Por qué pierde David: split `dev_domain` y Gemini Pro | Pro 40.5 vs Flash 40.6 en dev_domain | −0.1 | $1.85 | **La brecha es Kʼicheʼ general; un Goliath más grande no la cierra** |
-| 11 | 4–5 oct | Ronda de datos: Bloom retrotraducido en las dos direcciones + destilación (`tzij-2026-10-mix-s7`) | **25.7** | +4.1 | $13.94 + $8.52 | **En escena. Especialidad: 37.4 vs 28.9, David gana (+8.5)** |
+| 11 | 4–5 oct | Ronda de datos: Bloom retrotraducido en las dos direcciones + destilación (`tzij-2026-10-mix-s7`) | **25.7** | +4.1 | $13.94 + $8.52 | **El David de la demo. Especialidad: 37.4 vs 28.9, David gana (+8.5)** |
+| 12 | 6 oct | Todo en la nube: David en una GPU L4 de Cloud Run, la página en Cloud Run, el merge de E4B en Cloud Batch | (sin cambio) | — | ~$0.1 de Batch | **La demo es una página en la nube; los ejemplos, revisados contra el David de la nube** |
 
 \* La iteración 2 se midió sobre el dataset del 30 de septiembre (las mismas fuentes de prueba,
 referencias aún sin validar). Ahí la base con recuperación sacaba 18.4.
 
-Goliath: **36.9** en toda la prueba, $0.29 por cada 1,000 traducciones, y nada sin internet.
+Goliath: **36.9** en toda la prueba, $0.29 por cada 1,000 traducciones.
 
 ## 0. El punto de partida (30 de septiembre)
 
@@ -100,7 +101,7 @@ Goliath: **36.9** en toda la prueba, $0.29 por cada 1,000 traducciones, y nada s
 - **Resultado en prueba:** 18.3 → **21.5** (+3.2), la mayor ganancia después de la recuperación.
   Con MBR el fine-tune sí suma: +0.8 sobre la base con MBR (21.5 contra 20.7).
 - **Costo:** $0, pero el p50 sube de 1.7 a 4.0 s y el p95 a 14 s. Entra al escenario porque el
-  p50 queda por debajo del límite de 5 s, y se apaga con `MBR_ON_STAGE=0`.
+  p50 queda por debajo del límite de 5 s. (Hoy se apaga con `DAVID_MBR=0`.)
 
 ## 6. El nicho: una memoria de traducción que Goliath no tiene (2 de octubre)
 
@@ -302,14 +303,39 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
   retrotraducción $0.36, destilación $12.42). Con la medición de Gemini Pro (sección 10), la ronda
   costó unos $24.3.
 
+## 12. Todo en la nube (6 de octubre)
+
+- **Qué:** la demo deja de correr en la laptop. David pasa a un servicio de Cloud Run con una
+  NVIDIA L4 (`tzij-david`, `europe-west4`, privado, mínimo 0 instancias): Ollama con
+  `tzij-2026-10-mix-s7` y EmbeddingGemma dentro de la imagen, el índice del dataset
+  `20261002-173447` y MBR-4. La página pasa a otro servicio de Cloud Run (`tzij`, público), que
+  llama a David con un token de identidad y a Gemini. En la laptop no queda ningún modelo.
+- **Por qué:** la demo tiene que abrirse desde un navegador, sin correr nada el día de la charla.
+- **David se despierta solo:** al abrir la página, «Preparando a David…» unos 3 minutos (la
+  instancia, el modelo a la GPU, EmbeddingGemma, el índice y una traducción de prueba) y después
+  «David listo». Mientras la página está abierta, lo mantiene despierto.
+- **Medido desde la página** con los ejemplos (33 traducciones): David 0.9 s de mediana, Gemini
+  2.0 s, pero David respondió después en 7 de 33. En la nube David cuesta unos $0.0004 por
+  traducción y unos $1.42 por hora encendido, contra unos $0.0001 de Gemini. Por eso la página ya
+  no muestra tiempo ni costo, ni el estado sin internet: compara las traducciones.
+- **Ejemplos:** los 12 se volvieron a revisar contra el David de la nube, 3 veces cada uno. Quedan
+  11: «Contenido web» salió fuera porque en una vuelta David sacó 24.9.
+- **Merge de E4B en Cloud Batch:** el merge y el GGUF que antes terminaban en la laptop corren
+  ahora en una VM `n2-highmem-8` (64 GB, 200 GB de disco) con la imagen de entrenamiento
+  (`infra/04-finish-batch.sh`). Probado con el adapter `tzij-2026-10-tm-a-e2-s4`: 10 minutos,
+  GGUF Q4_K_M de 5.3 GB.
+- **Fuera:** la vista del duelo (rondas, marcador, teclas, el teléfono validador y su QR), el
+  estado sin internet y los comandos de la laptop (`make up`, `warmup`, `preflight`,
+  `pull-model`, `train-local`).
+
 ## Dónde gana David hoy y dónde pierde
 
-- **Gana en la ronda de especialidad.** Con la memoria de traducción de los demás productos de
+- **Gana en la especialidad.** Con la memoria de traducción de los demás productos de
   Mozilla, en Firefox Focus (144 frases que nunca vio) saca 37.4 chrF++ contra 28.9 de Goliath:
   **+8.5** [+4.7, +12.7]. En terminología empatan (61 % contra 46 %, el intervalo incluye el
   cero); la base con el mismo índice llega al 78 %, pero empata en chrF++.
-- **Gana siempre:** costo ($0 contra $0.29 por cada 1,000 traducciones), privacidad (nada sale
-  de la laptop) y disponibilidad (sin internet Goliath no produce nada).
+- **En la nube no es más barato:** unos $0.0004 por traducción en la L4 contra unos $0.0001 de
+  Gemini, y la GPU cobra mientras está encendida.
 - **Pierde:**
   - en general, por 11.2 puntos en la prueba (25.7 contra 36.9; eran 15.4);
   - en todas las fuentes, dominios y longitudes: la brecha es Kʼicheʼ general, no un corte;
@@ -324,5 +350,5 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
 - **Más datos de Kʼicheʼ → español,** la dirección donde Goliath saca más ventaja. La
   retrotraducción en esa dirección ya dio +4.3 en `dev_domain`.
 - **Destilar el MBR en el modelo** (fine-tune sobre las salidas de consenso). Así se gana la
-  calidad de MBR sin pagar su latencia en escena.
+  calidad de MBR con una sola muestra (menos GPU por traducción).
 - **Una persona hablante que valide la prueba,** para que chrF++ deje de ser el único juez.

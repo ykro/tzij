@@ -183,10 +183,9 @@ def breakdown(results: dict[str, list[dict]], ranking: list, records: list[dict]
     lines += ["### Head to head, sentence by sentence", "",
               f"- David scores higher than Goliath on **{wins} of {len(common)}** sentences "
               f"({wins / max(len(common), 1):.0%}) and within 5 chrF++ points on {close} ({close / max(len(common), 1):.0%}).",
-              f"- Cost of these {len(results[goliath_v.name])} translations: David $0, Goliath "
-              f"${sum(r.get('cost_usd') or 0 for r in results[goliath_v.name]):.2f}.",
-              "- With no internet, Goliath produces nothing (shown as offline on stage); David's numbers above "
-              "are unchanged because everything it uses — model, index, embeddings — is on the laptop.", ""]
+              f"- Gemini API cost of these {len(results[goliath_v.name])} translations: "
+              f"${sum(r.get('cost_usd') or 0 for r in results[goliath_v.name]):.2f}. David's Ollama variants have no "
+              "per-token price: they cost the GPU time of David's service (README, David on the Cloud Run GPU).", ""]
     return lines
 
 
@@ -217,7 +216,7 @@ def _fmt_ms(ms: float | None) -> str:
 
 
 def _fmt_cost_per_1k(cost: float, n: int) -> str:
-    return "$0 (local)" if cost == 0 else f"${cost / max(n, 1) * 1000:.3f}"
+    return "— (Ollama)" if cost == 0 else f"${cost / max(n, 1) * 1000:.3f}"
 
 
 def render(results: dict[str, dict], variants: list[Variant], records: list[dict], s: Settings,
@@ -252,7 +251,7 @@ def render(results: dict[str, dict], variants: list[Variant], records: list[dict
         per_dir = {d: score([r for r in rows if r["direction"] == d]) for d in directions}
         ranking.append((v, overall))
         lines.append(
-            f"| `{v.name}` | {'cloud' if v.requires_network else 'laptop'} | {'yes' if v.uses_rag else 'no'} | "
+            f"| `{v.name}` | {'Vertex AI' if v.requires_network else 'Ollama'} | {'yes' if v.uses_rag else 'no'} | "
             + " | ".join(f"{per_dir[d]['chrf']:.1f}" for d in directions)
             + f" | **{overall['chrf']:.1f}** | {_fmt_ms(overall['p50_ms'])} | {_fmt_ms(overall['p95_ms'])} | "
             f"{_fmt_cost_per_1k(overall['cost_usd'], overall['n'])} |"

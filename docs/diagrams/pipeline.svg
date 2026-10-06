@@ -1,135 +1,113 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <svg viewBox="0 0 1000 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="tzij-pipeline-title tzij-pipeline-desc">
       <title id="tzij-pipeline-title">Tzij: datos, entrenamiento y evaluación</title>
-      <desc id="tzij-pipeline-desc">Pipeline de Tzij: un Cloud Run Job arma el dataset, la laptop lo descarga y construye el índice, un Cloud Run Job con una L4 entrena la LoRA, la laptop hace el merge y el GGUF, lo registra en Ollama y make eval compara todas las variantes sobre el conjunto de prueba.</desc>
+      <desc id="tzij-pipeline-desc">Pipeline de Tzij, todo en Google Cloud: un Cloud Run Job arma el dataset en Cloud Storage, un Cloud Run Job con una L4 entrena la LoRA, una VM de Cloud Batch hace el merge y el GGUF, el índice se construye con EmbeddingGemma del David de la nube, y make eval compara las variantes contra ese David a través de make david-proxy.</desc>
       <defs>
-        <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');</style>
-        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
-        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8c2f39"/></marker>
-        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"></polygon></marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8c2f39"></polygon></marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"></polygon></marker>
       </defs>
 
-      <rect width="100%" height="100%" fill="#f5f5f5"/>
+      <rect width="100%" height="100%" fill="#f5f5f5"></rect>
 
       <!-- ── Zones ── -->
-      <rect x="24" y="56" width="952" height="120" rx="8"
-            fill="#2d3142" fill-opacity="0.02" stroke="#2d3142" stroke-opacity="0.10" stroke-width="0.8"/>
-      <rect x="36" y="60" width="172" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="122" y="69" fill="#2d3142" fill-opacity="0.40" font-size="7" font-family="'Geist Mono', monospace"
-            text-anchor="middle" letter-spacing="0.14em">GOOGLE CLOUD · CLOUD RUN JOBS</text>
+      <rect x="24" y="56" width="952" height="120" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"></rect>
+      <rect x="36" y="60" width="200" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="136" y="69" fill="rgba(45,49,66,0.40)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">GOOGLE CLOUD · DATOS Y ENTRENAMIENTO</text>
 
-      <rect x="24" y="248" width="952" height="168" rx="8"
-            fill="#2d3142" fill-opacity="0.02" stroke="#2d3142" stroke-opacity="0.10" stroke-width="0.8"/>
-      <rect x="36" y="252" width="52" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="62" y="261" fill="#2d3142" fill-opacity="0.40" font-size="7" font-family="'Geist Mono', monospace"
-            text-anchor="middle" letter-spacing="0.14em">LAPTOP</text>
+      <rect x="24" y="248" width="952" height="120" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"></rect>
+      <rect x="36" y="252" width="184" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="128" y="261" fill="rgba(45,49,66,0.40)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">GOOGLE CLOUD · DAVID Y MEDICIÓN</text>
 
-      <!-- ── Arrows ── -->
-      <!-- Data job -> laptop (make data-pull) -->
-      <line x1="120" y1="152" x2="120" y2="280" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- Laptop train split -> GPU job (make train uploads chat JSONL) -->
-      <path d="M 200,296 H 224 Q 232,296 232,288 V 128 Q 232,120 240,120 H 280"
-            fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- GPU job -> laptop merge (adapter on the bucket volume) -->
-      <line x1="360" y1="152" x2="360" y2="280" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- Merge -> Ollama -->
-      <line x1="440" y1="312" x2="520" y2="312" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- Ollama -> eval -->
-      <line x1="680" y1="312" x2="760" y2="312" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- Index + test set -> eval (primary: what retrieval buys) -->
-      <path d="M 120,344 V 384 Q 120,392 128,392 H 832 Q 840,392 840,384 V 344"
-            fill="none" stroke="#8c2f39" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+      <!-- ── Arrows (before boxes) ── -->
+      <line x1="200" y1="120" x2="280" y2="120" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"></line>
+      <line x1="440" y1="120" x2="520" y2="120" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"></line>
+      <line x1="680" y1="120" x2="760" y2="120" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"></line>
+      <path d="M 840,152 V 200 Q 840,208 832,208 H 608 Q 600,208 600,216 V 280" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"></path>
+      <line x1="360" y1="152" x2="360" y2="280" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"></line>
+      <line x1="440" y1="312" x2="520" y2="312" stroke="#8c2f39" stroke-width="1.4" marker-end="url(#arrow-accent)"></line>
+      <line x1="680" y1="312" x2="760" y2="312" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"></line>
 
       <!-- ── Arrow labels ── -->
-      <rect x="64" y="206" width="48" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="88" y="215" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DATASET</text>
-
-      <rect x="164" y="206" width="62" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="195" y="215" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">CHAT JSONL</text>
-
-      <rect x="366" y="206" width="48" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="390" y="215" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ADAPTER</text>
-
-      <rect x="452" y="294" width="56" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="480" y="303" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GGUF Q4</text>
-
-      <rect x="692" y="294" width="56" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="720" y="303" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FINE-TUNE</text>
-
-      <rect x="440" y="374" width="80" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="480" y="383" fill="#8c2f39" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ÍNDICE · TEST</text>
+      <rect x="214.0" y="96" width="52" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="240" y="105" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DATASET</text>
+      <rect x="448.0" y="96" width="64" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="480" y="105" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">CHAT JSONL</text>
+      <rect x="694.0" y="96" width="52" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="720" y="105" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ADAPTER</text>
+      <rect x="694.0" y="184" width="52" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="720" y="193" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GGUF Q4</text>
+      <rect x="368" y="209" width="40" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="372" y="218" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="start" letter-spacing="0.06em">TRAIN</text>
+      <rect x="456.0" y="288" width="48" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="480" y="297" fill="#8c2f39" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ÍNDICE</text>
+      <rect x="694.0" y="288" width="52" height="12" rx="2" fill="#f5f5f5"></rect>
+      <text x="720" y="297" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PROXY</text>
 
       <!-- ── Nodes ── -->
-      <!-- A: data pipeline job -->
-      <rect x="40" y="88" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="40" y="88" width="160" height="64" rx="6" fill="#2d3142" fill-opacity="0.03" stroke="#2d3142" stroke-opacity="0.30" stroke-width="1"/>
-      <rect x="48" y="94" width="28" height="12" rx="2" fill="none" stroke="#2d3142" stroke-opacity="0.22" stroke-width="0.8"/>
-      <text x="62" y="103" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">JOB</text>
-      <text x="120" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Pipeline de datos</text>
-      <text x="120" y="140" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make data-cloud</text>
+      <rect x="40" y="88" width="160" height="64" rx="6" fill="#f5f5f5"></rect>
+      <rect x="40" y="88" width="160" height="64" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"></rect>
+      <rect x="48" y="94" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"></rect>
+      <text x="62.0" y="103" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">JOB</text>
+      <text x="120.0" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Pipeline de datos</text>
+      <text x="120.0" y="140" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make data-cloud</text>
+      <rect x="280" y="88" width="160" height="64" rx="6" fill="#f5f5f5"></rect>
+      <rect x="280" y="88" width="160" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"></rect>
+      <rect x="288" y="94" width="28" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"></rect>
+      <text x="302.0" y="103" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GCS</text>
+      <text x="360.0" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Dataset</text>
+      <text x="360.0" y="140" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Cloud Storage</text>
+      <rect x="520" y="88" width="160" height="64" rx="6" fill="#f5f5f5"></rect>
+      <rect x="520" y="88" width="160" height="64" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"></rect>
+      <rect x="528" y="94" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"></rect>
+      <text x="542.0" y="103" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GPU</text>
+      <text x="600.0" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">LoRA en 1× L4</text>
+      <text x="600.0" y="140" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make train</text>
+      <rect x="760" y="88" width="160" height="64" rx="6" fill="#f5f5f5"></rect>
+      <rect x="760" y="88" width="160" height="64" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"></rect>
+      <rect x="768" y="94" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"></rect>
+      <text x="782.0" y="103" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">VM</text>
+      <text x="840.0" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Merge + GGUF</text>
+      <text x="840.0" y="140" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Cloud Batch · 64 GB</text>
+      <rect x="280" y="280" width="160" height="64" rx="6" fill="#f5f5f5"></rect>
+      <rect x="280" y="280" width="160" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"></rect>
+      <rect x="288" y="286" width="28" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"></rect>
+      <text x="302.0" y="295" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">IDX</text>
+      <text x="360.0" y="316" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Índice</text>
+      <text x="360.0" y="332" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make index</text>
+      <rect x="520" y="280" width="160" height="64" rx="6" fill="#f5f5f5"></rect>
+      <rect x="520" y="280" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"></rect>
+      <rect x="528" y="286" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"></rect>
+      <text x="542.0" y="295" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUN</text>
+      <text x="600.0" y="316" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">David</text>
+      <text x="600.0" y="332" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Cloud Run · L4</text>
+      <rect x="760" y="280" width="160" height="64" rx="6" fill="#f5f5f5"></rect>
+      <rect x="760" y="280" width="160" height="64" rx="6" fill="rgba(140,47,57,0.08)" stroke="#8c2f39" stroke-width="1"></rect>
+      <rect x="768" y="286" width="32" height="12" rx="2" fill="transparent" stroke="rgba(140,47,57,0.50)" stroke-width="0.8"></rect>
+      <text x="784.0" y="295" fill="#8c2f39" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EVAL</text>
+      <text x="840.0" y="316" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Comparar variantes</text>
+      <text x="840.0" y="332" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make eval</text>
 
-      <!-- C: LoRA GPU job -->
-      <rect x="280" y="88" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="280" y="88" width="160" height="64" rx="6" fill="#2d3142" fill-opacity="0.03" stroke="#2d3142" stroke-opacity="0.30" stroke-width="1"/>
-      <rect x="288" y="94" width="28" height="12" rx="2" fill="none" stroke="#2d3142" stroke-opacity="0.22" stroke-width="0.8"/>
-      <text x="302" y="103" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GPU</text>
-      <text x="360" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">LoRA en 1× L4</text>
-      <text x="360" y="140" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make train</text>
-
-      <!-- B: dataset + index (store) -->
-      <rect x="40" y="280" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="40" y="280" width="160" height="64" rx="6" fill="#2d3142" fill-opacity="0.05" stroke="#4f5d75" stroke-width="1"/>
-      <rect x="48" y="286" width="28" height="12" rx="2" fill="none" stroke="#4f5d75" stroke-opacity="0.50" stroke-width="0.8"/>
-      <text x="62" y="295" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">IDX</text>
-      <text x="120" y="316" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Dataset + índice</text>
-      <text x="120" y="332" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make data-pull · index</text>
-
-      <!-- D: merge + GGUF -->
-      <rect x="280" y="280" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="280" y="280" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
-      <rect x="288" y="286" width="28" height="12" rx="2" fill="none" stroke="#2d3142" stroke-opacity="0.40" stroke-width="0.8"/>
-      <text x="302" y="295" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">CPU</text>
-      <text x="360" y="316" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Merge + GGUF</text>
-      <text x="360" y="332" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make train-finish</text>
-
-      <!-- E: Ollama -->
-      <rect x="520" y="280" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="520" y="280" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
-      <rect x="528" y="286" width="28" height="12" rx="2" fill="none" stroke="#2d3142" stroke-opacity="0.40" stroke-width="0.8"/>
-      <text x="542" y="295" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LLM</text>
-      <text x="600" y="316" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Ollama</text>
-      <text x="600" y="332" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make pull-model</text>
-
-      <!-- F: eval (focal) -->
-      <rect x="760" y="280" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="760" y="280" width="160" height="64" rx="6" fill="#8c2f39" fill-opacity="0.08" stroke="#8c2f39" stroke-width="1"/>
-      <rect x="768" y="286" width="32" height="12" rx="2" fill="none" stroke="#8c2f39" stroke-opacity="0.50" stroke-width="0.8"/>
-      <text x="784" y="295" fill="#8c2f39" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">EVAL</text>
-      <text x="840" y="316" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Comparar variantes</text>
-      <text x="840" y="332" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">make eval</text>
-
-      <!-- ── Callout (margin, below the laptop band) ── -->
-      <path d="M 904,436 Q 900,392 880,348" fill="none" stroke="#2d3142" stroke-opacity="0.40" stroke-width="1" stroke-dasharray="4,3"/>
-      <circle cx="880" cy="348" r="2" fill="#2d3142"/>
-      <text x="960" y="452" fill="#2d3142" font-size="14" font-style="italic"
-            font-family="'Instrument Serif', serif" text-anchor="end">sube gemma4:e4b + recuperación; el fine-tune queda en el reporte</text>
+      <!-- ── Callout ── -->
+      <path d="M 496,420 Q 488,360 480,318" fill="none" stroke="rgba(45,49,66,0.40)" stroke-width="1" stroke-dasharray="4,3"></path>
+      <circle cx="480" cy="318" r="2" fill="#2d3142"></circle>
+      <text x="40" y="436" fill="#2d3142" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">la recuperación es el mayor salto (11.7 → 18.5); el fine-tune suma cuando sus datos se parecen a la prueba (+5.7)</text>
 
       <!-- ── Legend ── -->
-      <line x1="40" y1="480" x2="960" y2="480" stroke="#2d3142" stroke-opacity="0.10" stroke-width="0.8"/>
+      <line x1="40" y1="480" x2="960" y2="480" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"></line>
       <text x="40" y="496" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEYENDA</text>
 
-      <rect x="40" y="508" width="14" height="10" rx="2" fill="#8c2f39" fill-opacity="0.08" stroke="#8c2f39" stroke-width="1"/>
+      <rect x="40" y="508" width="14" height="10" rx="2" fill="rgba(140,47,57,0.08)" stroke="#8c2f39" stroke-width="1"></rect>
       <text x="60" y="516" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Decisión (make eval)</text>
 
-      <rect x="180" y="508" width="14" height="10" rx="2" fill="#2d3142" fill-opacity="0.03" stroke="#2d3142" stroke-opacity="0.30" stroke-width="1"/>
-      <text x="200" y="516" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Cloud Run Job</text>
+      <rect x="180" y="508" width="14" height="10" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"></rect>
+      <text x="200" y="516" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Job (Cloud Run o Batch)</text>
 
-      <rect x="300" y="508" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
-      <text x="320" y="516" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Paso en la laptop</text>
+      <rect x="340" y="508" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"></rect>
+      <text x="360" y="516" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Servicio</text>
 
-      <rect x="432" y="508" width="14" height="10" rx="2" fill="#2d3142" fill-opacity="0.05" stroke="#4f5d75" stroke-width="1"/>
+      <rect x="432" y="508" width="14" height="10" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"></rect>
       <text x="452" y="516" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Datos e índice</text>
 
-      <line x1="552" y1="513" x2="580" y2="513" stroke="#8c2f39" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+      <line x1="552" y1="513" x2="580" y2="513" stroke="#8c2f39" stroke-width="1.4" marker-end="url(#arrow-accent)"></line>
       <text x="588" y="516" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Lo que más mueve el resultado</text>
     </svg>

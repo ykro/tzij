@@ -51,11 +51,11 @@
 <body>
   <div class="frame">
     <p class="eyebrow">Arquitectura · Tzij</p>
-    <h1>Lo que corre en la laptop y lo que corre en la nube</h1>
+    <h1>Todo corre en Google Cloud; la laptop solo abre la página</h1>
 
-    <svg viewBox="0 0 880 560" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="tzij-architecture-title tzij-architecture-desc">
-      <title id="tzij-architecture-title">Tzij: laptop sin internet frente a Google Cloud</title>
-      <desc id="tzij-architecture-desc">Arquitectura de Tzij: en la laptop, que funciona sin internet, la página del traductor manda cada frase al servicio Tzij, que la traduce con David en Ollama y su índice sqlite-vec y, con internet, también con Goliath (Gemini en Vertex AI); en la nube, los Cloud Run Jobs dejan datasets y modelos en Cloud Storage, que la laptop descarga solo al preparar.</desc>
+    <svg viewBox="0 0 880 548" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="tzij-architecture-title tzij-architecture-desc">
+      <title id="tzij-architecture-title">Tzij: la página y David en Google Cloud</title>
+      <desc id="tzij-architecture-desc">Arquitectura de Tzij: el navegador abre la página en Cloud Run, que manda cada frase a David, un servicio privado de Cloud Run con una GPU L4 que se apaga solo, y a Goliath, Gemini en Vertex AI; los jobs de datos y de entrenamiento escriben en Cloud Storage, y Cloud Build arma la imagen de David con el modelo y el índice.</desc>
       <defs>
         <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
         <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8c2f39"/></marker>
@@ -64,154 +64,102 @@
 
       <rect width="100%" height="100%" fill="#f5f5f5"/>
 
-      <g transform="translate(-128,0)">
-      <!-- ── Zones (before arrows and nodes) ── -->
-      <!-- Offline boundary: everything inside works with Wi-Fi off -->
-      <rect x="168" y="64" width="488" height="424" rx="8"
-            fill="rgba(140,47,57,0.05)" stroke="rgba(140,47,57,0.50)" stroke-width="1" stroke-dasharray="4,4"/>
-      <rect x="180" y="68" width="132" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="246" y="77" fill="#8c2f39" font-size="7" font-family="'Geist Mono', monospace"
-            text-anchor="middle" letter-spacing="0.14em">FUNCIONA SIN INTERNET</text>
+      <!-- ── Zones ── -->
+      <rect x="200" y="56" width="656" height="408" rx="8" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <rect x="212" y="60" width="88" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="256" y="69" fill="rgba(45,49,66,0.45)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">GOOGLE CLOUD</text>
 
-      <!-- Laptop -->
-      <rect x="184" y="96" width="456" height="376" rx="8"
-            fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
-      <rect x="196" y="100" width="52" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="222" y="109" fill="rgba(45,49,66,0.40)" font-size="7" font-family="'Geist Mono', monospace"
-            text-anchor="middle" letter-spacing="0.14em">LAPTOP</text>
-
-      <!-- Google Cloud -->
-      <rect x="688" y="96" width="288" height="376" rx="8"
-            fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
-      <rect x="700" y="100" width="88" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="744" y="109" fill="rgba(45,49,66,0.40)" font-size="7" font-family="'Geist Mono', monospace"
-            text-anchor="middle" letter-spacing="0.14em">GOOGLE CLOUD</text>
+      <rect x="448" y="176" width="208" height="112" rx="8" fill="rgba(140,47,57,0.05)" stroke="rgba(140,47,57,0.50)" stroke-width="1" stroke-dasharray="4,4"/>
+      <rect x="460" y="180" width="148" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="534" y="189" fill="#8c2f39" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.14em">PRIVADO · SE APAGA SOLO</text>
 
       <!-- ── Arrows (before boxes) ── -->
-      <!-- Translator page -> service: the phrase to translate -->
-      <line x1="288" y1="192" x2="288" y2="248" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- Service -> David: the prompt with retrieved context (primary flow) -->
-      <line x1="368" y1="280" x2="456" y2="280" stroke="#8c2f39" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
-      <!-- Service -> retrieval index -->
-      <line x1="288" y1="312" x2="288" y2="384" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- Service -> Goliath: HTTPS to Vertex AI, crosses the offline boundary -->
-      <path d="M 352,248 V 232 Q 352,224 360,224 H 824 Q 832,224 832,216 V 192"
-            fill="none" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
-      <!-- Jobs -> Cloud Storage -->
-      <line x1="832" y1="328" x2="832" y2="392" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
-      <!-- Cloud Storage -> laptop, only while preparing (dashed) -->
-      <path d="M 752,408 H 544 Q 536,408 536,400 V 312"
-            fill="none" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-      <line x1="752" y1="440" x2="368" y2="440" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <line x1="160" y1="244" x2="232" y2="244" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <line x1="392" y1="244" x2="472" y2="244" stroke="#8c2f39" stroke-width="1.4" marker-end="url(#arrow-accent)"/>
+      <path d="M 312,212 V 124 Q 312,116 320,116 H 680" fill="none" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <line x1="392" y1="396" x2="472" y2="396" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <line x1="632" y1="396" x2="680" y2="396" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
+      <path d="M 760,364 V 252 Q 760,244 752,244 H 632" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#arrow)"/>
 
       <!-- ── Arrow labels ── -->
-
-      <rect x="296" y="214" width="36" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="314" y="223" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FRASE</text>
-
-      <rect x="388" y="262" width="48" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="412" y="271" fill="#8c2f39" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PROMPT</text>
-
-      <rect x="296" y="342" width="52" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="322" y="351" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">RECUPERA</text>
-
-      <rect x="696" y="206" width="48" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="720" y="215" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">HTTPS</text>
-
-      <rect x="840" y="354" width="48" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="864" y="363" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ESCRIBE</text>
-
-      <rect x="668" y="390" width="64" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="700" y="399" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">PULL-MODEL</text>
-
-      <rect x="380" y="422" width="56" height="12" rx="2" fill="#f5f5f5"/>
-      <text x="408" y="431" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">DATA-PULL</text>
+      <rect x="176.0" y="220" width="40" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="196" y="229" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">HTTPS</text>
+      <rect x="410.0" y="220" width="44" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="432" y="229" fill="#8c2f39" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FRASE</text>
+      <rect x="468.0" y="92" width="64" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="500" y="101" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">VERTEX AI</text>
+      <rect x="408.0" y="372" width="48" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="432" y="381" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ESCRIBE</text>
+      <rect x="638.0" y="372" width="36" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="656" y="381" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">GGUF</text>
+      <rect x="766" y="296" width="82" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="772" y="305" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.06em">IMAGEN + ÍNDICE</text>
 
       <!-- ── Nodes ── -->
-
-      <!-- Translator page: the demo -->
-      <rect x="208" y="128" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="208" y="128" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
-      <rect x="216" y="134" width="24" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
-      <text x="228" y="143" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">UI</text>
-      <text x="288" y="164" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Traductor</text>
-      <text x="288" y="180" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">/traductor/</text>
-
-      <!-- Tzij service: sends the same phrase to David and Goliath -->
-      <rect x="208" y="248" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="208" y="248" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
-      <rect x="216" y="254" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
-      <text x="230" y="263" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">API</text>
-      <text x="288" y="284" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Servicio Tzij</text>
-      <text x="288" y="300" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">FastAPI · :8787</text>
-
-      <!-- David (focal) -->
-      <rect x="456" y="248" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="456" y="248" width="160" height="64" rx="6" fill="rgba(140,47,57,0.08)" stroke="#8c2f39" stroke-width="1"/>
-      <rect x="464" y="254" width="28" height="12" rx="2" fill="transparent" stroke="rgba(140,47,57,0.50)" stroke-width="0.8"/>
-      <text x="478" y="263" fill="#8c2f39" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LLM</text>
-      <text x="536" y="284" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">David en Ollama</text>
-      <text x="536" y="300" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">tzij-2026-10-mix-s7</text>
-
-      <!-- Retrieval index (store) -->
-      <rect x="208" y="384" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="208" y="384" width="160" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
-      <rect x="216" y="390" width="28" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
-      <text x="230" y="399" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">IDX</text>
-      <text x="288" y="420" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Índice sqlite-vec</text>
-      <text x="288" y="436" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">embeddinggemma</text>
-
-      <!-- Goliath (cloud) -->
-      <rect x="752" y="128" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="752" y="128" width="160" height="64" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
-      <rect x="760" y="134" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
-      <text x="774" y="143" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">LLM</text>
-      <text x="832" y="164" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Goliath en Vertex AI</text>
-      <text x="832" y="180" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">gemini-3.8-flash</text>
-
-      <!-- Cloud Run Jobs (cloud) -->
-      <rect x="752" y="264" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="752" y="264" width="160" height="64" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
-      <rect x="760" y="270" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.22)" stroke-width="0.8"/>
-      <text x="774" y="279" fill="#7a8399" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">JOB</text>
-      <text x="832" y="300" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Cloud Run Jobs</text>
-      <text x="832" y="316" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">datos · LoRA en L4</text>
-
-      <!-- Cloud Storage (store) -->
-      <rect x="752" y="392" width="160" height="64" rx="6" fill="#f5f5f5"/>
-      <rect x="752" y="392" width="160" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
-      <rect x="760" y="398" width="28" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
-      <text x="774" y="407" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GCS</text>
-      <text x="832" y="428" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Cloud Storage</text>
-      <text x="832" y="444" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">datasets · modelos</text>
-
-      </g>
+      <rect x="32" y="212" width="128" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="32" y="212" width="128" height="64" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399" stroke-width="1"/>
+      <rect x="40" y="218" width="28" height="12" rx="2" fill="transparent" stroke="rgba(122,131,153,0.60)" stroke-width="0.8"/>
+      <text x="54.0" y="227" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">WEB</text>
+      <text x="96.0" y="248" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Navegador</text>
+      <text x="96.0" y="264" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">abre la página</text>
+      <rect x="232" y="212" width="160" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="232" y="212" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="240" y="218" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="254.0" y="227" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RUN</text>
+      <text x="312.0" y="248" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">La página</text>
+      <text x="312.0" y="264" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Cloud Run · pública</text>
+      <rect x="472" y="212" width="160" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="472" y="212" width="160" height="64" rx="6" fill="rgba(140,47,57,0.08)" stroke="#8c2f39" stroke-width="1"/>
+      <rect x="480" y="218" width="28" height="12" rx="2" fill="transparent" stroke="rgba(140,47,57,0.50)" stroke-width="0.8"/>
+      <text x="494.0" y="227" fill="#8c2f39" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GPU</text>
+      <text x="552.0" y="248" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">David</text>
+      <text x="552.0" y="264" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Ollama · L4 · MBR-4</text>
+      <rect x="680" y="84" width="160" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="680" y="84" width="160" height="64" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+      <rect x="688" y="90" width="28" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.30)" stroke-width="0.8"/>
+      <text x="702.0" y="99" fill="rgba(45,49,66,0.70)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">API</text>
+      <text x="760.0" y="120" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Goliath</text>
+      <text x="760.0" y="136" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Gemini · Vertex AI</text>
+      <rect x="232" y="364" width="160" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="232" y="364" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="240" y="370" width="32" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="256.0" y="379" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">JOBS</text>
+      <text x="312.0" y="400" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Datos y entrenamiento</text>
+      <text x="312.0" y="416" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">Run Jobs · Batch</text>
+      <rect x="472" y="364" width="160" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="472" y="364" width="160" height="64" rx="6" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <rect x="480" y="370" width="28" height="12" rx="2" fill="transparent" stroke="rgba(79,93,117,0.50)" stroke-width="0.8"/>
+      <text x="494.0" y="379" fill="#4f5d75" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GCS</text>
+      <text x="552.0" y="400" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Cloud Storage</text>
+      <text x="552.0" y="416" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">datasets · modelos · índice</text>
+      <rect x="680" y="364" width="160" height="64" rx="6" fill="#f5f5f5"/>
+      <rect x="680" y="364" width="160" height="64" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <rect x="688" y="370" width="36" height="12" rx="2" fill="transparent" stroke="rgba(45,49,66,0.40)" stroke-width="0.8"/>
+      <text x="706.0" y="379" fill="#2d3142" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">BUILD</text>
+      <text x="760.0" y="400" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Cloud Build</text>
+      <text x="760.0" y="416" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">imagen de David</text>
 
       <!-- ── Legend ── -->
-      <line x1="40" y1="504" x2="872" y2="504" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
-      <text x="40" y="520" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEYENDA</text>
+      <line x1="32" y1="488" x2="848" y2="488" stroke="rgba(45,49,66,0.10)" stroke-width="0.8"/>
+      <text x="32" y="504" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.18em">LEYENDA</text>
 
-      <rect x="40" y="532" width="14" height="10" rx="2" fill="rgba(140,47,57,0.08)" stroke="#8c2f39" stroke-width="1"/>
-      <text x="60" y="540" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">David (foco)</text>
+      <rect x="32" y="516" width="14" height="10" rx="2" fill="rgba(140,47,57,0.08)" stroke="#8c2f39" stroke-width="1"/>
+      <text x="52" y="524" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">David (foco)</text>
 
-      <rect x="140" y="532" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
-      <text x="160" y="540" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Página / servicio</text>
+      <rect x="132" y="516" width="14" height="10" rx="2" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="152" y="524" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Servicio o job</text>
 
-      <rect x="252" y="532" width="14" height="10" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
-      <text x="272" y="540" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Almacén</text>
+      <rect x="236" y="516" width="14" height="10" rx="2" fill="rgba(45,49,66,0.05)" stroke="#4f5d75" stroke-width="1"/>
+      <text x="256" y="524" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Almacén</text>
 
-      <rect x="336" y="532" width="14" height="10" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
-      <text x="356" y="540" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Nube</text>
+      <rect x="316" y="516" width="14" height="10" rx="2" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.30)" stroke-width="1"/>
+      <text x="336" y="524" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">API externa</text>
 
+      <rect x="416" y="516" width="14" height="10" rx="2" fill="rgba(140,47,57,0.05)" stroke="rgba(140,47,57,0.50)" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="436" y="524" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Solo la página puede llamar a David</text>
 
-      <rect x="408" y="532" width="14" height="10" rx="2" fill="rgba(140,47,57,0.05)" stroke="rgba(140,47,57,0.50)" stroke-width="1" stroke-dasharray="3,2"/>
-      <text x="428" y="540" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Límite sin internet</text>
-
-      <line x1="528" y1="537" x2="556" y2="537" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
-      <text x="564" y="540" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Requiere internet</text>
-
-      <line x1="664" y1="537" x2="692" y2="537" stroke="#4f5d75" stroke-width="1" stroke-dasharray="4,3" marker-end="url(#arrow)"/>
-      <text x="700" y="540" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Solo al preparar (antes del evento)</text>
+      <line x1="616" y1="521" x2="644" y2="521" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#arrow-link)"/>
+      <text x="652" y="524" fill="#4f5d75" font-size="8.5" font-family="'Geist', sans-serif">Llamada HTTPS</text>
     </svg>
   </div>
 </body>

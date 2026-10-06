@@ -113,7 +113,7 @@ by hand: run `make datasheet` (or `make data`).
 
 ## Motivation and composition
 
-Tzij translates between Spanish and K'iche' (`quc`) with a small offline Gemma model.
+Tzij translates between Spanish and K'iche' (`quc`) with a small Gemma model and a retrieval index of licensed data.
 Every record comes from a licensed web source listed in `data/SOURCES.md`
 (`origin=web`, with `url` and `license` on each record). There is **no synthetic
 K'iche'** in the dataset, the retrieval index, dev or test: frontier models don't master the
@@ -159,8 +159,8 @@ the selection is reproducible and spread across the New Testament.
 - Source-level split: test sources are never used for training or retrieval, and any
   train/retrieval pair that repeats a test sentence is removed (`leaks_test_sentence`).
 - {test['pairs_per_direction']} pairs per direction ({test['sentence_pairs']} of them sentences).
-  **{test.get('auto_validated_pairs', '—')} are `auto_validated`** and used by `make eval` and the duel view's evaluation
-  rounds ({validated_by_source}); the rest are `auto_rejected` ({rejected_reasons}).
+  **{test.get('auto_validated_pairs', '—')} are `auto_validated`** and used by `make eval`
+  ({validated_by_source}); the rest are `auto_rejected` ({rejected_reasons}).
 - Validation is automatic, with no human step (`pipeline/validate_test.py`). Criteria:
 {criteria_lines}
 - Optional: a native speaker can review with `make review-test` / `make apply-review`

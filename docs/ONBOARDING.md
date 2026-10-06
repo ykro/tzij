@@ -1,50 +1,46 @@
 # Onboarding — Tzij
 
-Guía para montar Tzij desde cero, preparar los datos y los modelos, ensayar el traductor y llegar al día de la charla sin sorpresas. La visión general está en el [README](../README.md) y las decisiones técnicas en [DECISIONES.md](DECISIONES.md).
+Guía para montar Tzij desde cero en Google Cloud, preparar los datos y los modelos, medir y llegar al día de la charla sin sorpresas. Todo corre en la nube: en la laptop no corre ningún modelo. La visión general está en el [README](../README.md) y las decisiones técnicas en [DECISIONES.md](DECISIONES.md).
 
 Contenido:
 
 1. [Requisitos](#1-requisitos)
-2. [Instalación local](#2-instalación-local)
-3. [Modelos de Ollama](#3-modelos-de-ollama)
-4. [Credenciales: ADC y el token de Hugging Face](#4-credenciales-adc-y-el-token-de-hugging-face)
-5. [Google Cloud: preparación única y scripts `infra/`](#5-google-cloud-preparación-única-y-scripts-infra)
-6. [Datos, índice, entrenamiento y evaluación](#6-datos-índice-entrenamiento-y-evaluación)
-7. [Correr el traductor (y sin internet)](#7-correr-el-traductor-y-sin-internet)
-8. [La vista del duelo (no es parte de la demo)](#8-la-vista-del-duelo-no-es-parte-de-la-demo)
-9. [Revisión con hablantes nativos (opcional)](#9-revisión-con-hablantes-nativos-opcional)
-10. [Pruebas y ensayo](#10-pruebas-y-ensayo)
-11. [Recorrido por el código: una traducción](#11-recorrido-por-el-código-una-traducción)
-12. [Solución de problemas](#12-solución-de-problemas)
-13. [Checklist del día de la charla](#13-checklist-del-día-de-la-charla)
+2. [Instalación](#2-instalación)
+3. [Credenciales: ADC y el token de Hugging Face](#3-credenciales-adc-y-el-token-de-hugging-face)
+4. [Google Cloud: `make deploy` y los scripts `infra/`](#4-google-cloud-make-deploy-y-los-scripts-infra)
+5. [Datos, índice, entrenamiento y evaluación](#5-datos-índice-entrenamiento-y-evaluación)
+6. [La página y David en la nube](#6-la-página-y-david-en-la-nube)
+7. [Las frases de ejemplo](#7-las-frases-de-ejemplo)
+8. [Revisión con hablantes nativos (opcional)](#8-revisión-con-hablantes-nativos-opcional)
+9. [Pruebas](#9-pruebas)
+10. [Recorrido por el código: una traducción](#10-recorrido-por-el-código-una-traducción)
+11. [Solución de problemas](#11-solución-de-problemas)
+12. [El día de la charla](#12-el-día-de-la-charla)
 
 ![Pipeline: datos, entrenamiento y evaluación](diagrams/pipeline.png)
 
 ## 1. Requisitos
 
-Versiones con las que se verificó el proyecto (30 de septiembre de 2026):
+Versiones con las que se verificó el proyecto (6 de octubre de 2026):
 
 | Herramienta | Versión | Para qué |
 | --- | --- | --- |
-| macOS en Apple Silicon | — | La laptop del escenario. `make train-local` usa MPS y `train/setup_llama_cpp.sh` baja el `llama-quantize` precompilado para macOS arm64. |
-| RAM | `make train-finish` se probó en una Mac de 64 GB | El merge de E4B en bf16 más la conversión a GGUF. Para el traductor basta con lo que necesita Ollama para David (~5.3 GB) y `embeddinggemma`. |
-| Python | 3.12 (`.python-version`; `pyproject.toml` pide `>=3.12,<3.13`) | Pipeline, índice, servicio y evals |
+| Python | 3.12 (`.python-version`; `pyproject.toml` pide `>=3.12,<3.13`) | Pipeline, servicios, evals y pruebas |
 | uv | 0.8.22 | Entornos y dependencias de Python. Nunca `pip` global. |
-| Node.js / npm | 24.21.0 / 12.0.2 | Vistas en Next.js 16.3.8 y pruebas (vitest, Playwright 1.63.0) |
-| Ollama | 0.35.0 | David y EmbeddingGemma |
-| Google Cloud SDK (`gcloud`) | 587.0.0 | ADC, Cloud Run Jobs, Cloud Build, Cloud Storage, Secret Manager |
-| Android SDK (`adb`, emulador) | `adb` 1.0.41 | Solo para `make emulator` (el validador del duelo, que no es parte de la demo) |
+| Node.js / npm | 24.21.0 / 12.0.2 | La página en Next.js 16.3.8 y sus pruebas (vitest, Playwright 1.63.0 para `make screens`) |
+| Google Cloud SDK (`gcloud`) | 587.0.0 | ADC, Cloud Run, Cloud Build, Cloud Batch, Cloud Storage, Secret Manager |
 | Cuenta de Hugging Face | — | Aceptar los términos de BOUQuET; su token va a Secret Manager |
+| Cuota de GPU | 1× NVIDIA L4 sin redundancia zonal en `europe-west4` (Cloud Run) | David y el entrenamiento. El proyecto tiene 4. |
 
-Espacio en disco aproximado: unos 17 GB para los modelos de Ollama (`gemma4:e4b` 6.6 GB, cada fine-tune `tzij-2026-10-*` 5.3 GB, `embeddinggemma` 621 MB) y espacio temporal para `make train-finish` en `models/.work/`: pesos base (~16 GB, compartidos entre tags), modelo fusionado (~16 GB, se reutiliza si ya existe), GGUF intermedio Q8_0 (~8 GB con `GGUF_OUTTYPE=q8_0`, se borra al final) y Q4_K_M (~5 GB).
+No hace falta Ollama, Docker ni una GPU local: las imágenes se construyen con Cloud Build y los modelos viajan del bucket a la imagen de David sin pasar por la laptop.
 
-## 2. Instalación local
+## 2. Instalación
 
 ```bash
 git clone <repo> tzij && cd tzij
 cp .env.example .env        # .env está en .gitignore; nunca subas un token
 uv sync                     # crea .venv con Python 3.12 y las dependencias (incluye pytest)
-cd web && npm ci && cd ..   # opcional aquí: `make web` lo hace, y `make test` lo necesita para las pruebas web
+cd web && npm ci && cd ..   # para las pruebas de la página y `make screens`
 ```
 
 Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables más importantes:
@@ -52,39 +48,25 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 | Variable | Valor actual | Qué controla |
 | --- | --- | --- |
 | `GEMINI_MODEL` | `gemini-3.8-flash` | Goliath |
-| `GEMINI_INPUT_USD_PER_M` / `GEMINI_OUTPUT_USD_PER_M` | `0.75` / `3.75` | Costo mostrado en pantalla. Desde el 1 de enero de 2027 la tarifa de lista sube a `1.50` / `7.50` (ver el comentario en `.env.example`). |
-| `LOCAL_MODEL_TAG` | `tzij-2026-10-mix-s7` | David (siempre con recuperación) |
-| `BASE_MODEL_TAGS` | `gemma4:e4b` | Modelos base que compara `make eval` |
-| `FINETUNED_MODEL_TAGS` | `tzij-2026-10-mix-s7,tzij-2026-10-raft-bt-s3,tzij-2026-10-raft-bt-s0,tzij-2026-10-raft-s0` | Modelos con fine-tune que compara `make eval` (`raft-bt-s3` es el David anterior) |
+| `GEMINI_INPUT_USD_PER_M` / `GEMINI_OUTPUT_USD_PER_M` | `0.75` / `3.75` | Costo de Gemini en los reportes de `make eval`. Desde el 1 de enero de 2027 la tarifa de lista sube a `1.50` / `7.50`. |
+| `LOCAL_MODEL_TAG` | `tzij-2026-10-mix-s7` | David (siempre con recuperación): el modelo que `infra/20-david.sh` mete en la imagen de David |
+| `FINETUNED_MODEL_TAGS`, `BASE_MODEL_TAGS` | `tzij-2026-10-mix-s7`, vacío | Lo que compara `make eval`; tiene que estar en la imagen de David |
 | `GEMMA_BASE_MODEL` | `gemma-4-E4B-it` | Checkpoint base del fine-tune y tokenizador de `make fertility` |
 | `EMBEDDING_MODEL` | `embeddinggemma` | Embeddings del índice. El índice y las consultas tienen que usar el mismo. |
 | `RAG_INDEX`, `RAG_K` | `rag/index/tzij.sqlite`, `6` | Índice y cuántos ejemplos y entradas de glosario recibe David |
-| `RAG_MODE`, `RAG_ORDER`, `RAG_FUZZY` | `hybrid`, `best_last`, `1` | Búsqueda híbrida BM25 + vectores (o `vector`), ejemplo más cercano al final, glosario difuso. Ajustados con `make tune-retrieval` en dev. |
-| `MBR_ON_STAGE`, `MBR_SAMPLES` | `1`, `4` | Decodificación MBR en el escenario (`0` = una sola muestra, p50 ~1.7 s en vez de ~4 s) |
-| `OLLAMA_NUM_CTX` | `4096` | Contexto de Gemma en Ollama |
-| `DUEL_PORT`, `PUBLIC_URL` | `8787`, vacío | Puerto del servicio; URL fija del QR (vacío = IP de la LAN detectada) |
-| `FORCE_OFFLINE` | `0` | `1` simula "sin Wi-Fi" para Goliath sin tocar el sistema operativo |
-| `REQUIRE_VALIDATED_TEST` | `0` | Opcional: `1` limita las rondas de evaluación de la vista del duelo (no es parte de la demo) a pares que además revisó una persona nativa |
-| `MOCK_AI` | `0` | `1` evita la nube y la GPU (pruebas y ensayos) |
+| `RAG_MODE`, `RAG_ORDER`, `RAG_FUZZY` | `hybrid`, `best_last`, `1` | Búsqueda híbrida BM25 + vectores, ejemplo más cercano al final, glosario difuso. Ajustados con `make tune-retrieval` en dev. |
+| `DAVID_MBR`, `MBR_SAMPLES` | `1`, `4` | Decodificación MBR en el servicio de David (`0` = una sola muestra) |
+| `OLLAMA_URL`, `OLLAMA_NUM_CTX` | `http://127.0.0.1:11434`, `4096` | Dónde está Ollama (dentro del servicio de David; en tu máquina, con `make david-proxy`) y el contexto de Gemma |
+| `TRAIN_FINISH` | `later` | El job de GPU solo entrena el adapter; el merge de E4B corre con `make train-finish` en Cloud Batch |
+| `MOCK_AI` | `0` | `1` evita la nube y la GPU (pruebas) |
 
-`.env` solo pone valores por defecto: lo que pases por la línea de comandos o el entorno gana (`MOCK_AI=1 make up` y `make up MOCK_AI=1` hacen lo mismo). El `Makefile` convierte cada `CLAVE=valor` de `.env` en `CLAVE ?= valor` (archivo `.env.mk`, ignorado por git).
+`.env` solo pone valores por defecto: lo que pases por la línea de comandos o el entorno gana. El `Makefile` convierte cada `CLAVE=valor` de `.env` en `CLAVE ?= valor` (archivo `.env.mk`, ignorado por git).
 
-## 3. Modelos de Ollama
-
-```bash
-make pull-model TAG=tzij-2026-10-mix-s7   # David (ver §6.5)
-ollama pull embeddinggemma      # embeddings del índice (también offline, en el escenario)
-ollama pull gemma4:e4b          # base, para `make eval` y como David de respaldo
-ollama list
-```
-
-`make up` precarga David (`keep_alive` de 30 min, `num_ctx` 4096) y EmbeddingGemma, y avisa con `!!` si falta alguno. El servicio hace lo mismo al arrancar, porque cargar un modelo en frío cuesta segundos en el escenario.
-
-## 4. Credenciales: ADC y el token de Hugging Face
+## 3. Credenciales: ADC y el token de Hugging Face
 
 ### ADC
 
-No hay claves de API en el repo. Gemini (Vertex AI), Cloud Storage y Secret Manager usan Application Default Credentials:
+No hay claves de API en el repo. Gemini (Vertex AI), Cloud Storage y Secret Manager usan Application Default Credentials, y `make examples`, `make eval` y `make david-proxy` usan tu cuenta de `gcloud` para llamar al David privado:
 
 ```bash
 gcloud auth login
@@ -111,80 +93,74 @@ BOUQuET tiene acceso restringido. Sin token, el pipeline lo salta con un aviso y
 
 Orden de búsqueda (`pipeline/secrets.py`, `train/train_lora.py`): variable `HF_TOKEN` → secreto `hf-token` vía ADC → sin token. Los Cloud Run Jobs lo reciben montado como `HF_TOKEN`. `infra/10-data-job.sh` y `infra/01-train-service-account.sh` dan acceso al secreto a sus cuentas de servicio, siempre que el secreto ya exista. Por eso conviene crearlo **antes** de correr esos scripts.
 
-## 5. Google Cloud: preparación única y scripts `infra/`
+## 4. Google Cloud: `make deploy` y los scripts `infra/`
 
-Proyecto: `ai-experiments-487722`. Los jobs de datos y las imágenes viven en `us-central1` (Artifact Registry `charlas2027`). El entrenamiento corre en `europe-west4`, donde está la GPU L4.
+Proyecto: `ai-experiments-487722`. El job de datos vive en `us-central1` y las imágenes en el Artifact Registry `charlas2027` (`us-central1`). David, la página, el entrenamiento y el merge corren en `europe-west4`, donde el proyecto tiene la cuota de L4.
 
-### 5.1 Todo desde cero: `make deploy`
+### 4.1 Todo desde cero: `make deploy`
 
 ```bash
 HF_TOKEN=hf_... make deploy   # HF_TOKEN solo la primera vez, para crear el secreto hf-token
+make page-url                 # la dirección pública de la página
 ```
 
-`make deploy` despliega **solo las partes en la nube**, en este orden: `infra/00-project.sh`
-(habilita las APIs, crea el Artifact Registry `charlas2027`, los buckets `…-tzij-data`,
-`…-tzij-models` y `…-train-eu`, y el secreto `hf-token` si le pasas `HF_TOKEN`), el Cloud Run Job
-de datos sin ejecutarlo (`DEPLOY_ONLY=1 infra/10-data-job.sh`), la cuenta de servicio de
-entrenamiento y el Cloud Run Job `tzij-train` con su imagen. Todo es idempotente: se puede volver a
-correr.
+`make deploy`, en este orden: `infra/00-project.sh` (habilita las APIs, crea el Artifact Registry `charlas2027`, los buckets `…-tzij-data`, `…-tzij-models` y `…-train-eu`, y el secreto `hf-token` si le pasas `HF_TOKEN`), el Cloud Run Job de datos sin ejecutarlo (`DEPLOY_ONLY=1 infra/10-data-job.sh`), la cuenta de servicio de entrenamiento, el Cloud Run Job `tzij-train` con su imagen, el servicio de David (`infra/20-david.sh`) y la página (`infra/21-page.sh`). Todo es idempotente: se puede volver a correr.
 
-**El servicio de Tzij y la página del traductor no se despliegan, a propósito:** corren en la laptop
-porque la charla muestra lo que pasa sin internet (`make up`).
+Lo único que no se puede automatizar: aceptar los términos de BOUQuET con tu cuenta de Hugging Face (antes de crear el token) y la cuota de L4 para Cloud Run en `europe-west4`.
 
-Lo único que no se puede automatizar: aceptar los términos de BOUQuET con tu cuenta de Hugging Face
-(antes de crear el token) y tener cuota de GPU NVIDIA L4 para Cloud Run en `europe-west4`.
+### 4.2 Los scripts
 
-### 5.2 Los scripts, en orden
+Todos cargan `infra/env.sh` (proyecto, regiones, Artifact Registry, nombres de servicio) e `infra/app.env` (`APP=tzij`).
 
-Todos cargan `infra/env.sh` (proyecto, regiones, Artifact Registry) e `infra/app.env` (`APP=tzij`).
+| Script | Qué hace | ¿Quién lo llama? |
+| --- | --- | --- |
+| `infra/00-project.sh` | Habilita APIs; crea Artifact Registry, los tres buckets y el secreto `hf-token` (si recibe `HF_TOKEN`). | `make deploy` |
+| `infra/01-train-service-account.sh` | Crea la cuenta de servicio `tzij-train` con acceso al bucket de modelos, al de staging, a Artifact Registry y a `hf-token`. | `make deploy` |
+| `infra/02-train-image.sh` | Construye la imagen de entrenamiento con Cloud Build. La etiqueta es un hash del `Dockerfile`, `requirements.txt`, `train_lora.py` y `finish.py`, así que una receta sin cambios no se reconstruye (la primera vez tarda unos 15 min). | `make train`, `make train-finish` |
+| `infra/03-train-job.sh` | Crea o actualiza los Cloud Run Jobs `tzij-train` (1× L4, 8 vCPU, 32 GiB, 1 h) y `tzij-finish` (CPU), con el bucket de staging montado en `/mnt/work` (caché de pesos base). | `make deploy`, `make train` |
+| `infra/04-finish-batch.sh <tag>` | Merge + GGUF de un adapter de E4B en una VM de Cloud Batch (`n2-highmem-8`, 64 GB, 200 GB de disco) con la imagen de entrenamiento; publica en el bucket de modelos y la VM se borra al terminar. Habilita la API de Batch y da a `tzij-train` los roles que necesita. | `make train-finish` |
+| `infra/10-data-job.sh` | Crea la cuenta de servicio `tzij-data-job` con acceso solo al bucket de datos (y a `hf-token`), construye la imagen (`pipeline/cloudbuild.yaml`), despliega el job `tzij-data` (2 vCPU, 4 GiB, 1 h) y lo ejecuta (con `DEPLOY_ONLY=1`, solo despliega). | `make data-cloud`, `make deploy` |
+| `infra/20-david.sh` | Crea la cuenta de servicio `tzij-david` (sin acceso a nada), construye con Cloud Build la imagen de David (`david/cloudbuild.yaml`: copia el GGUF y el Modelfile de `LOCAL_MODEL_TAG` desde el bucket de modelos y el índice del dataset de `LATEST` desde el bucket de datos; `ollama create` y `ollama pull embeddinggemma` dentro de la imagen) y despliega `tzij-david`: 1× L4, 8 vCPU, 32 GiB, mínimo 0 y máximo 1 instancia, privado. | `make deploy`, `make deploy-david` |
+| `infra/21-page.sh` | Crea la cuenta de servicio `tzij-page` con `aiplatform.user` y `run.invoker` sobre `tzij-david`, construye la imagen de la página (`page/Dockerfile`: compila `web/` y le pone el servicio de Python) y despliega `tzij`, pública, con `DAVID_URL`. | `make deploy`, `make deploy-page` |
 
-| Orden | Script | Qué hace | ¿Quién lo llama? |
-| --- | --- | --- | --- |
-| 0 | `infra/00-project.sh` | Habilita APIs; crea Artifact Registry, los tres buckets y el secreto `hf-token` (si recibe `HF_TOKEN`). Idempotente. | `make deploy` |
-| 1 | `infra/10-data-job.sh` | Crea la cuenta de servicio `tzij-data-job` con acceso solo al bucket de datos (y a `hf-token`), construye la imagen con Cloud Build (`pipeline/cloudbuild.yaml`), despliega el job `tzij-data` (2 vCPU, 4 GiB, 1 h, sin reintentos) y lo ejecuta (con `DEPLOY_ONLY=1`, solo despliega). | `make data-cloud`, `make deploy` |
-| 2 | `infra/01-train-service-account.sh` | Crea la cuenta de servicio `tzij-train` con acceso al bucket de modelos, al de staging, a Artifact Registry y a `hf-token`. | `make deploy` |
-| 3 | `infra/02-train-image.sh` | Construye la imagen de entrenamiento con Cloud Build. La etiqueta es un hash del `Dockerfile`, `requirements.txt` y `train_lora.py`, así que una receta sin cambios no se reconstruye (la primera vez tarda unos 15 min). | `make train` (vía `train/submit_job.py`) |
-| 4 | `infra/03-train-job.sh` | Crea o actualiza el Cloud Run Job `tzij-train` en `europe-west4`: 1× L4, 8 vCPU, 32 GiB, 1 h, el bucket de staging montado en `/mnt/work` (caché de pesos base), `GGUF_OUTTYPE` desde `.env`. | `make deploy`, `make train` (vía `train/submit_job.py`) |
+## 5. Datos, índice, entrenamiento y evaluación
 
-La numeración agrupa los scripts (`0x` entrenamiento, `1x` datos). En el flujo real, los datos van primero. No hay dependencias entre el script 10 y los 01–03.
-
-## 6. Datos, índice, entrenamiento y evaluación
-
-### 6.1 `make data` o `make data-cloud`
+### 5.1 `make data` o `make data-cloud`
 
 ```bash
 make data-cloud   # recomendado: Cloud Run Job → gs://…-tzij-data/datasets/<versión>/ + LATEST
 make data-pull    # lo baja a data/processed/<versión>/ y actualiza data/processed/LATEST
-make niche-data   # construye el índice (y aparta Firefox Focus si LATEST no trae test_niche)
-# o, todo en la laptop:
+# o, el mismo pipeline en tu máquina (solo datos, ningún modelo):
 make data         # descarga a data/raw/, escribe data/processed/<versión>/ y data/DATASHEET.md
 ```
 
-`make data-pull` baja el dataset publicado, `20261002-173447`, que ya trae `test_niche.jsonl` (Firefox Focus fuera de train y del índice, más los glosarios de CLDR y FLORES-Mayas). `make niche-data` entonces solo corre `make index`. Con un dataset nuevo sin `test_niche.jsonl` (de `make data` o `make data-cloud`), `make niche-data` primero corre `python -m pipeline.niche build` sobre el dataset base `20261002-022500` y crea una versión nueva.
+`make data-pull` baja el dataset publicado, `20261002-173447`, que ya trae `test_niche.jsonl` (Firefox Focus fuera de train y del índice, más los glosarios de CLDR y FLORES-Mayas). Con un dataset nuevo sin `test_niche.jsonl` (de `make data` o `make data-cloud`), `make niche-data` primero corre `python -m pipeline.niche build` sobre el dataset base `20261002-022500` y crea una versión nueva.
 
 El pipeline (`pipeline/run.py`) hace: descarga por fuente (`pipeline/sources/*.py`, con caché cruda) → normalización (`data/normalize.py`) → limpieza con motivo de descarte (`pipeline/clean.py`) → etiquetas de dominio → deduplicación → split por fuente con chequeo de fugas y tope religioso (`pipeline/split.py`) → `train.jsonl` / `dev.jsonl` / `test.jsonl` (un registro por par y dirección) → `manifest.json` y datasheet. El job escribe el datasheet junto al dataset en GCS; para regenerar el del repo, usa `make datasheet` después de `make data-pull`.
 
 Dataset actual: `20261002-173447` (derivado de `20261002-022500` con `make niche-data`). Train 8,453 pares (2,541 oraciones y 5,912 entradas de diccionario y glosario), dev 115, prueba 1,654 (300 de Bloom, 1,354 de BOUQuET), nicho 144 (Firefox Focus, solo español → Kʼicheʼ). Proporción religiosa en las oraciones de train: 30.0 %.
 
-### 6.2 `make index`
+### 5.2 `make index`
 
 ```bash
-make index    # necesita Ollama con embeddinggemma
+make david-proxy   # en otra terminal: el Ollama del David de la nube en 127.0.0.1:11434
+make index         # construye rag/index/tzij.sqlite y lo publica en gs://…-tzij-data/index/<dataset>/
+make deploy-david  # la imagen nueva de David lleva el índice nuevo
 ```
 
 Indexa solo el split `train` (`pipeline.split.RETRIEVAL_SPLITS`) y se niega a indexar cualquier otro. Guarda el modelo de embeddings y la versión del dataset dentro del índice. El índice actual es del dataset `20261002-173447` y tiene 16,906 entradas (8,453 por dirección). Los embeddings se cachean en `rag/.cache/embeddings.sqlite`, así que reconstruir es rápido.
 
-### 6.3 `make fertility` (opcional)
+### 5.3 `make fertility` (opcional)
 
-Mide tokens por palabra con el `tokenizer.json` de `google/<GEMMA_BASE_MODEL>` y verifica contra `prompt_eval_count` de Ollama. Escribe `evals/fertility.md`, que `make eval` copia dentro del reporte.
+Mide tokens por palabra con el `tokenizer.json` de `google/<GEMMA_BASE_MODEL>`. Escribe `evals/fertility.md`, que `make eval` copia dentro del reporte.
 
-### 6.4 `make train`
+### 5.4 `make train`
 
 ```bash
 make train TAG=tzij-YYYY-MM TRAIN_ARGS="…"   # una tarea de Cloud Run con TRAIN_DATA; los argumentos van a train/train_lora.py
 ```
 
-Sin `TRAIN_DATA`, `make train` y `make train-local` entrenan con los datos del David en escena (`data/train/chat-raft-bt-both-dst2409-new30.jsonl`, que arma `make train-data` si falta). La receta completa de `tzij-2026-10-mix-s7`, con los 8 trozos encadenados, está más abajo.
+Sin `TRAIN_DATA`, `make train` entrena con los datos del David de la página (`data/train/chat-raft-bt-both-dst2409-new30.jsonl`, que arma `make train-data` si falta). La receta completa de `tzij-2026-10-mix-s7`, con los 8 trozos encadenados, está más abajo.
 
 El primer David ajustado (`tzij-2026-10-raft-bt-s3`) se entrenó con RAFT + retrotraducción, en 4 trozos de 1/4 de época para no pasar el límite de 1 h:
 
@@ -213,83 +189,54 @@ make train-finish TAG=tzij-2026-10-mix-s7
 
 Los hiperparámetros de cada trozo quedan en `train/runs/<tag>.json`. Las decisiones entre ejecuciones se toman con `make eval EVAL_ARGS="--split dev_domain --out evals/dev_domain_report.md"`, no con la prueba.
 
-1. `make train-data` arma los datos del David en escena: el 30 % de los pares web de `train`, la retrotraducción en las dos direcciones y los primeros 2,409 pares destilados, cada uno con el mismo prompt y el mismo contexto recuperado que recibe David en el duelo (RAFT). Vuelve a comprobar el tope religioso. Salen 10,692 ejemplos. (Sin `--raft`, `python -m pipeline.train_set` arma la versión sin contexto de `tzij-2026-09`, el callejón sin salida de la [bitácora, sección 2](BITACORA.md).)
+1. `make train-data` arma los datos del David de la página: el 30 % de los pares web de `train`, la retrotraducción en las dos direcciones y los primeros 2,409 pares destilados, cada uno con el mismo prompt y el mismo contexto recuperado que recibe David al traducir (RAFT). Vuelve a comprobar el tope religioso. Salen 10,692 ejemplos. (Sin `--raft`, `python -m pipeline.train_set` arma la versión sin contexto de `tzij-2026-09`, el callejón sin salida de la [bitácora, sección 2](BITACORA.md).)
 2. `train/submit_job.py` sube el JSONL a `gs://…-train-eu/tzij/data/<tag>/`, construye o reutiliza la imagen (`02`), actualiza el job (`03`), lo ejecuta con `--epochs`, etc., espera y escribe `train/runs/<tag>.json` con duración, máquina y costo estimado.
 3. Dentro del job, `train/train_lora.py` baja los pesos (`GEMMA_WEIGHTS_URI=hf://google`, con caché en el bucket), entrena la LoRA (r=16, alpha=32, lr 2e-4, solo el decodificador de texto) y guarda el adapter en el volumen.
 
-Límites que hay que respetar: **1 h por tarea de GPU** en Cloud Run (por eso se usa `--epochs=1`; 1.5 épocas no cabían) y **32 GiB** de memoria (por eso el merge de E4B no termina en la nube). La ejecución `tzij-2026-09` entrenó bien (324 pasos, 22 min) y después el job terminó con *"The configured memory limit was reached"* al guardar el modelo fusionado. Es lo esperado con E4B: sigue con `make train-finish`.
+Límites que hay que respetar: **1 h por tarea de GPU** en Cloud Run (por eso se usa `--epochs=1`; 1.5 épocas no cabían) y **32 GiB** de memoria (por eso el merge de E4B no cabe en el job). La ejecución `tzij-2026-09` entrenó bien (324 pasos, 22 min) y después el job terminó con *"The configured memory limit was reached"* al guardar el modelo fusionado. Por eso `.env` trae `TRAIN_FINISH=later`: el job de GPU solo entrena el adapter y el merge corre con `make train-finish` (§5.5).
 
-### 6.5 `make train-finish` y `make pull-model`
+### 5.5 `make train-finish`
 
 ```bash
-make train-finish TAG=tzij-2026-10-mix-s7   # adapter del bucket → merge → GGUF Q8_0 → Q4_K_M → gs://…-tzij-models/<tag>/
-make pull-model  TAG=tzij-2026-10-mix-s7    # baja Modelfile + GGUF + metrics.json a models/<tag>/ y hace `ollama create`
+make train-finish TAG=tzij-2026-10-mix-s7   # adapter del bucket → merge → GGUF → Q4_K_M → gs://…-tzij-models/<tag>/
+make deploy-david MODEL_TAG=tzij-2026-10-mix-s7   # o pon el tag en LOCAL_MODEL_TAG y `make deploy-david`
 ```
 
-`train-finish` usa `uv run --python 3.12 --with-requirements train/requirements.txt --with torch` (un entorno aparte del proyecto) y descarga llama.cpp `b11292` a `train/.llama.cpp/`. El GGUF Q4_K_M resultante pesa unos 5.3 GB. El `Modelfile` usa el renderer y el parser de `gemma4`, así que el modelo ajustado se pide igual que su base.
+`train-finish` corre `train/finish.py` en una VM de Cloud Batch (`infra/04-finish-batch.sh`): baja los pesos base de la caché del bucket, hace el merge, convierte a GGUF f16 en disco y cuantiza a Q4_K_M (unos 5.3 GB). Tarda unos 10 minutos y la VM se borra sola. El `Modelfile` usa el renderer y el parser de `gemma4`, así que el modelo ajustado se pide igual que su base.
 
-Si no hay GPU en la nube: `make train-local TAG=… [TRAIN_ARGS="--epochs=1"]` corre el mismo entrenamiento en la Mac (MPS) y publica igual. `train`, `train-local`, `train-finish` y `pull-model` exigen `TAG` y lo dicen si falta.
-
-### 6.6 `make eval`
+### 5.6 `make eval`
 
 ```bash
-make eval                                             # todas las variantes, 150 pares por fuente y dirección
+make david-proxy                                      # en otra terminal, mientras corren las mediciones
+make eval                                             # todas las variantes de .env, 150 pares por fuente y dirección
 make eval EVAL_ARGS="--limit 20"                      # prueba rápida
-make eval EVAL_ARGS="--only gemma4:e4b+hybrid"        # una variante
 make eval EVAL_ARGS="--run final-20261002 --only tzij-2026-10-mix-s7+hybrid+mbr4"  # agrega variantes a una ejecución
 make eval EVAL_ARGS="--split dev_domain --run dev-domain --out evals/dev_domain_report.md"  # decisiones en el dominio de la prueba, sin tocarla
 ```
 
-Necesita internet y ADC para las variantes de Gemini, y en Ollama todos los tags de `BASE_MODEL_TAGS` y `FINETUNED_MODEL_TAGS`. Las predicciones se guardan en `evals/runs/<run>/<variante>.jsonl`, así que una ejecución interrumpida se retoma con `--run`. El reporte incluye todas las variantes que tengan resultados en esa ejecución y dice cuál debe ir en la demo: la mejor variante local. Ese tag va en `LOCAL_MODEL_TAG`. Si cambias de David, revisa también los ejemplos con `make examples`.
+Necesita ADC para las variantes de Gemini y, en el Ollama del David de la nube, los tags de `BASE_MODEL_TAGS` y `FINETUNED_MODEL_TAGS` (la imagen de David trae `LOCAL_MODEL_TAG` y `embeddinggemma`). Las predicciones se guardan en `evals/runs/<run>/<variante>.jsonl`, así que una ejecución interrumpida se retoma con `--run`. Las latencias de un `make eval` son de la GPU de la nube más el viaje por el túnel; las de `final-20261002` se midieron en una laptop. Si cambias de David, revisa también los ejemplos con `make examples`.
 
-## 7. Correr el traductor (y sin internet)
+## 6. La página y David en la nube
 
-```bash
-make up            # o `make up MOCK_AI=1` para ensayar sin nube ni GPU
-```
+La página (`make page-url`) tiene:
 
-Abre `http://127.0.0.1:8787/traductor/` en la laptop (1920×1080 en el proyector; también se ve
-bien a 1280×800). La página tiene:
+- **El cuadro para escribir** y el botón **Traducir** (o `Enter`). El botón ⇄ cambia la dirección: español → Kʼicheʼ o Kʼicheʼ → español.
+- **Las frases de ejemplo** de Firefox Focus (`duel/examples.json`). Al tocar una, se llena el cuadro, se traduce y arriba aparece la traducción correcta, con su fuente y su licencia.
+- **Dos columnas:** David y Goliath. Cada una pide su traducción por separado (`POST /api/translate` con `side`) y se llena en cuanto su modelo responde. En los ejemplos, cada columna muestra además «Se parece a la correcta»: chrF++ contra la traducción correcta, en porcentaje.
 
-- **El cuadro para escribir** y el botón **Traducir** (o `Enter`). El botón ⇄ cambia la dirección:
-  español → Kʼicheʼ o Kʼicheʼ → español.
-- **Las frases de ejemplo** de Firefox Focus (`duel/examples.json`). Al tocar una, se llena el
-  cuadro, se traduce y arriba aparece la traducción correcta, con su fuente y su licencia.
-- **Dos columnas:** David (en la laptop) y Goliath (en la nube). Cada una pide su traducción por
-  separado (`POST /api/translate` con `side`) y se llena en cuanto su modelo responde, con el
-  tiempo y el costo de esa traducción. En los ejemplos, cada columna muestra además «Se parece a la
-  correcta»: chrF++ contra la traducción correcta, en porcentaje.
+Las traducciones no se guardan en ningún lado.
 
-Las traducciones de la página no se guardan en ningún lado: no hay marcador ni historial.
+**Despertar a David.** `tzij-david` tiene mínimo 0 instancias: la GPU se apaga sola unos 15 minutos después de la última petición, y entonces no cobra. Al abrir la página, el navegador pregunta `GET /api/david` cada 3 s; la página llama a `/health` de David con su token, y esa llamada lo despierta. Mientras arranca (unos 3 minutos: la instancia, el modelo de 5.3 GB a la GPU, EmbeddingGemma, el índice y una traducción de prueba), la página dice «Preparando a David…» y no deja traducir. Cuando David contesta `ready`, dice «David listo». Después pregunta una vez por minuto mientras la pestaña está visible: eso lo mantiene despierto. Si pasan 6 minutos sin que despierte, dice «David no responde: recarga la página».
 
-**Sin internet.** Todo lo que usa David está en la laptop. El servicio comprueba la conectividad cada 3 s con una conexión TCP de 0.8 s a `aiplatform.googleapis.com:443`. Sin red, la página dice «Sin internet: David sigue traduciendo», la columna de Goliath dice «Sin conexión» en vez de llamar a Gemini, y David traduce igual. Dos formas de probarlo:
+**Costo.** Mientras está despierto, `tzij-david` cobra unos $0.000395 por segundo (L4 + 8 vCPU + 32 GiB), unos $1.42 por hora. Cerrar la página deja que se apague solo. La página cobra lo mínimo de Cloud Run y Gemini sus tokens.
 
-1. **Real:** apaga el Wi-Fi de la laptop y toca un ejemplo.
-2. **Simulada:** `make up FORCE_OFFLINE=1`. No toca el sistema operativo.
+## 7. Las frases de ejemplo
 
-Requisito previo: `make web` **con** internet al menos una vez, porque `next/font` descarga las tipografías al compilar. Después la página no pide nada a internet.
+`make examples` traduce cada ejemplo 3 veces con el David de la nube y con Goliath, como lo hace la página (`Page.side` en `duel/tzij_duel/page.py`, con tu token de `gcloud`), y guarda en `duel/examples.json` solo los que, las 3 veces, David dejó cerca de la traducción correcta (chrF++ de 50 o más) y por lo menos 15 puntos más cerca que Goliath, con las salidas, los puntajes y los tiempos. Con `IDS=pair_id,…` prueba otras frases de `test_niche` (español → Kʼicheʼ). Necesita el dataset (`make data-pull`), no modelos. Después, `make deploy-page`: la página lleva `examples.json` adentro.
 
-### Las frases de ejemplo
+## 8. Revisión con hablantes nativos (opcional)
 
-`make examples` traduce en vivo cada ejemplo 3 veces con David y con Goliath, como la página, y
-guarda en `duel/examples.json` solo los que, las 3 veces, David dejó cerca de la traducción
-correcta (chrF++ de 50 o más) y por lo menos 15 puntos más cerca que Goliath, con las salidas y los
-puntajes medidos. Con `IDS=pair_id,…` prueba otras frases de `test_niche` (español → Kʼicheʼ).
-`make preflight` falla si los ejemplos no están en el dataset actual o se revisaron con otros
-modelos.
-
-## 8. La vista del duelo (no es parte de la demo)
-
-El servicio todavía sirve la vista del duelo, de una versión anterior de la charla:
-`/presentador/`, con rondas, marcador y teclas (`E`, `S`, `D`, `M`, `/`), y `/validar/`, para que
-una persona hablante vote desde su teléfono. La charla no la usa. Sus comandos siguen funcionando:
-`make reset` (borra rondas y veredictos), `make demo-screens` (sus capturas) y `make emulator` (el
-validador en el Chrome del emulador Android, que llega a la laptop por `10.0.2.2`; falla si el voto
-tarda más de 1 s). Solo responde a peticiones desde la laptop (`127.0.0.1`); el teléfono usa el QR.
-
-## 9. Revisión con hablantes nativos (opcional)
-
-Nada de esta sección es requisito: el conjunto de prueba ya llega `auto_validated` desde el pipeline (`pipeline/validate_test.py`) y el demo corre completo sin intervención humana.
+Nada de esta sección es requisito: el conjunto de prueba ya llega `auto_validated` desde el pipeline (`pipeline/validate_test.py`) y la demo corre completa sin intervención humana.
 
 ### Conjunto de prueba
 
@@ -304,11 +251,10 @@ make eval                                 # vuelve a puntuar con las referencias
 - `ok` → `status=validated`. `fix` → se usa el K'iche' corregido (normalizado) y queda validado. `reject` → el par sale del conjunto de prueba. Sin veredicto → sigue `pending_native_review`.
 - `apply-review` reescribe `data/processed/<versión>/test.jsonl` en su lugar. Guarda el CSV: es la única copia de los veredictos.
 - El CSV incluye pares de BOUQuET. Sus términos solo permiten redistribución privada: compártelo solo con la persona revisora y nunca lo publiques.
-- Con pares validados, `make up REQUIRE_VALIDATED_TEST=1` limita a ellos las rondas de evaluación de la vista del duelo.
 
 ### Evaluación humana a ciegas (`evals/human_eval.md`)
 
-Opcional, solo si hay una persona hablante disponible; el demo no depende de ella. 50 frases por modelo, adecuación y fluidez de 1 a 5.
+Opcional, solo si hay una persona hablante disponible; la demo no depende de ella. 50 frases por modelo, adecuación y fluidez de 1 a 5.
 
 ```bash
 make eval
@@ -318,86 +264,62 @@ make human-eval-sheet VARIANTS="tzij-2026-10-mix-s7+hybrid+mbr4,gemini-3.8-flash
 
 Escribe `evals/runs/<run>/human_eval_sheet.csv` (sin nombres de modelo, filas mezcladas) y `human_eval_key.json` (letra → modelo, que no se comparte hasta terminar). `VARIANTS` usa los nombres de variante del reporte (los mismos de `make eval`); si alguno no tiene resultados en la ejecución, el comando lo dice y no genera la hoja. La hoja muestra el texto original, así que aplica la misma regla de privacidad para BOUQuET.
 
-## 10. Pruebas y ensayo
+## 9. Pruebas
 
 ```bash
-make test                # pruebas de Python (MOCK_AI=1, sin red) + las de la web (vitest)
-make translator-screens  # con `make up` y los modelos reales: usa la página y deja capturas en docs/demo/
+make test      # Python (MOCK_AI=1: sin red, sin GPU) + la página (tsc y vitest)
+make screens   # usa la página en vivo y deja capturas en docs/demo/ (Playwright)
 ```
 
-Las pruebas que necesitan Ollama de verdad están marcadas `@pytest.mark.ollama` y se saltan si Ollama o el modelo no están. El ensayo completo sin nube ni Ollama es `MOCK_AI=1 make up`: no necesita Ollama, ni `make index`, ni el dataset. Usa `duel/mock_data/` (26 pares con licencia indexados con embeddings de hash). Goliath devuelve el texto de entrada sin cambios y David el mejor ejemplo recuperado, así que todo el Kʼicheʼ en pantalla viene de datos con licencia. Sirve para ensayar el flujo, no los números.
+Las pruebas de Python usan modelos simulados: David responde con el mejor ejemplo recuperado de un índice pequeño de pares con licencia (`duel/mock_data/`, embeddings por hashing) y Goliath devuelve el texto de entrada, así que nunca aparece Kʼicheʼ inventado. Cubren la página (`duel/tests/test_page.py`: las dos columnas, cada lado por separado, ejemplos con traducción correcta, David caído, el token de identidad) y el servicio de David (`duel/tests/test_david_service.py`). Las que necesitan Ollama de verdad están marcadas `@pytest.mark.ollama` y se saltan si no hay Ollama.
 
-## 11. Recorrido por el código: una traducción
+## 10. Recorrido por el código: una traducción
 
-De tocar un ejemplo en `/traductor/` a las dos columnas llenas:
+De tocar un ejemplo a las dos columnas llenas:
 
-1. **Entrada.** La página (`web/app/traductor/page.tsx`) hace dos `POST /api/translate`, uno con `side: "david"` y otro con `side: "goliath"`, con `{text, direction, example}`. `Service.translate_text` (`duel/tzij_duel/main.py`) busca el ejemplo en `duel/examples.json` (`examples.py`) para tener la traducción correcta; si el texto ya no es el del ejemplo, lo trata como frase escrita, sin referencia.
-2. **Conectividad.** `refresh_online()` usa `Connectivity.is_online` (`duel/duel_core/connectivity.py`): una conexión TCP a `aiplatform.googleapis.com:443` con 0.8 s de timeout, cacheada 3 s.
-3. **Traducir.** `translate(variant, …)` (`duel/tzij_duel/variants.py`) es la misma función para los dos; David recibe el retriever, Goliath no.
+1. **Entrada.** La página (`web/app/page.tsx`) hace dos `POST /api/translate`, uno con `side: "david"` y otro con `side: "goliath"`, con `{text, direction, example}`. `Page.translate_text` (`duel/tzij_duel/page.py`) busca el ejemplo en `duel/examples.json` (`examples.py`) para tener la traducción correcta; si el texto ya no es el del ejemplo, lo trata como frase escrita, sin referencia.
+2. **David.** `RemoteDavid.translate` (`duel/tzij_duel/remote.py`) pide un token de identidad al servidor de metadatos de Cloud Run y llama a `POST /translate` de `tzij-david`. Ahí, `David.translate` (`duel/tzij_duel/david_app.py`) llama a `translate(variant, …)` (`variants.py`) con el retriever.
+3. **Goliath.** La página llama a la misma `translate(variant, …)` con la variante de Gemini, sin retriever.
 4. **Normalizar.** `translate` normaliza la entrada con `normalize_kiche` o `normalize_spanish` (`data/normalize.py`): todos los saltillos pasan a `'`, se unifican espacios, comillas y guiones, y se pliegan las vocales con diéresis.
-5. **Recuperar (solo David).** `Retriever.retrieve` (`rag/retrieve.py`) normaliza de nuevo y combina BM25 (SQLite FTS5) con la búsqueda por vectores de EmbeddingGemma en `sqlite-vec` (`rag/embedder.py`), fusionadas con Reciprocal Rank Fusion y filtradas por dirección:
+5. **Recuperar (solo David).** `Retriever.retrieve` (`rag/retrieve.py`) combina BM25 (SQLite FTS5) con la búsqueda por vectores de EmbeddingGemma en `sqlite-vec` (`rag/embedder.py`, el Ollama del mismo contenedor), fusionadas con Reciprocal Rank Fusion y filtradas por dirección:
    - **ejemplos:** los `RAG_K` pares de oraciones más cercanos, con el más parecido al final;
    - **glosario:** coincidencias exactas y difusas, y luego las entradas de diccionario más cercanas.
 
-   `as_prompt_context()` arma el bloque `Glosario:` / `Ejemplos:`. El tiempo de recuperación se suma a la latencia de David.
+   `as_prompt_context()` arma el bloque `Glosario:` / `Ejemplos:`.
 6. **Prompt.** `translation_messages` (`duel/tzij_duel/prompts.py`) arma el mensaje de sistema (traductor cuidadoso, ortografía ALMG, apóstrofo para el saltillo, solo la traducción) y el de usuario. Si hay contexto, le antepone el encabezado del material de referencia.
 7. **Modelo.**
-   - David: con `MBR_ON_STAGE=1`, `_mbr` pide 4 traducciones a temperatura 0.7 a Ollama (`duel/duel_core/ollama_client.py`, `POST /api/chat`, `num_ctx` 4096) y se queda con la de mayor chrF++ promedio contra las otras.
-   - Goliath: `GeminiClient.complete` (`gemini_client.py`) llama a Vertex AI con `google-genai`, `thinking_level=low` y 20 s de timeout. Un error de red se convierte en estado `offline` y un timeout en `error`.
+   - David: con `DAVID_MBR=1`, `_mbr` pide 4 traducciones a temperatura 0.7 a Ollama (`duel/duel_core/ollama_client.py`, `POST /api/chat`, `num_ctx` 4096; `OLLAMA_NUM_PARALLEL=4` las corre a la vez en la L4) y se queda con la de mayor chrF++ promedio contra las otras.
+   - Goliath: `GeminiClient.complete` (`gemini_client.py`) llama a Vertex AI con `google-genai`, `thinking_level=low` y 20 s de timeout.
 
    `run_duel` (`duel/duel_core/duel.py`) nunca deja que un modelo que falla tumbe al otro.
-8. **Limpiar y medir.** `clean_translation` (`duel_core/prompts.py`) se queda con la primera línea y quita prefijos tipo "Traducción:" y comillas. `normalize_output` aplica la misma normalización que a las referencias. Con un ejemplo, `chrf_pp` (`duel_core/metrics.py`, sacrebleu `CHRF(word_order=2)`) mide contra la traducción correcta: es el «Se parece a la correcta». El costo sale de `cost_usd` (tokens × precio de `.env`; David es $0).
-9. **Mostrar.** Cada respuesta llena su columna (`Column` en `page.tsx`); los helpers de formato (porcentaje, segundos, costo) están en `web/lib/translator.ts`.
+8. **Limpiar y medir.** `clean_translation` (`duel_core/prompts.py`) se queda con la primera línea y quita prefijos tipo "Traducción:" y comillas. `normalize_output` aplica la misma normalización que a las referencias. Con un ejemplo, `chrf_pp` (`duel_core/metrics.py`, sacrebleu `CHRF(word_order=2)`) mide contra la traducción correcta: es el «Se parece a la correcta».
+9. **Mostrar.** Cada respuesta llena su columna (`Column` en `page.tsx`); los helpers (porcentaje, estado de David) están en `web/lib/translator.ts`.
 
 `make eval` usa exactamente la misma función `translate` con cada variante (`evals/run_eval.py`), pero puntúa con chrF++ a nivel corpus en vez de por oración.
 
-## 12. Solución de problemas
+## 11. Solución de problemas
 
 | Síntoma | Causa probable | Qué hacer |
 | --- | --- | --- |
-| La página dice «No hay conexión con el servicio de Tzij» | El servicio no está corriendo | `make up` y recarga |
-| No aparecen las frases de ejemplo | Falta `duel/examples.json` o la página no está construida | `make preflight` dice cuál: `make examples` o `make web` |
-| `!! el índice de recuperación es del dataset …` al arrancar, o `make eval` se niega a correr | El índice se construyó con otra versión del dataset | `make index` |
-| `!! David (tzij-2026-10-mix-s7) no está en Ollama` al hacer `make up` | El modelo no está descargado | `make pull-model TAG=tzij-2026-10-mix-s7` (o `LOCAL_MODEL_TAG=gemma4:e4b` y `ollama pull gemma4:e4b`) |
-| La columna de David dice «No pudo traducir esta frase» y la consola de `make up` muestra `índice de recuperación no disponible` | Falta `rag/index/tzij.sqlite`, o el servicio lo desactivó al arrancar (`!! retrieval disabled` en la consola) | `make index`; reinicia `make up` |
-| `index built with 'X' but queries use 'Y'` | El índice se construyó con otro `EMBEDDING_MODEL` | `make index` con el modelo de `.env` |
-| La consola muestra `recuperación: …` en las traducciones de David | Ollama no responde a `/api/embed` (EmbeddingGemma no está o Ollama se cayó) | `ollama pull embeddinggemma`; `curl 127.0.0.1:11434/api/version` |
-| La primera traducción de David tarda varios segundos | Modelo frío, o `num_ctx` distinto al de la precarga (fuerza una recarga) | Usa `make up` (precarga); no cambies `OLLAMA_NUM_CTX` en caliente |
-| Goliath sale "Sin conexión" con internet | `FORCE_OFFLINE=1` en `.env`, o la red bloquea `aiplatform.googleapis.com:443` | Revisa `.env`; prueba `nc -z aiplatform.googleapis.com 443` |
-| Goliath sale con error (no "sin conexión") | ADC vencido, permisos de Vertex AI o timeout de 20 s | `gcloud auth application-default login`; revisa `GEMINI_MODEL` |
-| `/` responde `Web views not built: run make web` | Falta `web/out/` | `make web` (con internet, por las tipografías) |
-| `bouquet: skipped (needs HF_TOKEN …)` en el pipeline | No hay token ni acceso al secreto | §4: acepta los términos, crea `hf-token`, vuelve a correr `infra/10-data-job.sh` para dar acceso a la cuenta de servicio |
+| La página dice «Preparando a David…» más de 5 minutos | La GPU no arrancó (cuota, o un error en la imagen) | `gcloud run services logs read tzij-david --region europe-west4 --project ai-experiments-487722 --limit 50`; busca `David listo` |
+| Una columna dice «No pudo traducir esta frase» | David o Gemini respondieron con error | Logs de `tzij` y de `tzij-david`; para Gemini, permisos de `tzij-page` (`aiplatform.user`) |
+| `make examples` o `make eval` dice `DAVID_URL is not set` o 403 | Tu cuenta no puede llamar a `tzij-david`, o falta el servicio | `gcloud auth login`; `make deploy-david` |
+| `make eval` o `make index` no conectan a `127.0.0.1:11434` | No está corriendo `make david-proxy` | Ábrelo en otra terminal |
+| `index built with 'X' but queries use 'Y'` | El índice se construyó con otro `EMBEDDING_MODEL` | `make index` con el modelo de `.env` y `make deploy-david` |
+| `!! Missing gs://…/index/<dataset>/tzij.sqlite` en `infra/20-david.sh` | El dataset de `LATEST` no tiene índice publicado | `make data-pull`, `make david-proxy` y `make index` |
+| `bouquet: skipped (needs HF_TOKEN …)` en el pipeline | No hay token ni acceso al secreto | §3: acepta los términos, crea `hf-token`, vuelve a correr `infra/10-data-job.sh` |
 | Errores 429 de Hugging Face en Cloud Run | Descargas anónimas desde IPs compartidas | Mismo arreglo: el token |
-| `make train` termina en `JOB_STATE_FAILED` por memoria | Esperado con E4B: el entrenamiento terminó, el merge no cabe en 32 GiB | Revisa `train/runs/<tag>.json` (`training: succeeded`) y corre `make train-finish TAG=…` |
-| El job de entrenamiento no termina en 1 h | Demasiadas épocas para el límite de GPU de Cloud Run | `TRAIN_ARGS="--epochs=1"` |
-| `make eval` termina con `No retrieval index` / `No dataset` | Falta `make index` / `make data-pull && make niche-data` | Córrelos primero |
+| `make train` termina en `JOB_STATE_FAILED` por memoria | `TRAIN_FINISH` no es `later` y el merge de E4B no cabe en 32 GiB | `TRAIN_FINISH=later` y `make train-finish TAG=…` |
+| El job de entrenamiento no termina en 1 h | Demasiadas épocas para el límite de GPU de Cloud Run | `TRAIN_ARGS="--epochs=1"` o trozos con `train/chain.sh` |
+| `make eval` termina con `No retrieval index` / `No dataset` | Falta `make data-pull` / `make index` | Córrelos primero |
 
-## 13. Checklist del día de la charla
+## 12. El día de la charla
 
-**La semana anterior**
+No hay nada que correr.
 
-- [ ] `git pull`, `uv sync`, `make test` en verde.
-- [ ] Dataset y modelos al día: `make data-pull && make niche-data` (`LATEST` = `20261002-173447`, con `test_niche.jsonl`), `ollama list` (con `LOCAL_MODEL_TAG` y `embeddinggemma`).
-- [ ] `LOCAL_MODEL_TAG` coincide con la mejor variante local de `evals/report.md`.
-- [ ] Precios de Gemini en `.env` vigentes para la fecha de la charla. Desde el 1 de enero de 2027: `GEMINI_INPUT_USD_PER_M=1.50`, `GEMINI_OUTPUT_USD_PER_M=7.50`.
-- [ ] `make web` con internet (tipografías) y `make examples` en verde (los 12 ejemplos siguen pasando).
+- [ ] **Unos 5 minutos antes:** abre la página (`make page-url` imprime la dirección) en Chrome, en pantalla completa (`⌃⌘F`). Espera a que diga «David listo».
+- [ ] Toca un ejemplo: las dos columnas se llenan y aparece «Se parece a la correcta».
+- [ ] Deja la página abierta durante la charla: así David no se apaga.
+- [ ] **Al terminar:** cierra la pestaña. David se apaga solo unos 15 minutos después.
 
-**El día, con internet**
-
-- [ ] `gcloud auth application-default print-access-token` funciona (ADC vigente).
-- [ ] Energía conectada; suspensión desactivada (`caffeinate -dims` en una terminal); No Molestar activado; pantalla a 1920×1080.
-- [ ] `make up` sin avisos `!!`, y `make stage-on && make warmup && make preflight` hasta «preflight ok».
-- [ ] En `/traductor/`, toca un ejemplo: las dos columnas se llenan, con tiempo, costo y «Se parece a la correcta». Escribe una frase y tradúcela.
-
-**Prueba con el Wi-Fi apagado (obligatoria)**
-
-- [ ] Apaga el Wi-Fi de la laptop. En pocos segundos (el sondeo corre cada 3 s) la página dice «Sin internet: David sigue traduciendo».
-- [ ] Toca un ejemplo: David traduce con su tiempo normal y Goliath dice «Sin conexión». Nada se queda colgado.
-- [ ] Recarga `/traductor/`: carga completa, con tipografías, sin internet.
-- [ ] Vuelve a encender el Wi-Fi y comprueba que la página vuelve a «Con internet».
-
-**Justo antes de empezar**
-
-- [ ] `FORCE_OFFLINE=0` en `.env`.
-- [ ] `/traductor/` en pantalla completa (`⌃⌘F`), con el cuadro vacío.
-- [ ] Plan B si se cae la red del evento: el momento sin internet *es* la demo. David sigue traduciendo.
+La semana anterior, si cambió algo (otro modelo, otro índice, otros precios de Gemini): `make examples` y `make deploy-page`.

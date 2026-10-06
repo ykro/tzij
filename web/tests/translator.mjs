@@ -2,7 +2,7 @@
 // end: David waking up, the page ready, an example (both columns, the correct translation and how
 // close each one got) and a typed sentence. 1920x1080 (projector) and 1280x800 (laptop).
 //   make screens            (or: cd web && BASE_URL=https://... node tests/translator.mjs)
-// Output: docs/demo/pagina-*.png. Exits with an error if a column doesn't fill.
+// Output: docs/demo/pagina-*.png (the 1280x800 pass only checks the layout). Exits with an error if a column doesn't fill.
 import { chromium } from "playwright";
 import { mkdir } from "node:fs/promises";
 
@@ -34,13 +34,13 @@ for (const [w, h, suffix] of [[1920, 1080, ""], [1280, 800, "-laptop"]]) {
   }
   await page.locator(".tx__net--on").waitFor({ timeout: 10 * 60_000 });
   console.log(`  David listo en ${Math.round((Date.now() - t0) / 1000)} s`);
-  await page.screenshot({ path: OUT + `pagina-1-lista${suffix}.png` });
+  if (!suffix) await page.screenshot({ path: OUT + "pagina-1-lista.png" });
 
   await page.getByRole("button", { name: examples[0].text, exact: true }).click();
   await page.locator('.tx__col[aria-busy="true"]').first().waitFor();
   if (!suffix) await page.screenshot({ path: OUT + "pagina-2-traduciendo.png" });
   console.log("  " + (await bothDone(page)).join(" · "));
-  await page.screenshot({ path: OUT + `pagina-3-ejemplo${suffix}.png` });
+  if (!suffix) await page.screenshot({ path: OUT + "pagina-3-ejemplo.png" });
   if (suffix) { await page.close(); continue; }
 
   await page.locator("textarea").fill(TYPED);
