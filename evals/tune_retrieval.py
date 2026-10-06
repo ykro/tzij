@@ -21,7 +21,7 @@ sys.path[:0] = [str(REPO), str(REPO / "duel")]
 
 from duel_core import Price, corpus_chrf_pp, summarize  # noqa: E402
 from rag.retrieve import Retriever  # noqa: E402
-from tzij_duel.deck import latest_dataset  # noqa: E402
+from tzij_duel.dataset import latest_dataset  # noqa: E402
 from tzij_duel.settings import get_settings  # noqa: E402
 from tzij_duel.variants import Variant, ollama_client, translate  # noqa: E402
 

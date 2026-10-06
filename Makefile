@@ -1,7 +1,7 @@
 # Tzij — Spanish <-> K'iche'. Run `make help` for the list.
 SHELL := /bin/bash
 # .env provides defaults; anything set on the command line or in the environment wins
-# (e.g. `MOCK_AI=1 make up`). Each KEY=value line becomes `KEY ?= value`.
+# (e.g. `MOCK_AI=1 make test`). Each KEY=value line becomes `KEY ?= value`.
 ENV_MK := $(shell test -f .env && sed -E 's/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$$/\1 ?= \2/' .env > .env.mk && echo .env.mk)
 -include $(ENV_MK)
 export
@@ -12,10 +12,10 @@ UV ?= uv
 # tzij-2026-10-tm-a-e2-s4 in 8 chunks: train/chain.sh, recipe in docs/ONBOARDING.md section 6.4.
 TRAIN_DATA ?= data/train/chat-raft-bt-both-dst2409-new30.jsonl
 REVIEW_CSV ?=
-DUEL_PORT ?= 8787
-OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
+# The demo runs in Google Cloud: David's GPU service and the page (infra/20-david.sh, infra/21-page.sh).
+DEMO_REGION ?= europe-west4
 
-.PHONY: help demo-screens deploy tune-retrieval niche niche-data distill train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator stage-on stage-off warmup preflight examples translator-screens
+.PHONY: help data deploy deploy-david deploy-page page-url david-proxy data-cloud data-pull index niche-data review-test apply-review fertility datasheet tune-retrieval niche eval human-eval-sheet train-data train-data-raft train-data-raft-bt distill monolingual back-translate train train-finish test examples screens
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -23,11 +23,25 @@ help: ## Show targets
 data: ## Run the data pipeline locally -> data/processed/<version>/ + data/DATASHEET.md
 	$(UV) run python -m pipeline.run --gcs-uri ""
 
-deploy: ## Deploy the cloud parts: project setup, data Cloud Run Job, training job + image (duel and views stay on the laptop)
+deploy: ## Everything in Google Cloud: project setup, data job, training jobs, David's GPU service and the demo page
 	bash infra/00-project.sh
 	DEPLOY_ONLY=1 bash infra/10-data-job.sh
 	bash infra/01-train-service-account.sh
 	bash infra/03-train-job.sh
+	bash infra/20-david.sh
+	bash infra/21-page.sh
+
+deploy-david: ## Rebuild and redeploy David's GPU service (model, index and code): after a new model or index
+	bash infra/20-david.sh
+
+deploy-page: ## Rebuild and redeploy the demo page (web/ and its service)
+	bash infra/21-page.sh
+
+page-url: ## Print the demo page's public URL
+	@gcloud run services describe tzij --region $(DEMO_REGION) --project $(GOOGLE_CLOUD_PROJECT) --format='value(status.url)'
+
+david-proxy: ## Open David's Ollama in the cloud at localhost:11434 for make eval / index / tune-retrieval (leave it running)
+	gcloud run services proxy tzij-david --region $(DEMO_REGION) --project $(GOOGLE_CLOUD_PROJECT) --port 11434
 
 data-cloud: ## Run the pipeline as a Cloud Run Job, writing a versioned dataset to the tzij-data bucket
 	bash infra/10-data-job.sh
@@ -35,8 +49,10 @@ data-cloud: ## Run the pipeline as a Cloud Run Job, writing a versioned dataset 
 data-pull: ## Download the latest dataset produced by the Cloud Run Job
 	$(UV) run python -m pipeline.pull
 
-index: ## Build the offline retrieval index (EmbeddingGemma via Ollama + sqlite-vec)
+index: ## Build the retrieval index (EmbeddingGemma on the cloud David, via make david-proxy) and publish it to the data bucket
 	$(UV) run python -m rag.build_index
+	gcloud storage cp --project $(GOOGLE_CLOUD_PROJECT) $(RAG_INDEX) $(DATA_BUCKET_URI)/index/$$(cat data/processed/LATEST)/tzij.sqlite
+	@echo "Index published. David uses it after: make deploy-david"
 
 niche-data: ## Build the index; if LATEST has no test_niche.jsonl, first hold Firefox Focus out of 20261002-022500 (specialty test)
 	@if [ -f "data/processed/$$(cat data/processed/LATEST 2>/dev/null)/test_niche.jsonl" ]; then \
@@ -96,74 +112,17 @@ train: ## LoRA fine-tune of TRAIN_DATA as a Cloud Run GPU Job (L4), record time 
 	@test -f $(TRAIN_DATA) || $(MAKE) train-data
 	$(UV) run python train/submit_job.py --app tzij --tag $(TAG) --data $(TRAIN_DATA) -- $(TRAIN_ARGS)
 
-train-local: ## Same training of TRAIN_DATA on this Mac (MPS) when no cloud GPU is available: make train-local TAG=... [TRAIN_ARGS=...]
-	@test -n "$(TAG)" || (echo "usage: make train-local TAG=tzij-YYYY-MM [TRAIN_ARGS=\"--epochs=1\"]" && exit 1)
-	@test -f $(TRAIN_DATA) || $(MAKE) train-data
-	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
-	  python train/train_local.py $(TAG) $(TRAIN_DATA) $(TRAIN_ARGS)
-
-train-finish: ## Merge + GGUF a cloud-trained adapter on this Mac and publish it (E4B doesn't fit Cloud Run's 32 GiB)
+train-finish: ## Merge + GGUF an E4B adapter in the cloud (Cloud Batch, 64 GB VM) and publish it: make train-finish TAG=...
 	@test -n "$(TAG)" || (echo "usage: make train-finish TAG=tzij-YYYY-MM (the tag of a finished cloud training run)" && exit 1)
-	uv run --python 3.12 --with-requirements train/requirements.txt --with torch \
-	  python train/finish_local.py $(TAG) $(FINISH_ARGS)
+	bash infra/04-finish-batch.sh $(TAG)
 
-pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-2026-10-mix-s7
-	@test -n "$(TAG)" || (echo "usage: make pull-model TAG=tzij-2026-10-mix-s7" && exit 1)
-	MODELS_BUCKET=$(MODELS_BUCKET) train/pull_model.sh $(TAG)
-
-web: ## Build the translator page (the demo) and the duel views (static export; needs internet once for fonts)
-	cd web && npm ci --silent && npm run build
-
-duel: ## Run only the duel service (API + built views) on the LAN
-	PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run uvicorn tzij_duel.main:create_app --factory --host 0.0.0.0 --port $(DUEL_PORT)
-
-test: ## Python + web tests (offline; Ollama-only tests skip when it isn't running)
+test: ## Python + web tests (mock models: no Ollama, GPU or cloud needed)
 	MOCK_AI=1 $(UV) run pytest -q
-	@if [ -d web/node_modules ]; then cd web && npx vitest run; else echo "(web: npm ci in web/ to run its tests)"; fi
+	@if [ -d web/node_modules ]; then cd web && npx tsc --noEmit && npx vitest run; else echo "(web: npm ci in web/ to run its tests)"; fi
 
-up: ## Start Ollama, warm David, build the views if needed and serve everything on the LAN (MOCK_AI=1: no Ollama)
-	@if [ "$(MOCK_AI)" != 1 ]; then \
-	  curl -sf $(OLLAMA)/api/version >/dev/null || (ollama serve >/tmp/tzij-ollama.log 2>&1 &) ; \
-	  for i in $$(seq 1 40); do curl -sf $(OLLAMA)/api/version >/dev/null && break; sleep 0.25; done; \
-	  curl -sf $(OLLAMA)/api/chat -d '{"model":"$(LOCAL_MODEL_TAG)","messages":[],"keep_alive":"2h","options":{"num_ctx":$(or $(OLLAMA_NUM_CTX),4096)}}' >/dev/null \
-	    || echo "!! David ($(LOCAL_MODEL_TAG)) no está en Ollama: ollama pull $(LOCAL_MODEL_TAG)"; \
-	  curl -sf $(OLLAMA)/api/embed -d '{"model":"$(EMBEDDING_MODEL)","input":["hola"],"keep_alive":"2h"}' >/dev/null \
-	    || echo "!! $(EMBEDDING_MODEL) no está en Ollama: ollama pull $(EMBEDDING_MODEL)"; \
-	  test -f $(RAG_INDEX) || echo "!! Falta el índice de recuperación: make index"; \
-	fi
-	@test -f web/out/index.html || $(MAKE) web
-	@echo "Traductor: http://127.0.0.1:$(DUEL_PORT)/traductor/"
-	$(MAKE) duel
+examples: ## Re-check the page's example phrases against the cloud David and Goliath -> duel/examples.json: [IDS=pair_id,...]
+	@DAVID_URL=$$(gcloud run services describe tzij-david --region $(DEMO_REGION) --project $(GOOGLE_CLOUD_PROJECT) --format='value(status.url)') \
+	  PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.examples $(if $(IDS),--ids $(IDS))
 
-reset: ## Clear the duel view's rounds and verdicts (running service or state file); the translator page keeps no state
-	@curl -sf -X POST http://127.0.0.1:$(DUEL_PORT)/api/reset >/dev/null && echo "Marcador reiniciado (servicio en marcha)." \
-	  || (rm -f $(or $(DUEL_STATE_PATH),duel/state/rounds.json) && echo "Marcador reiniciado (archivo de estado borrado).")
-
-# Talk day: make stage-on && make warmup && make preflight (same sequence in every 2027 demo repo).
-# After the talk: make stage-off.
-stage-on: ## Talk day: nothing to scale (no cloud services; everything on stage runs on this laptop)
-	@echo "Tzij no tiene servicios en la nube que escalar: todo lo que sale en escena corre en la laptop."
-
-stage-off: ## After the talk: nothing to scale down (no cloud services)
-	@echo "Tzij no tiene servicios en la nube que escalar: no queda nada cobrando."
-
-examples: ## Check the translator page's example phrases live with David -> duel/examples.json: [IDS=pair_id,...]
-	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.examples $(if $(IDS),--ids $(IDS))
-
-warmup: ## Load David + the embedding model in Ollama, one David translation (retrieval + MBR) and one Goliath call
-	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.warmup
-
-preflight: ## Talk-day gate: Ollama + models, no Focus-trained David, index = dataset, decks, duel, Gemini, disk, David median of 3 <= 5 s (the p50 budget)
-	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.preflight
-
-emulator: ## Duel view's validator (not part of the demo) in Chrome on the Android emulator (first emulator in adb devices, or ANDROID_SERIAL) + latency check
-	cd web && BASE_URL=$${BASE_URL:-http://127.0.0.1:$(DUEL_PORT)} node tests/emulator.mjs
-
-demo-screens: ## Screenshots of the duel views (not part of the demo) -> docs/demo/0N-*.png, driven with their keys (needs `make up`; EMULATOR=0 skips the phone)
-	cd web && node tests/demo.mjs
-
-translator-screens: ## Screenshots of the translator page for docs/DEMO.md, clicking an example and typing a phrase (needs `make up`)
-	cd web && node tests/translator.mjs
-
-screenshots: ## Playwright screenshots of both views at 1920x1080 and 390x844 (service must be running)
-	cd web && node tests/screenshots.mjs
+screens: ## Screenshots of the live demo page for docs/DEMO.md -> docs/demo/ (the page must be deployed)
+	cd web && BASE_URL=$${BASE_URL:-$$(gcloud run services describe tzij --region $(DEMO_REGION) --project $(GOOGLE_CLOUD_PROJECT) --format='value(status.url)')} node tests/translator.mjs

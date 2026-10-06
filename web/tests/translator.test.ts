@@ -3,12 +3,10 @@ import {
   activeExample,
   cleanInput,
   closenessPercent,
-  costPerThousand,
+  davidStatus,
   displayIn,
   type Example,
   failureText,
-  formatCost,
-  formatSeconds,
   languages,
   MAX_CHARS,
   swapDirection,
@@ -45,19 +43,10 @@ describe("translator page helpers", () => {
     expect(closenessPercent(null)).toBeNull();
   });
 
-  it("formats time and cost so the difference reads at a glance", () => {
-    expect(formatSeconds(2370)).toBe("2.4 s");
-    expect(formatSeconds(null)).toBe("—");
-    expect(formatCost(0)).toBe("Gratis");
-    expect(formatCost(0.000123)).toBe("US$ 0.000123");
-    expect(costPerThousand(0.000123)).toBe("US$ 0.12 por cada 1,000");
-    expect(costPerThousand(0)).toBeNull();
-  });
 
   it("says why a side has no translation, in plain words", () => {
-    expect(failureText("goliath", { status: "offline", error: null })).toMatch(/^Sin conexión/);
-    expect(failureText("david", { status: "error", error: "x" })).toBe("No pudo traducir esta frase. Intenta de nuevo.");
-    expect(failureText("david", { status: "ok", error: null })).toBeNull();
+    expect(failureText({ status: "error" })).toBe("No pudo traducir esta frase. Intenta de nuevo.");
+    expect(failureText({ status: "ok" })).toBeNull();
   });
 
   it("only compares with the correct translation while the box holds the example", () => {
@@ -65,5 +54,14 @@ describe("translator page helpers", () => {
     expect(activeExample([EX], "p1", "Conexión segura hoy", "es-quc")).toBeNull();
     expect(activeExample([EX], "p1", "Conexión segura", "quc-es")).toBeNull();
     expect(activeExample([EX], null, "Conexión segura", "es-quc")).toBeNull();
+  });
+});
+
+describe("David's wake-up state", () => {
+  it("tells, in plain words, whether David can translate yet", () => {
+    const t0 = 1_000_000;
+    expect(davidStatus({ ready: true, since: t0 }, t0)).toBe("David listo");
+    expect(davidStatus({ ready: false, since: t0 }, t0 + 30_000)).toBe("Preparando a David…");
+    expect(davidStatus({ ready: false, since: t0 }, t0 + 7 * 60_000)).toMatch(/no responde/);
   });
 });

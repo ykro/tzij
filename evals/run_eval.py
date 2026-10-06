@@ -30,7 +30,7 @@ sys.path[:0] = [str(REPO), str(REPO / "duel")]
 
 from duel_core import Connectivity, corpus_chrf_pp, summarize  # noqa: E402
 from rag.retrieve import Retriever  # noqa: E402
-from tzij_duel.deck import latest_dataset  # noqa: E402
+from tzij_duel.dataset import latest_dataset  # noqa: E402
 from tzij_duel.settings import Settings, get_settings  # noqa: E402
 from tzij_duel.variants import Variant, eval_variants, translate  # noqa: E402
 
@@ -343,7 +343,7 @@ async def main_async(args) -> None:
             # Retrieval from another dataset version could contain sentences that are now in test.
             raise SystemExit(f"Retrieval index is from dataset {retriever.dataset_version}, "
                              f"but data/processed/LATEST is {dataset.name}: run `make index` first.")
-    online = s.mock_ai or await Connectivity(force_offline=s.force_offline).is_online()
+    online = s.mock_ai or await Connectivity().is_online()
     notes = [] if online else ["No internet during this run: Gemini variants are reported as offline."]
     run_id = args.run or datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     run_dir = RUNS / run_id

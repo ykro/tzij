@@ -1,46 +1,44 @@
-"""Translator page (/traductor/): David and Goliath side by side, plus the example phrases it offers."""
+"""The demo page's service: David and Goliath side by side, plus the example phrases it offers."""
 
 import json
 
 import httpx
 
 from tzij_duel import examples as ex
-from tzij_duel.main import create_app
+from tzij_duel.page import Page, create_app
+from tzij_duel.remote import RemoteDavid
 
 
-async def _client(service):
-    app = create_app(service.settings, service)
+async def _client(page):
+    app = create_app(page.settings, page)
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
 
-async def test_translate_compares_david_and_goliath_without_a_round(service):
-    async with await _client(service) as client:
+async def test_translate_shows_both_translations(page):
+    async with await _client(page) as client:
         res = await client.post("/api/translate", json={"text": "  El perro duerme en la casa. ", "direction": "es-quc"})
-        state = (await client.get("/api/state")).json()
     body = res.json()
     assert res.status_code == 200
     assert body["source_text"] == "El perro duerme en la casa." and body["reference"] is None
-    for name, model in (("david", service.david.model), ("goliath", service.goliath.model)):
+    for name, model in (("david", "gemma-test"), ("goliath", "gemini-test")):
         assert body[name]["status"] == "ok" and body[name]["text"] and body[name]["model"] == model
+        assert body[name]["latency_ms"] > 0
         assert body[name]["closeness"] is None  # typed text: nothing to compare against
-    assert body["david"]["cost_usd"] == 0.0 and body["goliath"]["cost_usd"] > 0.0
-    # Translating is not a round: nothing reaches the duel's scoreboard.
-    assert state["round"] is None and state["scoreboard"]["david"]["evaluation_rounds"] == 0
 
 
-async def test_each_side_can_be_asked_alone(service):
-    async with await _client(service) as client:
+async def test_each_side_can_be_asked_alone(page):
+    async with await _client(page) as client:
         david = (await client.post("/api/translate", json={"text": "El perro duerme en la casa.", "side": "david"})).json()
         goliath = (await client.post("/api/translate", json={"text": "El perro duerme en la casa.", "side": "goliath"})).json()
     assert "david" in david and "goliath" not in david
     assert "goliath" in goliath and "david" not in goliath
 
 
-async def test_an_example_shows_the_correct_translation_and_closeness(service, monkeypatch):
+async def test_an_example_shows_the_correct_translation_and_closeness(page, monkeypatch):
     example = {"pair_id": "n1", "direction": "es-quc", "text": "El perro duerme en la casa.",
                "reference": "Le tz'i' kawar pa le ja.", "source": "Fixture", "license": "test-only", "url": "https://example.test/"}
-    monkeypatch.setattr("tzij_duel.main.load_examples", lambda: [example])
-    async with await _client(service) as client:
+    monkeypatch.setattr("tzij_duel.page.load_examples", lambda: [example])
+    async with await _client(page) as client:
         picked = (await client.post("/api/translate", json={"text": example["text"], "example": "n1"})).json()
         edited = (await client.post("/api/translate", json={"text": "El perro duerme.", "example": "n1"})).json()
     assert picked["reference"]["text"] == example["reference"] and picked["reference"]["source"] == "Fixture"
@@ -49,8 +47,8 @@ async def test_an_example_shows_the_correct_translation_and_closeness(service, m
     assert edited["reference"] is None and edited["david"]["closeness"] is None
 
 
-async def test_translate_works_both_ways_and_rejects_empty(service):
-    async with await _client(service) as client:
+async def test_translate_works_both_ways_and_rejects_empty(page):
+    async with await _client(page) as client:
         back = await client.post("/api/translate", json={"text": "Le tz'i' kawar pa le ja.", "direction": "quc-es"})
         empty = await client.post("/api/translate", json={"text": "   ", "direction": "es-quc"})
         missing = await client.post("/api/translate", json={"text": "", "direction": "es-quc"})
@@ -58,24 +56,56 @@ async def test_translate_works_both_ways_and_rejects_empty(service):
     assert empty.status_code == 422 and missing.status_code == 422
 
 
-async def test_offline_goliath_says_so_and_david_still_translates(service):
-    service.connectivity.force_offline = True
-    async with await _client(service) as client:
-        res = await client.post("/api/translate", json={"text": "El perro duerme en la casa.", "direction": "es-quc"})
-    body = res.json()
-    assert body["online"] is False
-    assert body["david"]["status"] == "ok" and body["goliath"]["status"] == "offline"
+async def test_info_and_david_readiness(page):
+    async with await _client(page) as client:
+        info = (await client.get("/api/info")).json()
+        ready = (await client.get("/api/david")).json()
+    assert info == {"david": "gemma-test", "goliath": "gemini-test"}
+    assert ready == {"ready": True}
 
 
-async def test_examples_endpoint_serves_the_tracked_examples(service, tmp_path, monkeypatch):
+def _remote(handler) -> RemoteDavid:
+    remote = RemoteDavid("https://david.test", transport=httpx.MockTransport(handler))
+    remote._fetch_token = lambda: "token"  # no metadata server in tests
+    return remote
+
+
+async def test_remote_david_sends_an_identity_token_and_reads_readiness():
+    seen = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen[request.url.path] = request.headers.get("authorization")
+        if request.url.path == "/health":
+            return httpx.Response(200, json={"ready": False})
+        return httpx.Response(200, json={"status": "ok", "text": "Chajital t'iqonem", "model": "m", "error": None})
+
+    remote = _remote(handler)
+    assert await remote.health() is False
+    assert (await remote.translate("Conexión segura", "es-quc"))["text"] == "Chajital t'iqonem"
+    assert seen == {"/health": "Bearer token", "/translate": "Bearer token"}
+
+
+async def test_david_down_is_an_error_on_his_side_only(settings, page):
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, text="Service Unavailable")
+
+    broken = Page(settings, david=_remote(handler), goliath=page.goliath)
+    async with await _client(broken) as client:
+        body = (await client.post("/api/translate", json={"text": "El perro duerme en la casa."})).json()
+        ready = (await client.get("/api/david")).json()
+    assert body["david"]["status"] == "error" and body["david"]["text"] == ""
+    assert body["goliath"]["status"] == "ok"
+    assert ready == {"ready": False}
+
+
+async def test_examples_endpoint_serves_the_tracked_examples(page, tmp_path, monkeypatch):
     path = tmp_path / "examples.json"
     path.write_text(json.dumps({"examples": [{
         "pair_id": "n1", "direction": "es-quc", "text": "Conexión segura", "reference": "Chajital t'iqonem",
         "source": "Mozilla Pontoon (Firefox Focus)", "url": "https://example.test/", "license": "MPL-2.0",
         "chrf": [100.0, 100.0, 100.0]}]}))
-    monkeypatch.setattr(ex, "EXAMPLES", path)
-    monkeypatch.setattr("tzij_duel.main.load_examples", lambda: ex.load_examples(path))
-    async with await _client(service) as client:
+    monkeypatch.setattr("tzij_duel.page.load_examples", lambda: ex.load_examples(path))
+    async with await _client(page) as client:
         res = await client.get("/api/examples")
     assert res.json() == [{"pair_id": "n1", "direction": "es-quc", "text": "Conexión segura", "reference": "Chajital t'iqonem",
                            "source": "Mozilla Pontoon (Firefox Focus)", "url": "https://example.test/", "license": "MPL-2.0"}]

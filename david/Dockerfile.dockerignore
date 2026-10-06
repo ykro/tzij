@@ -1,0 +1,14 @@
+**
+!pyproject.toml
+!uv.lock
+!.python-version
+!.env.example
+!data/__init__.py
+!data/normalize.py
+!rag/*.py
+!duel/duel_core/*.py
+!duel/tzij_duel/*.py
+!duel/examples.json
+!duel/mock_data/**
+!david/start.sh
+!build/david/**

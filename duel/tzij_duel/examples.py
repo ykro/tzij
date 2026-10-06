@@ -1,11 +1,12 @@
-"""Example phrases for the translator page (/traductor/): one click fills the box and translates.
+"""Example phrases for the demo page: one click fills the box and both translate.
 
 They come from the use case David wins: a translation memory (Firefox Focus, español → Kʼicheʼ,
 evals/niche_results.md: 37.4 vs 28.9 chrF++). Each one is a licensed pair from test_niche.jsonl
 (Mozilla Pontoon, MPL-2.0), never in David's training data or retrieval index. It was translated
-live ROUNDS times by David and by Goliath, exactly as the page does, and is kept only if every
-time David stays at or above MIN_CHRF against the licensed reference and beats Goliath by at
-least MIN_MARGIN. duel/examples.json is tracked; `make examples` re-checks it.
+ROUNDS times by David (his GPU service in the cloud, DAVID_URL) and by Goliath, exactly as the page
+does, and is kept only if every time David stays at or above MIN_CHRF against the licensed
+reference and beats Goliath by at least MIN_MARGIN. duel/examples.json is tracked; `make examples`
+re-checks it.
 
   make examples                    # re-check the examples in duel/examples.json
   make examples IDS=id1,id2,...    # check these test_niche pair_ids and keep the ones that pass
@@ -20,7 +21,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from .deck import latest_dataset
+from .dataset import latest_dataset
 from .settings import REPO_ROOT, get_settings
 
 EXAMPLES = REPO_ROOT / "duel" / "examples.json"
@@ -58,12 +59,13 @@ def passes(runs: list[tuple[float | None, float | None]], rounds: int = ROUNDS, 
 
 
 async def verify(pair_ids: list[str], rounds: int = ROUNDS) -> list[dict]:
-    from .main import _load_retriever
-    from .variants import stage_variants, translate
+    from .page import Page
 
     s = get_settings()
-    david, goliath = stage_variants(s)
-    retriever = _load_retriever(s)
+    if not s.david_url:
+        raise SystemExit("DAVID_URL is not set: the examples are checked against David's service in the cloud "
+                         "(gcloud run services describe tzij-david --region europe-west4 --format='value(status.url)')")
+    page = Page(s)
     pairs = niche_pairs(s.processed_dir)
     kept = []
     for pid in pair_ids:
@@ -73,13 +75,15 @@ async def verify(pair_ids: list[str], rounds: int = ROUNDS) -> list[dict]:
             continue
         runs: list[tuple[float | None, float | None]] = []
         outputs: list[tuple[str, str]] = []
+        times: list[tuple[float | None, float | None]] = []
         for _ in range(rounds):
             d, g = await asyncio.gather(
-                translate(david, pair["source_text"], "es-quc", retriever=retriever, online=True, reference=pair["target_text"]),
-                translate(goliath, pair["source_text"], "es-quc", retriever=None, online=True, reference=pair["target_text"]),
+                page.side("david", pair["source_text"], "es-quc", pair["target_text"]),
+                page.side("goliath", pair["source_text"], "es-quc", pair["target_text"]),
             )
-            runs.append((d.chrf, g.chrf))
-            outputs.append((d.text, g.text))
+            runs.append((d["closeness"], g["closeness"]))
+            outputs.append((d["text"], g["text"]))
+            times.append((d["latency_ms"], g["latency_ms"]))
             if not passes(runs, len(runs)):
                 break
         ok = passes(runs, rounds)
@@ -92,7 +96,8 @@ async def verify(pair_ids: list[str], rounds: int = ROUNDS) -> list[dict]:
                          "source": SOURCE_LABEL.get(pair["source_name"], pair["source_name"]),
                          "product": pair.get("product", ""), "url": pair["url"], "license": pair["license"],
                          "david_outputs": [o[0] for o in outputs], "goliath_outputs": [o[1] for o in outputs],
-                         "david_chrf": [d for d, _ in runs], "goliath_chrf": [g for _, g in runs]})
+                         "david_chrf": [d for d, _ in runs], "goliath_chrf": [g for _, g in runs],
+                         "david_ms": [d for d, _ in times], "goliath_ms": [g for _, g in times]})
     return kept
 
 
@@ -108,8 +113,8 @@ def main() -> int:
     dataset = latest_dataset(s.processed_dir)
     kept = asyncio.run(verify(ids))
     EXAMPLES.write_text(json.dumps({
-        "about": "Example buttons of /traductor/: licensed español → Kʼicheʼ pairs from the Firefox Focus "
-                 f"translation memory (test_niche), translated live {ROUNDS} times by David and Goliath; every time David "
+        "about": "Example buttons of the demo page: licensed español → Kʼicheʼ pairs from the Firefox Focus "
+                 f"translation memory (test_niche), translated {ROUNDS} times by David (GPU service in the cloud) and Goliath; every time David "
                  f"had chrF++ >= {MIN_CHRF:g} against the reference and beat Goliath by >= {MIN_MARGIN:g}. Built by `make examples`.",
         "dataset": dataset.name if dataset else None, "david": s.david_model, "goliath": s.gemini_model,
         "min_chrf": MIN_CHRF, "min_margin": MIN_MARGIN,

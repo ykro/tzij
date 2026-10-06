@@ -1,8 +1,9 @@
 """Second half of a fine-tune: LoRA adapter -> merge -> GGUF (f16 + quantized) -> Modelfile -> bucket.
 
 Runs as its own Cloud Run Job (CPU only, `${APP}-finish`), right after the GPU job that trains the
-adapter (`${APP}-train`, `ADAPTER_ONLY=1`). `make train` chains both; `make train-finish` runs this
-same code on a laptop as a fallback (finish_local.py).
+adapter (`${APP}-train`, `ADAPTER_ONLY=1`). `make train` chains both. For Gemma 4 E4B, whose merged
+checkpoint doesn't fit a Cloud Run instance, `make train-finish` runs this same file on a Cloud Batch
+VM with 64 GB of RAM and a 200 GB disk (infra/04-finish-batch.sh).
 
     python finish.py --tag tzij-2026-10 --adapter-uri /mnt/work/tzij/runs/tzij-2026-10/adapter \
         --base-model $GEMMA_BASE_MODEL --weights-uri $GEMMA_WEIGHTS_URI --ollama-renderer $OLLAMA_RENDERER \

@@ -1,7 +1,7 @@
 """The contenders, as variants: a model + whether it reads the retrieval index.
 
-On stage:  David   = LOCAL_MODEL_TAG (Gemma on Ollama) + retrieval
-           Goliath = GEMINI_MODEL alone (the frontier model as people use it)
+On the page:  David   = LOCAL_MODEL_TAG (fine-tuned Gemma on the David GPU service) + retrieval + MBR
+              Goliath = GEMINI_MODEL alone (the frontier model as people use it)
 In `make eval` every available combination runs, including Gemini + the same
 retrieval: if the context helps Gemini too, the report says so.
 
@@ -123,7 +123,7 @@ async def _mbr(variant: Variant, messages, online: bool, direction: str) -> Cont
     return chosen
 
 
-# --- mock mode (MOCK_AI=1): no network, no GPU, and no invented K'iche' -------------------------
+# --- mock mode (MOCK_AI=1, tests): no network, no GPU, and no invented K'iche' -------------------------
 # The mock answers are *taken from the retrieval context* (licensed data), never made up: David
 # returns the target of its best example, Goliath (who has no context) the Spanish unchanged.
 
@@ -157,20 +157,30 @@ def gemini_price(s: Settings) -> Price:
     return Price(s.gemini_input_usd_per_m, s.gemini_output_usd_per_m)
 
 
-def stage_variants(s: Settings) -> tuple[Variant, Variant]:
-    """David and Goliath as the audience sees them."""
-    if s.mock_ai:
-        david_client: ModelClient = MockClient(_mock_david, latency_ms=420, sleep=True)
-        goliath_client: ModelClient = MockClient(_mock_goliath, latency_ms=1500, offline=s.force_offline, sleep=True)
-    else:
-        david_client = ollama_client(s)
-        goliath_client = GeminiClient(s.project, s.location, thinking_level=s.gemini_thinking_level or None)
-    stage_mbr = s.mbr_samples if _env_flag("MBR_ON_STAGE") and not s.mock_ai else 0
-    david = Variant("david", "David", david_client, s.david_model or "mock-gemma", Price.free(), True, False,
-                    retrieval=s.rag_mode, k=s.rag_k, mbr=stage_mbr,
-                    sampler=ollama_client(s, temperature=0.7) if stage_mbr else None)
-    goliath = Variant("goliath", "Goliath", goliath_client, s.gemini_model or "mock-gemini", gemini_price(s), False, True)
-    return david, goliath
+def david_variant(s: Settings) -> Variant:
+    """David as the page shows him: the fine-tuned Gemma + hybrid retrieval + MBR, on the David GPU service."""
+    client: ModelClient = MockClient(_mock_david, latency_ms=420, sleep=True) if s.mock_ai else ollama_client(s)
+    mbr = s.mbr_samples if _env_flag("DAVID_MBR") and not s.mock_ai else 0
+    return Variant("david", "David", client, s.david_model or "mock-gemma", Price.free(), True, False,
+                   retrieval=s.rag_mode, k=s.rag_k, mbr=mbr,
+                   sampler=ollama_client(s, temperature=0.7) if mbr else None)
+
+
+def goliath_variant(s: Settings) -> Variant:
+    """Goliath: Gemini alone, the frontier model as people use it."""
+    client: ModelClient = (MockClient(_mock_goliath, latency_ms=1500, sleep=True) if s.mock_ai
+                           else GeminiClient(s.project, s.location, thinking_level=s.gemini_thinking_level or None))
+    return Variant("goliath", "Goliath", client, s.gemini_model or "mock-gemini", gemini_price(s), False, True)
+
+
+def load_retriever(s: Settings) -> Retriever | None:
+    """David's retrieval index (built by `make index`); None if it's missing."""
+    try:
+        return Retriever(s.rag_index, mode=s.rag_mode, order=s.rag_order, fuzzy=s.rag_fuzzy,
+                         trigram=s.rag_trigram, select=s.rag_select)
+    except (FileNotFoundError, RuntimeError) as exc:
+        print(f"!! retrieval disabled: {exc}")
+        return None
 
 
 def eval_variants(s: Settings) -> list[Variant]:

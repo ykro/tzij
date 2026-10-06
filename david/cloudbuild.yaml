@@ -1,0 +1,28 @@
+# David's image: model, Modelfile and retrieval index come from Cloud Storage (never from a laptop).
+steps:
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        mkdir -p build/david/model build/david/index
+        gcloud storage cp "${_MODELS_BUCKET}/${_MODEL_TAG}/Modelfile" "${_MODELS_BUCKET}/${_MODEL_TAG}/*.gguf" build/david/model/
+        gcloud storage cp "${_DATA_BUCKET}/index/${_DATASET}/tzij.sqlite" build/david/index/tzij.sqlite
+        ls -la build/david/model build/david/index
+  - name: gcr.io/cloud-builders/docker
+    env: ["DOCKER_BUILDKIT=1"]
+    args: ["build", "-f", "david/Dockerfile", "--build-arg", "MODEL_TAG=${_MODEL_TAG}",
+           "--build-arg", "EMBEDDING_MODEL=${_EMBEDDING_MODEL}", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]
+options:
+  machineType: E2_HIGHCPU_8
+  diskSizeGb: 100
+timeout: 3600s
+substitutions:
+  _IMAGE: ""
+  _MODEL_TAG: ""
+  _EMBEDDING_MODEL: embeddinggemma
+  _MODELS_BUCKET: ""
+  _DATA_BUCKET: ""
+  _DATASET: ""

@@ -29,3 +29,16 @@ deploy_run() {
   gcloud run deploy "$service" --image "$image" --region "$REGION" --quiet "$@"
   gcloud run services describe "$service" --region "$REGION" --format='value(status.url)'
 }
+
+# The demo: David's GPU service and the page, both next to the L4 quota (Cloud Run GPUs without
+# zonal redundancy are available to this project in europe-west4).
+export DEMO_REGION="${DEMO_REGION:-europe-west4}"
+export DAVID_SERVICE="${DAVID_SERVICE:-${APP}-david}"
+export PAGE_SERVICE="${PAGE_SERVICE:-${APP}}"
+
+# dotenv <KEY>: a value from .env (or .env.example), for the few settings the deploy scripts need.
+dotenv() {
+  local root; root="$(cd "$INFRA_DIR/.." && pwd)"
+  local file="$root/.env"; [ -f "$file" ] || file="$root/.env.example"
+  sed -n -E "s/^$1=(.*)$/\1/p" "$file" | tail -1
+}

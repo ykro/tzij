@@ -130,7 +130,7 @@ def run_cloud_run(args, image: str, data_uri: str, region: str, run: dict, out: 
                rates_usd_per_s=CLOUD_RUN_RATES, stages={})
     out.write_text(json.dumps(run, indent=2) + "\n")
     if args.no_wait:
-        print("    --no-wait: only the training job is started; finish later with `make train-finish`", flush=True)
+        print("    --no-wait: only the training job is started; finish later with `make train-finish` (Cloud Batch)", flush=True)
         run["stages"]["train"] = {"job": f"{args.app}-train", "execution": sh(
             "gcloud", "run", "jobs", "execute", f"{args.app}-train", f"--region={region}", "--async",
             f"--args={','.join(train_args(args, data_uri, work_dir))}", "--format=value(metadata.name)")}
@@ -139,13 +139,13 @@ def run_cloud_run(args, image: str, data_uri: str, region: str, run: dict, out: 
     stages = run["stages"]
     stages["train"] = execute(f"{args.app}-train", region, train_args(args, data_uri, work_dir), gpu=True, attach=args.attach)
     out.write_text(json.dumps(run, indent=2) + "\n")
-    finish_here = os.environ.get("TRAIN_FINISH", "cloud") != "local"
+    finish_here = os.environ.get("TRAIN_FINISH", "cloud") != "later"
     if stages["train"]["state"] == "SUCCEEDED" and finish_here:
         stages["finish"] = execute(f"{args.app}-finish", region, finish_args(args, work_dir), gpu=False)
     elif not finish_here:
         # tzij: Gemma 4 E4B's merged checkpoint (16 GB) doesn't fit the CPU job's 32 GiB either;
-        # the adapter waits in the staging bucket for `make train-finish` on the laptop.
-        run["finish"] = "laptop (make train-finish)"
+        # the adapter waits in the staging bucket for `make train-finish` (Cloud Batch, infra/04-finish-batch.sh).
+        run["finish"] = "cloud batch (make train-finish)"
     done = [s for s in stages.values() if s.get("duration_s")]
     failed = next((s for s in stages.values() if s["state"] != "SUCCEEDED"), None)
     run.update(

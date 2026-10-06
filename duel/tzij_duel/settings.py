@@ -37,7 +37,7 @@ class Settings:
     gemini_thinking_level: str = field(default_factory=lambda: _env("GEMINI_THINKING_LEVEL", "low"))
     gemini_input_usd_per_m: float = field(default_factory=lambda: _float("GEMINI_INPUT_USD_PER_M", 0.0))
     gemini_output_usd_per_m: float = field(default_factory=lambda: _float("GEMINI_OUTPUT_USD_PER_M", 0.0))
-    # David: the Gemma variant on stage (base or fine-tuned), always with retrieval.
+    # David: the Gemma variant the page shows (fine-tuned), always with retrieval.
     david_model: str = field(default_factory=lambda: _env("LOCAL_MODEL_TAG"))
     # Extra Ollama models compared in `make eval` (base E2B vs E4B, fine-tuned tags later).
     base_model_tags: list[str] = field(default_factory=lambda: _list("BASE_MODEL_TAGS"))
@@ -55,18 +55,14 @@ class Settings:
     # Extra retrieval options, off until dev says otherwise: trigram list (RRF) and n-gram coverage selection.
     rag_trigram: bool = field(default_factory=lambda: _env("RAG_TRIGRAM", "0") == "1")
     rag_select: str = field(default_factory=lambda: _env("RAG_SELECT", "rank"))
-    # MBR decoding: number of samples (0 = off). Eval variants "+mbrN" use it; on stage only if p50 <= 5 s.
+    # MBR decoding: number of samples (0 = off). Eval variants "+mbrN" use it; David's service when MBR_ON_STAGE=1.
     mbr_samples: int = field(default_factory=lambda: int(_env("MBR_SAMPLES", "0")))
     mock_ai: bool = field(default_factory=lambda: _flag("MOCK_AI"))
-    force_offline: bool = field(default_factory=lambda: _flag("FORCE_OFFLINE"))
-    state_path: Path = field(default_factory=lambda: REPO_ROOT / _env("DUEL_STATE_PATH", "duel/state/rounds.json"))
+    # The page's backend calls David's GPU service here (Cloud Run, private). Empty: David runs in
+    # the same process (tests, MOCK_AI=1).
+    david_url: str = field(default_factory=lambda: _env("DAVID_URL"))
     processed_dir: Path = field(default_factory=lambda: REPO_ROOT / "data" / "processed")
     web_dir: Path = field(default_factory=lambda: REPO_ROOT / "web" / "out")
-    port: int = field(default_factory=lambda: int(_env("DUEL_PORT", "8787")))
-    # URL the phone opens (QR). Empty: detected from the laptop's LAN address.
-    public_url: str = field(default_factory=lambda: _env("PUBLIC_URL"))
-    # On stage, evaluation rounds should use references a native speaker validated.
-    require_validated_test: bool = field(default_factory=lambda: _flag("REQUIRE_VALIDATED_TEST"))
 
 
 def get_settings() -> Settings:
