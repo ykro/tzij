@@ -10,12 +10,12 @@ Por qué Tzij está hecho así: el detalle de lo que enseña la demo, cada decis
 | **Split por fuente, no por oración.** Una fuente entera es de prueba o entera de entrenamiento, y cualquier par de entrenamiento que repita una oración de prueba se descarta. Si las oraciones se repartieran al azar, la evaluación mediría memoria. | [`pipeline/split.py`](../pipeline/split.py), [`pipeline/sources/__init__.py`](../pipeline/sources/__init__.py), [`data/DATASHEET.md`](../data/DATASHEET.md) |
 | **Ablación decidida por `make eval`.** Base + vectores → + recuperación híbrida → + fine-tune RAFT con retrotraducción → + MBR → + datos en el dominio de la prueba (retrotraducción de Bloom y destilación), más Gemini con y sin recuperación, sobre las mismas 600 frases. Se ajusta con dev (desde el 4 de octubre, con `dev_domain`: párrafos de BOUQuET y páginas de Bloom fuera de la muestra de prueba) y se mide con prueba una sola vez. Gana la mejor variante local con p50 ≤ 5 s, aunque no sea la que costó más trabajo. | [`evals/run_eval.py`](../evals/run_eval.py), [`evals/tune_retrieval.py`](../evals/tune_retrieval.py), [`duel/tzij_duel/variants.py`](../duel/tzij_duel/variants.py), [`evals/report.md`](../evals/report.md) |
 | **Recuperación híbrida.** BM25 (FTS5) para las palabras raras y EmbeddingGemma para el sentido, fusionados con RRF; glosario exacto y difuso; el ejemplo más cercano va al final, junto a la frase. | [`rag/retrieve.py`](../rag/retrieve.py), [`rag/store.py`](../rag/store.py), [`evals/tuning.md`](../evals/tuning.md) |
-| **RAFT, retrotraducción y destilación: Goliath enseña una vez.** El fine-tune ve el mismo contexto recuperado que verá en escena, sin su propia respuesta. Gemini traduce al español K'iche' monolingüe con licencia, y esos pares entrenan las dos direcciones. Además destila: escribe español cotidiano en los dominios de la prueba y lo traduce al K'iche' con el contexto de David, y solo quedan los pares que pasan el alfabeto de la ALMG y la ida y vuelta. Todo se usa solo para entrenar, con origen, modelo, prompt, semilla y costo registrados. | [`pipeline/train_set.py`](../pipeline/train_set.py), [`pipeline/monolingual.py`](../pipeline/monolingual.py), [`pipeline/back_translate.py`](../pipeline/back_translate.py), [`pipeline/distill.py`](../pipeline/distill.py) |
+| **RAFT, retrotraducción y destilación: Goliath enseña una vez.** El fine-tune ve el mismo contexto recuperado que verá en la demo, sin su propia respuesta. Gemini traduce al español K'iche' monolingüe con licencia, y esos pares entrenan las dos direcciones. Además destila: escribe español cotidiano en los dominios de la prueba y lo traduce al K'iche' con el contexto de David, y solo quedan los pares que pasan el alfabeto de la ALMG y la ida y vuelta. Todo se usa solo para entrenar, con origen, modelo, prompt, semilla y costo registrados. | [`pipeline/train_set.py`](../pipeline/train_set.py), [`pipeline/monolingual.py`](../pipeline/monolingual.py), [`pipeline/back_translate.py`](../pipeline/back_translate.py), [`pipeline/distill.py`](../pipeline/distill.py) |
 | **MBR.** 4 muestras y gana la de mayor chrF++ promedio contra las demás: la mayor ganancia individual del David anterior (+3.2), a cambio de latencia. | [`duel/tzij_duel/variants.py`](../duel/tzij_duel/variants.py) (`_mbr`) |
 | **Un nicho pre-registrado: memoria de traducción.** Se aparta un producto completo de Pontoon (Firefox Focus) y los demás productos se quedan como memoria de traducción. La regla, el producto y los términos se publican en git antes de calcular nada; se mide chrF++ y la precisión de terminología al estilo WMT con bootstrap. Ahí David gana: 37.4 contra 28.9 (+8.5 [+4.7, +12.7]). | [`pipeline/niche.py`](../pipeline/niche.py), [`evals/niche.md`](../evals/niche.md), [`evals/niche_report.py`](../evals/niche_report.py), [`evals/niche_results.md`](../evals/niche_results.md) |
 | **Fertilidad de tokens.** En el tokenizador de Gemma, una palabra K'iche' cuesta 2.64 tokens y una española 1.41. La misma oración ocupa **1.92×** tokens en K'iche'. | [`evals/fertility.py`](../evals/fertility.py), [`evals/fertility.md`](../evals/fertility.md) |
 | **Offline por diseño.** Modelo, embeddings, índice, servicio y vistas viven en la laptop. Las tipografías se descargan al compilar. Un sondeo TCP de 0.8 s decide si Goliath está en línea antes de llamarlo. | [`duel/duel_core/connectivity.py`](../duel/duel_core/connectivity.py), [`rag/embedder.py`](../rag/embedder.py), [`web/next.config.ts`](../web/next.config.ts), [`duel/tzij_duel/main.py`](../duel/tzij_duel/main.py) |
-| **Validación automática; hablantes nativos opcionales.** Nadie tiene que revisar nada para que el demo funcione: cada par de prueba se valida solo (split por fuente, limpieza, proporción de longitud 0.5–2.0, el lado español parece español, nada repetido de train) y queda `auto_validated`. La revisión nativa y la vista del validador en el teléfono son extras opcionales. | [`pipeline/validate_test.py`](../pipeline/validate_test.py), [`pipeline/review.py`](../pipeline/review.py) (opcional), [`web/app/validar/page.tsx`](../web/app/validar/page.tsx) (opcional), [`evals/human_eval.md`](../evals/human_eval.md) (opcional) |
+| **Validación automática; hablantes nativos opcionales.** Nadie tiene que revisar nada para que el demo funcione: cada par de prueba se valida solo (split por fuente, limpieza, proporción de longitud 0.5–2.0, el lado español parece español, nada repetido de train) y queda `auto_validated`. La revisión nativa y la evaluación humana a ciegas (`make human-eval-sheet`) son extras opcionales. | [`pipeline/validate_test.py`](../pipeline/validate_test.py), [`pipeline/review.py`](../pipeline/review.py) (opcional), [`web/app/validar/page.tsx`](../web/app/validar/page.tsx) (opcional), [`evals/human_eval.md`](../evals/human_eval.md) (opcional) |
 
 ## Decisiones
 
@@ -25,31 +25,25 @@ Por qué Tzij está hecho así: el detalle de lo que enseña la demo, cada decis
 | --- | --- | --- |
 | David (`tzij-2026-10-mix-s7` en Ollama) | Laptop | La charla trata de un modelo que sirve a una comunidad sin conexión. Si David necesitara internet, no habría historia. |
 | Índice de recuperación (EmbeddingGemma + `sqlite-vec`) | Laptop | Las consultas se hacen en el escenario sin red, así que el índice tiene que construirse con el mismo modelo de embeddings que responde offline. El nombre del modelo se guarda dentro del índice y se verifica en cada consulta (`rag/retrieve.py`). |
-| Servicio de duelo (FastAPI) | Laptop | Llama a David y a Goliath en paralelo, mide latencia y costo, y guarda rondas y veredictos en un JSON. Si se va la red, Goliath aparece "sin conexión" y David sigue. |
-| Vistas del presentador y del validador (Next.js, export estático) | Laptop, servidas por el mismo proceso | Un solo origen en la LAN: el teléfono solo necesita la IP de la laptop. Las tipografías se descargan al compilar (`next/font`), así que la página no pide nada a internet. |
+| Servicio de Tzij (FastAPI) | Laptop | Para cada frase de la página llama a David y a Goliath en paralelo (cada columna por separado), mide latencia y costo y, en los ejemplos, el parecido con la traducción correcta. No guarda nada. Si se va la red, Goliath aparece "Sin conexión" y David sigue. |
+| Página del traductor (Next.js, export estático) | Laptop, servida por el mismo proceso | Un solo origen, sin nada que instalar. Las tipografías se descargan al compilar (`next/font`), así que la página no pide nada a internet. |
 | Goliath (`gemini-3.8-flash`) | Vertex AI, `global` | Es el modelo frontier tal como lo usa la gente, sin datos extra. Necesita internet a propósito. |
-| Pipeline de datos | Cloud Run Job (`us-central1`) | Descarga unos 1.5 GB (el volcado de Wikcionario se filtra en streaming), tiene que ser reproducible y no debe depender de la laptop del presentador. Guarda la caché cruda y los datasets versionados en `gs://…-tzij-data`. `make data` corre el mismo código en local. |
+| Pipeline de datos | Cloud Run Job (`us-central1`) | Descarga unos 1.5 GB (el volcado de Wikcionario se filtra en streaming), tiene que ser reproducible y no debe depender de la laptop de la charla. Guarda la caché cruda y los datasets versionados en `gs://…-tzij-data`. `make data` corre el mismo código en local. |
 | Fine-tune LoRA | Cloud Run Job con 1× NVIDIA L4 (`europe-west4`) | Sin servidores, se cobra por segundo, no queda nada encendido entre reentrenamientos, y usa la misma idea de contenedor que el pipeline. `TRAIN_RUNTIME=vertex` envía el mismo contenedor como Vertex AI Custom Job, y `train/colab.ipynb` envuelve el mismo script para Colab Enterprise. |
 | Merge y GGUF del modelo E4B | Laptop (`make train-finish`) | Ver abajo. |
 
-**El validador en la LAN.** El teléfono abre `http://<IP de la laptop>:8787/validar/` (el QR la calcula en `duel/tzij_duel/lan.py`, o se fija con `PUBLIC_URL`). Recibe las dos traducciones en orden aleatorio, sin nombre, latencia ni costo, y su voto aparece en la pantalla del presentador por SSE. En el emulador Android la laptop es `10.0.2.2`. `make emulator` comprueba que el voto llegue en menos de 1 s.
+### Quién puede usar la API
 
-### Qué puede hacer cada quien en la LAN
+El servicio escucha en `0.0.0.0`, pero la página del traductor y su API (`/api/translate`,
+`/api/examples`, `/api/state`) solo responden a peticiones desde la laptop (`127.0.0.1`); desde
+otra máquina responden 403. Por eso la página se abre en `http://127.0.0.1:8787/traductor/`.
 
-El servicio escucha en `0.0.0.0` para que el teléfono llegue, así que la API separa dos públicos:
+La vista del duelo de una versión anterior de la charla (`/presentador/`, con rondas y marcador, y
+`/validar/`, para que una persona hablante vote a ciegas desde su teléfono) sigue en el servicio
+con las mismas reglas, pero no es parte de la demo.
 
-- **La laptop del presentador** (peticiones desde `127.0.0.1`): iniciar rondas, reiniciar, simular
-  Wi-Fi apagado, leer el estado completo y el flujo `state`. Por eso la vista del presentador se
-  abre en `http://127.0.0.1:8787/presentador/`, no con la IP de la LAN. Desde otra máquina estas
-  rutas responden 403.
-- **El teléfono:** solo el flujo `validator` y el voto. El flujo del teléfono es otro conjunto de
-  suscriptores (`duel/tzij_duel/events.py`): nunca recibe nombres de modelo, latencia, costo ni la
-  referencia, así que el voto es a ciegas de verdad, no solo en la interfaz. El voto se acepta solo
-  para la ronda en vivo actual y una vez por traducción; las rondas de evaluación no aceptan votos
-  (se califican con chrF++).
-
-Descartado: autenticación con usuario y contraseña. En el escenario no hay tiempo para iniciar
-sesión, y lo que hay que proteger es quién manda (la laptop), no quién mira.
+Descartado: autenticación con usuario y contraseña. En la charla no hay tiempo para iniciar
+sesión, y lo que hay que proteger es quién usa la API (la laptop), no quién mira.
 
 ### Por qué el merge/GGUF de E4B termina en la laptop
 
@@ -63,7 +57,7 @@ BOUQuET (Meta) es un benchmark multidominio con traducciones humanas español �
 
 - tiene rol `test` y nunca entra al entrenamiento ni al índice;
 - sus datos crudos y procesados están en `.gitignore` y solo existen en el bucket privado;
-- las rondas de evaluación del escenario lo excluyen (`duel/tzij_duel/deck.py`), así que sus frases nunca se proyectan. `make eval` sí lo usa, junto con los libros de Bloom.
+- nunca se proyecta: los ejemplos de la página son de Firefox Focus (Mozilla Pontoon, MPL-2.0), y la vista del duelo también lo excluye (`duel/tzij_duel/deck.py`). `make eval` sí lo usa, junto con los libros de Bloom.
 
 ### Tope del 30 % para textos religiosos
 
@@ -87,7 +81,7 @@ Gemini no domina el K'iche'. Si generara K'iche' sin control, le enseñaría a D
 - **chrF++ y no BLEU.** Da crédito parcial por n-gramas de caracteres en un idioma aglutinante con mucha variación ortográfica. Se calcula a nivel corpus sobre texto normalizado, con el mismo apóstrofo para todos.
 - **Mismas instrucciones para todos los modelos** (`tzij-translate-v1`). Solo cambia el bloque de contexto, así que la comparación mide datos y no prompts.
 - **La latencia de David incluye la recuperación**, porque el público también espera por ella.
-- **MBR en escena detrás de una bandera.** Con `MBR_ON_STAGE=1` David genera `MBR_SAMPLES=4` traducciones a temperatura 0.7 y se queda con la de mayor chrF++ promedio contra las otras. Solo entra porque el p50 queda en 4.1 s (límite: 5 s). Con `MBR_ON_STAGE=0` vuelve a una sola muestra.
+- **MBR en la demo, detrás de una bandera.** Con `MBR_ON_STAGE=1` David genera `MBR_SAMPLES=4` traducciones a temperatura 0.7 y se queda con la de mayor chrF++ promedio contra las otras. Solo entra porque el p50 queda en 4.1 s (límite: 5 s). Con `MBR_ON_STAGE=0` vuelve a una sola muestra.
 - **`OLLAMA_NUM_CTX=4096`.** El contexto por defecto de 128k reserva una caché KV enorme y saca a EmbeddingGemma de memoria en cada petición.
 - **Sin sesgo de logits ni MBR multi-prompt.** Se probaron con llama-server: el sesgo restó 1.2 en dev y el MBR multi-prompt pasó el límite de 5 s; su código se quitó ([bitácora, sección 8](BITACORA.md)).
 
@@ -107,7 +101,7 @@ Gemini no domina el K'iche'. Si generara K'iche' sin control, le enseñaría a D
 | `tzij-2026-10-raft-bt-s3` | laptop | híbrida | 18.4 | 18.3 | 18.3 | 1.72 s | 4.7 s | $0 |
 | `tzij-2026-10-raft-bt-s3` + MBR (4) — David anterior | laptop | híbrida | 21.9 | 21.2 | 21.5 | 3.96 s | 14.2 s | $0 |
 | `tzij-2026-10-mix-s7` (2 épocas sin Focus + Bloom retrotraducido + destilación) | laptop | híbrida | 26.9 | 23.2 | 25.1 | 1.64 s | 4.3 s | $0 |
-| **`tzij-2026-10-mix-s7` + MBR (4) — David en escena** | laptop | híbrida | 27.0 | 24.3 | **25.7** | 4.14 s | 13.4 s | $0 |
+| **`tzij-2026-10-mix-s7` + MBR (4) — el David de la demo** | laptop | híbrida | 27.0 | 24.3 | **25.7** | 4.14 s | 13.4 s | $0 |
 | **Gemini 3.8 Flash — Goliath** | nube | no | 33.4 | 40.7 | **36.9** | 1.73 s | 4.7 s | $0.29 |
 | Gemini 3.8 Flash | nube | vectores | 34.6 | 40.1 | 37.2 | 2.08 s | 6.5 s | $0.95 |
 
@@ -129,7 +123,7 @@ Gemini no domina el K'iche'. Si generara K'iche' sin control, le enseñaría a D
 - **En general, Goliath sigue siendo mejor traductor.** David queda 11.2 puntos abajo (eran 15.4 con el David anterior) y en todos los cortes (longitud, dirección, fuente, dominio): la brecha es K'iche' general, no un corte ([bitácora, sección 10](BITACORA.md)). Supera a Goliath en 130 de 599 oraciones (22 %) y queda a menos de 5 puntos en 206 (34 %). Un Goliath más grande no cambia nada: `gemini-3.1-pro-preview` empata con `gemini-3.8-flash` en K'iche'.
 - **Los datos siguen siendo lo que mueve a David.** La recuperación lleva a E4B de 11.7 a 18.5, y en español → K'iche', la dirección que un modelo no puede improvisar, de 7.5 a 18.2. La búsqueda híbrida suma +0.9: BM25 encuentra las palabras raras que los embeddings no ven.
 - **MBR fue la mayor ganancia con el David anterior (+3.2), y la paga la latencia.** David genera 4 traducciones y se queda con la que más se parece a las otras. Con el David actual suma +0.6 en la prueba (25.1 → 25.7) y +1.5 en el nicho (+7.0 → +8.5). El p50 sube de 1.6 a 4.1 s (dentro del límite de 5 s para el escenario) y el p95 a 13 s, por eso se puede apagar con `MBR_ON_STAGE=0`.
-- **El primer fine-tune, con la recuperación, no ayudó: −1.1.** RAFT entrena con el mismo contexto recuperado que verá en escena, sin la respuesta dentro. Combinado con MBR sumaba +0.8 sobre la base con MBR (21.5 vs 20.7). Sus datos (UD, Pontoon, COERLL) no se parecían a la prueba.
+- **El primer fine-tune, con la recuperación, no ayudó: −1.1.** RAFT entrena con el mismo contexto recuperado que verá en la demo, sin la respuesta dentro. Combinado con MBR sumaba +0.8 sobre la base con MBR (21.5 vs 20.7). Sus datos (UD, Pontoon, COERLL) no se parecían a la prueba.
 - **El fine-tune suma cuando los datos se parecen al dominio.** Con Bloom retrotraducido en las dos direcciones y destilación en los dominios de BOUQuET, `tzij-2026-10-mix-s7` le saca +5.7 a la base con la misma recuperación (25.1 vs 19.4) y +5.0 con MBR (25.7 vs 20.7). Contra el David anterior: +4.1 [+3.6, +4.7].
 - **Goliath enseña una vez en la nube; David sirve para siempre sin internet.** Gemini tradujo al español 405 oraciones K'iche' monolingües con licencia (Wikipedia en K'iche', Space Scoop): 399 pares por **$0.12** una sola vez. Con el mismo presupuesto de entrenamiento (1/4 de época) la retrotraducción sumó +1.1 (15.7 vs 14.6), y ese primer fine-tune costó **$3.09** en 5 jobs de L4. Después tradujo los libros de Bloom solo en K'iche' ($0.36, 1,998 pares) y destiló 2,409 pares en los dominios de la prueba. La ronda de datos que produjo el David actual costó unos **$24.3** ($8.52 de L4; [bitácora, sección 11](BITACORA.md)). Nada de eso entra a la prueba ni al índice.
 - **Donde David gana sin discusión:** costo ($0 contra $0.29 por cada 1,000 traducciones, y la tarifa de lista de Gemini se duplica desde el 1 de enero de 2027), privacidad (nada sale de la laptop) y disponibilidad. Sin internet Goliath no produce nada, y los números de David no cambian.
@@ -137,15 +131,17 @@ Gemini no domina el K'iche'. Si generara K'iche' sin control, le enseñaría a D
 
 Detalle por fuente, longitud, dominio y fallos en [`evals/report.md`](../evals/report.md). Fertilidad de tokens en [`evals/fertility.md`](../evals/fertility.md). Datos y límites en [`MODEL_CARD.md`](../MODEL_CARD.md).
 
-### En el escenario
+### En la demo
 
-![Ronda de evaluación: la referencia viene de un libro con licencia; David y Goliath traducen la misma frase](demo/02-evaluacion-es-quc.png)
+![El traductor: David y Goliath traducen la misma frase de Firefox Focus](demo/traductor-3-ejemplo.png)
 
-*Ronda de evaluación con `tzij-2026-10-mix-s7`. La frase y su **referencia** vienen de un libro de Bloom Library (MINEDUC Guatemala, CC BY 4.0). Las dos traducciones son **salida del modelo, sin validar** por una persona hablante nativa; chrF++ las compara con la referencia (45.9 contra 47.3). David tardó 5.1 s con 4 muestras MBR en una frase larga (p50 en el reporte: 4.1 s) y Goliath 3.2 s.*
+*Un ejemplo de Firefox Focus en `/traductor/`. Arriba, la traducción correcta, hecha por personas
+para Mozilla Pontoon (MPL-2.0); en cada columna, la traducción, qué tanto se parece a la correcta
+(chrF++), el tiempo y el costo. Las traducciones son **salida de los modelos**.*
 
-![Con Wi-Fi apagado: David traduce en la laptop, Goliath aparece sin conexión](demo/07-sin-conexion.png)
+![Sin internet: Goliath no responde, David sí](demo/traductor-5-sin-internet.png)
 
-*Otra ronda de evaluación con la red cortada (interruptor de ensayo). La traducción de David es **salida del modelo, sin validar**.*
+*Con la red cortada (`FORCE_OFFLINE`), Goliath dice «Sin conexión» y David traduce igual.*
 
 ## Versiones
 

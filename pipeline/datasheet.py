@@ -79,7 +79,7 @@ def render_datasheet(m: dict) -> str:
     if niche:
         added = ", ".join(f"`{k}` {v['kept_pairs']}" for k, v in niche.get("terminology_added", {}).items())
         niche_section = f"""
-## Niche (specialty round)
+## Niche (specialty test)
 
 Derived from **`{m.get('derived_from', '?')}`** by `pipeline/niche.py` (pre-registered in
 `evals/niche.md`). The Pontoon product `{niche['product']}` is held out as `test_niche`:
@@ -159,7 +159,7 @@ the selection is reproducible and spread across the New Testament.
 - Source-level split: test sources are never used for training or retrieval, and any
   train/retrieval pair that repeats a test sentence is removed (`leaks_test_sentence`).
 - {test['pairs_per_direction']} pairs per direction ({test['sentence_pairs']} of them sentences).
-  **{test.get('auto_validated_pairs', '—')} are `auto_validated`** and used by `make eval` and the evaluation
+  **{test.get('auto_validated_pairs', '—')} are `auto_validated`** and used by `make eval` and the duel view's evaluation
   rounds ({validated_by_source}); the rest are `auto_rejected` ({rejected_reasons}).
 - Validation is automatic, with no human step (`pipeline/validate_test.py`). Criteria:
 {criteria_lines}

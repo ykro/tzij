@@ -7,7 +7,7 @@ the full dataset — and without showing any invented K'iche'.
   permission; COERLL course, CC BY 4.0; GATITOS, CC BY 4.0; PanLex, CC0), indexed at startup with
   hashing embeddings.
 - `deck.jsonl`: 8 pairs from the Bloom Library test books (CC BY 4.0, MINEDUC Guatemala), used as
-  evaluation-round phrases.
+  the duel view's evaluation phrases.
 
 Each record keeps its `source_name`, `url` and `license`. Regenerate from the current dataset if
 the pipeline changes; never write K'iche' by hand here.

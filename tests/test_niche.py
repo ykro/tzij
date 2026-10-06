@@ -83,4 +83,4 @@ def test_recount_follows_the_files_of_a_derived_version(tmp_path):
     assert m["finetune"] == {"threshold_sentence_pairs": 2, "sentence_pairs_outside_test": 3,
                              "non_religious_sentence_pairs_outside_test": 2, "threshold_met": True}
     sheet = render_datasheet(m)
-    assert "Pairs: train 3, dev 1, test 1, test_niche 1." in sheet and "## Niche (specialty round)" in sheet
+    assert "Pairs: train 3, dev 1, test 1, test_niche 1." in sheet and "## Niche (specialty test)" in sheet

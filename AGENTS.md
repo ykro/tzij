@@ -2,7 +2,7 @@
 
 Talk: **David vs. Goliath: cómo un modelo pequeño le gana a un modelo frontier.**
 
-Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish and K'iche' (ISO 639-3 `quc`), Guatemala's most widely spoken Mayan language. It runs on the laptop with no internet and competes live against Gemini. Its advantage comes from K'iche' data gathered from the web, used for retrieval (RAG), fine-tuning, or both — whichever the evals show works best.
+Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish and K'iche' (ISO 639-3 `quc`), Guatemala's most widely spoken Mayan language. It runs on the laptop with no internet and is compared side by side with Gemini on one page. Its advantage comes from K'iche' data gathered from the web, used for retrieval (RAG), fine-tuning, or both — whichever the evals show works best.
 
 ## What the talk teaches
 
@@ -22,8 +22,8 @@ Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish 
 | Retrieval index | EmbeddingGemma via Ollama, SQLite + `sqlite-vec` | Laptop | Must be built with the same embedding model used offline at query time |
 | Training (`train/`) | LoRA of Gemma, TRL + PEFT, GGUF | Cloud Run Job (1× L4, europe-west4); merge + GGUF of E4B on the laptop (`make train-finish`); notebook for Colab | CUDA stack, billed cost; E4B's merge doesn't fit Cloud Run's 32 GiB |
 | David | Gemma (fine-tuned or base) + retrieval | Laptop (Ollama) | Offline |
-| Duel service (`duel/`) | Python, FastAPI, Ollama client, `google-genai`, `sacrebleu` | Laptop | Offline |
-| Presenter view + validator view | Next.js served on the laptop's LAN | Laptop | An optional validator's phone reaches it without internet |
+| Tzij service (`duel/`) | Python, FastAPI, Ollama client, `google-genai`, `sacrebleu` | Laptop | Offline |
+| Translator page (`/traductor/`) | Next.js, static export served by the same service | Laptop | Works without internet |
 
 ## Source research (first task)
 
@@ -38,7 +38,7 @@ Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish 
 
 - Always build the retrieval index: dictionary entries and example sentence pairs; for each input fetch the most relevant ones into David's prompt.
 - Fine-tune only if there are at least 2,000 clean parallel sentence pairs outside the test set.
-- `make eval` compares every available variant and writes `evals/report.md`: Gemma base, Gemma + retrieval, fine-tuned Gemma, fine-tuned + retrieval, Gemini alone, Gemini + the same retrieval. The best David variant goes on stage; the report shows every result, including the ones where David loses.
+- `make eval` compares every available variant and writes `evals/report.md`: Gemma base, Gemma + retrieval, fine-tuned Gemma, fine-tuned + retrieval, Gemini alone, Gemini + the same retrieval. The best David variant goes in the demo; the report shows every result, including the ones where David loses.
 
 ## Evaluation
 
@@ -47,19 +47,20 @@ Tzij ("word" in K'iche') is a small Gemma model that translates between Spanish 
 - `evals/human_eval.md`: optional blind rating procedure (adequacy/fluency 1–5, 50 translations per model); the demo never depends on it.
 - Report includes token fertility (tokens per word) of K'iche' vs Spanish in Gemma's tokenizer.
 
-## Presenter and validator views
+## Translator page (the demo)
 
-- Presenter: phrase and direction; David and Goliath side by side with translation, latency and cost; scoreboard with chrF++ (evaluation rounds) and validator verdicts (live rounds, optional); model card panel with sources, pair count and data date.
-- Validator (phone over LAN, QR on the presenter view): both translations without saying which model made each; mark correct / acceptable / wrong; verdict appears on screen instantly.
-- Offline: everything runs without internet; Goliath shows as offline.
+- One page, `/traductor/`: a text box, a direction switch, example buttons and two columns side by side, David (laptop) and Goliath (cloud), each with its translation, time and cost. No rounds, no scoreboard, no keys.
+- Examples: licensed Firefox Focus sentences (the pre-registered specialty) where David was clearly closer than Goliath to the correct translation in 3 live runs (`duel/examples.json`, `make examples`). For an example, the page shows the correct translation and each side's closeness to it (chrF++ as a percentage).
+- Offline: everything David needs runs without internet; Goliath's column says it is offline.
+- The talk only shows the case David wins; general-translation results, including David's losses, are documented in the README and `docs/BITACORA.md`.
 
 ## Acceptance criteria
 
 - `data/SOURCES.md` lists every source with license and domain; nothing unlicensed in the repo.
-- `make up` starts Ollama, the duel service and both views; the duel works with Wi-Fi off.
+- `make up` starts Ollama, the service and the translator page; the page works with Wi-Fi off.
 - `make eval` produces the full variant comparison in `evals/report.md`.
 - `MODEL_CARD.md` documents sources, variant, known limitations and intended use.
-- `make reset` clears rounds and verdicts.
+- `make preflight` checks the models, the index, the page and the examples (both sides) before the talk.
 - `make test` passes.
 
 ## Shared rules (all four demo repos)
@@ -104,7 +105,7 @@ Everything runs in the cloud unless the talk requires the laptop (offline model,
 
 ### Docs (written at the end, from the finished code)
 
-- `README.md` (Spanish) and `README.en.md`: one screen — what it is, what you'll learn, the result, diagrams, quickstart and links. Everything else lives in `docs/` (es + en): `DECISIONES` (**technical decisions**: what, why, discarded alternatives, where each component runs and why; preview API versions), `COMANDOS` (`make` commands), `ESTRUCTURA` (repo map), `CREDITOS` (data and licenses).
+- `README.md` (Spanish) and `README.en.md`: what it is, what you'll learn, the demo, the results, every experiment with its statistics and what it taught, why the demo uses only the final model, diagrams, quickstart and links. Everything else lives in `docs/` (es + en): `DECISIONES` (**technical decisions**: what, why, discarded alternatives, where each component runs and why; preview API versions), `COMANDOS` (`make` commands), `ESTRUCTURA` (repo map), `CREDITOS` (data and licenses).
 - `docs/ONBOARDING.md`: prerequisites with versions, local setup, credentials/ADC, GCP setup with `infra/NN-*.sh`, run/test/rehearse, code walkthrough, troubleshooting, talk-day checklist.
 - `docs/diagrams/`: made with the `diagram-design` skill, exported to SVG and PNG.
 - Never describe the project as a deviation from a spec; the docs describe what the project is.

@@ -38,7 +38,7 @@ data-pull: ## Download the latest dataset produced by the Cloud Run Job
 index: ## Build the offline retrieval index (EmbeddingGemma via Ollama + sqlite-vec)
 	$(UV) run python -m rag.build_index
 
-niche-data: ## Build the index; if LATEST has no test_niche.jsonl, first hold Firefox Focus out of 20261002-022500 (specialty round)
+niche-data: ## Build the index; if LATEST has no test_niche.jsonl, first hold Firefox Focus out of 20261002-022500 (specialty test)
 	@if [ -f "data/processed/$$(cat data/processed/LATEST 2>/dev/null)/test_niche.jsonl" ]; then \
 	  echo "data/processed/LATEST ($$(cat data/processed/LATEST)) ya tiene test_niche.jsonl: no se rehace."; \
 	else \
@@ -111,7 +111,7 @@ pull-model: ## Download a trained David into Ollama: make pull-model TAG=tzij-20
 	@test -n "$(TAG)" || (echo "usage: make pull-model TAG=tzij-2026-10-mix-s7" && exit 1)
 	MODELS_BUCKET=$(MODELS_BUCKET) train/pull_model.sh $(TAG)
 
-web: ## Build the presenter and validator views (static export; needs internet once for fonts)
+web: ## Build the translator page (the demo) and the duel views (static export; needs internet once for fonts)
 	cd web && npm ci --silent && npm run build
 
 duel: ## Run only the duel service (API + built views) on the LAN
@@ -132,10 +132,10 @@ up: ## Start Ollama, warm David, build the views if needed and serve everything 
 	  test -f $(RAG_INDEX) || echo "!! Falta el índice de recuperación: make index"; \
 	fi
 	@test -f web/out/index.html || $(MAKE) web
-	@echo "Presentador: http://127.0.0.1:$(DUEL_PORT)/presentador/   (validador: el QR en pantalla)"
+	@echo "Traductor: http://127.0.0.1:$(DUEL_PORT)/traductor/"
 	$(MAKE) duel
 
-reset: ## Clear rounds and verdicts (running service or state file), in well under 10 seconds
+reset: ## Clear the duel view's rounds and verdicts (running service or state file); the translator page keeps no state
 	@curl -sf -X POST http://127.0.0.1:$(DUEL_PORT)/api/reset >/dev/null && echo "Marcador reiniciado (servicio en marcha)." \
 	  || (rm -f $(or $(DUEL_STATE_PATH),duel/state/rounds.json) && echo "Marcador reiniciado (archivo de estado borrado).")
 
@@ -156,10 +156,10 @@ warmup: ## Load David + the embedding model in Ollama, one David translation (re
 preflight: ## Talk-day gate: Ollama + models, no Focus-trained David, index = dataset, decks, duel, Gemini, disk, David median of 3 <= 5 s (the p50 budget)
 	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.preflight
 
-emulator: ## Validator in Chrome on the Android emulator (first emulator in adb devices, or ANDROID_SERIAL) + latency check
+emulator: ## Duel view's validator (not part of the demo) in Chrome on the Android emulator (first emulator in adb devices, or ANDROID_SERIAL) + latency check
 	cd web && BASE_URL=$${BASE_URL:-http://127.0.0.1:$(DUEL_PORT)} node tests/emulator.mjs
 
-demo-screens: ## Screenshots for docs/DEMO.md, driven with the stage keys (needs `make up` with the real stage variant; EMULATOR=0 skips the phone)
+demo-screens: ## Screenshots of the duel views (not part of the demo) -> docs/demo/0N-*.png, driven with their keys (needs `make up`; EMULATOR=0 skips the phone)
 	cd web && node tests/demo.mjs
 
 translator-screens: ## Screenshots of the translator page for docs/DEMO.md, clicking an example and typing a phrase (needs `make up`)

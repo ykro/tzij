@@ -4,7 +4,7 @@
 
 David is a small Gemma model that translates between Spanish and K'iche' (`quc`) on a
 laptop, with no internet, helped by a retrieval index built from licensed K'iche' data.
-On stage it competes against Goliath, a frontier model (Gemini) used as anyone would use it.
+In the demo it translates side by side with Goliath, a frontier model (Gemini) used as anyone would use it, on the translator page (`/traductor/`).
 
 | | David | Goliath |
 | --- | --- | --- |
@@ -12,11 +12,11 @@ On stage it competes against Goliath, a frontier model (Gemini) used as anyone w
 | Extra knowledge | Hybrid retrieval index: 8,453 dictionary entries and example pairs per direction (BM25 over SQLite FTS5 + EmbeddingGemma in sqlite-vec, fused with RRF; exact and fuzzy glossary) | None |
 | Decoding | MBR: 4 samples at temperature 0.7, keep the one with the highest mean chrF++ against the others (`MBR_ON_STAGE=1`) | One answer, temperature 0.2 |
 | Runs on | The presenter's laptop, offline | Google Cloud, needs internet |
-| Cost per translation | $0 (hardware already paid for) | Tokens × list price (shown live) |
+| Cost per translation | $0 (hardware already paid for) | Tokens × list price (shown on the page) |
 
-**On stage now:** `tzij-2026-10-mix-s7` + hybrid retrieval + MBR (4 samples), the best local
+**In the demo now:** `tzij-2026-10-mix-s7` + hybrid retrieval + MBR (4 samples), the best local
 variant in `evals/report.md` with p50 under the 5 s stage budget. It never saw Firefox Focus, so
-it also plays the specialty round.
+it can be measured on the specialty test, and the demo's example sentences come from there.
 
 Run `final-20261002`, dataset `20261002-173447` (its test split is identical to that of
 `20261002-022500`, where the rows before `mix-s7` were run), 600 held-out sentences (Bloom +
@@ -156,7 +156,7 @@ translations and can be wrong in ways a non-speaker cannot detect.
 - K'iche' varies by region (Nahualá, Totonicapán, Santa Cruz del Quiché, Cantel); the data
   mixes varieties and the model does not choose one on purpose.
 - chrF++ rewards character overlap with one reference; a correct paraphrase can score low.
-  The optional validator view lets a native speaker judge live rounds when one is present.
+  A native speaker can rate translations blind with `make human-eval-sheet` (`evals/human_eval.md`).
 - Some test pairs (children's books) are page-aligned and paraphrased; the automatic
   length-ratio filter (0.5–2.0) drops the worst ones, and chrF++ on the rest is noisier.
 
@@ -164,5 +164,5 @@ translations and can be wrong in ways a non-speaker cannot detect.
 
 K'iche' data belongs to its speakers and institutions. Sources that require authorization
 (ALMG publications beyond the permitted examples, PLFM, SIL dictionaries) are listed as
-"needs permission" and are not used. The optional validator view lets a native speaker, not a
-metric, judge live rounds when one is present; the demo never depends on it.
+"needs permission" and are not used. A native speaker, not a metric, can rate translations blind
+with `make human-eval-sheet` (`evals/human_eval.md`); the demo never depends on it.

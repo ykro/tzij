@@ -1,6 +1,6 @@
 # Onboarding — Tzij
 
-Guía para montar Tzij desde cero, preparar los datos y los modelos, ensayar el duelo y llegar al día de la charla sin sorpresas. La visión general está en el [README](../README.md) y las decisiones técnicas en [DECISIONES.md](DECISIONES.md).
+Guía para montar Tzij desde cero, preparar los datos y los modelos, ensayar el traductor y llegar al día de la charla sin sorpresas. La visión general está en el [README](../README.md) y las decisiones técnicas en [DECISIONES.md](DECISIONES.md).
 
 Contenido:
 
@@ -10,8 +10,8 @@ Contenido:
 4. [Credenciales: ADC y el token de Hugging Face](#4-credenciales-adc-y-el-token-de-hugging-face)
 5. [Google Cloud: preparación única y scripts `infra/`](#5-google-cloud-preparación-única-y-scripts-infra)
 6. [Datos, índice, entrenamiento y evaluación](#6-datos-índice-entrenamiento-y-evaluación)
-7. [Correr el duelo (y sin internet)](#7-correr-el-duelo-y-sin-internet)
-8. [El validador (opcional): emulador Android y LAN real](#8-el-validador-opcional-emulador-android-y-lan-real)
+7. [Correr el traductor (y sin internet)](#7-correr-el-traductor-y-sin-internet)
+8. [La vista del duelo (no es parte de la demo)](#8-la-vista-del-duelo-no-es-parte-de-la-demo)
 9. [Revisión con hablantes nativos (opcional)](#9-revisión-con-hablantes-nativos-opcional)
 10. [Pruebas y ensayo](#10-pruebas-y-ensayo)
 11. [Recorrido por el código: una traducción](#11-recorrido-por-el-código-una-traducción)
@@ -27,13 +27,13 @@ Versiones con las que se verificó el proyecto (30 de septiembre de 2026):
 | Herramienta | Versión | Para qué |
 | --- | --- | --- |
 | macOS en Apple Silicon | — | La laptop del escenario. `make train-local` usa MPS y `train/setup_llama_cpp.sh` baja el `llama-quantize` precompilado para macOS arm64. |
-| RAM | `make train-finish` se probó en una Mac de 64 GB | El merge de E4B en bf16 más la conversión a GGUF. Para el duelo basta con lo que necesita Ollama para David (~5.3 GB) y `embeddinggemma`. |
+| RAM | `make train-finish` se probó en una Mac de 64 GB | El merge de E4B en bf16 más la conversión a GGUF. Para el traductor basta con lo que necesita Ollama para David (~5.3 GB) y `embeddinggemma`. |
 | Python | 3.12 (`.python-version`; `pyproject.toml` pide `>=3.12,<3.13`) | Pipeline, índice, servicio y evals |
 | uv | 0.8.22 | Entornos y dependencias de Python. Nunca `pip` global. |
 | Node.js / npm | 24.21.0 / 12.0.2 | Vistas en Next.js 16.3.8 y pruebas (vitest, Playwright 1.63.0) |
 | Ollama | 0.35.0 | David y EmbeddingGemma |
 | Google Cloud SDK (`gcloud`) | 587.0.0 | ADC, Cloud Run Jobs, Cloud Build, Cloud Storage, Secret Manager |
-| Android SDK (`adb`, emulador) | `adb` 1.0.41 | Solo para `make emulator` |
+| Android SDK (`adb`, emulador) | `adb` 1.0.41 | Solo para `make emulator` (el validador del duelo, que no es parte de la demo) |
 | Cuenta de Hugging Face | — | Aceptar los términos de BOUQuET; su token va a Secret Manager |
 
 Espacio en disco aproximado: unos 17 GB para los modelos de Ollama (`gemma4:e4b` 6.6 GB, cada fine-tune `tzij-2026-10-*` 5.3 GB, `embeddinggemma` 621 MB) y espacio temporal para `make train-finish` en `models/.work/`: pesos base (~16 GB, compartidos entre tags), modelo fusionado (~16 GB, se reutiliza si ya existe), GGUF intermedio Q8_0 (~8 GB con `GGUF_OUTTYPE=q8_0`, se borra al final) y Q4_K_M (~5 GB).
@@ -64,7 +64,7 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 | `OLLAMA_NUM_CTX` | `4096` | Contexto de Gemma en Ollama |
 | `DUEL_PORT`, `PUBLIC_URL` | `8787`, vacío | Puerto del servicio; URL fija del QR (vacío = IP de la LAN detectada) |
 | `FORCE_OFFLINE` | `0` | `1` simula "sin Wi-Fi" para Goliath sin tocar el sistema operativo |
-| `REQUIRE_VALIDATED_TEST` | `0` | Opcional: `1` limita las rondas de evaluación a pares que además revisó una persona nativa |
+| `REQUIRE_VALIDATED_TEST` | `0` | Opcional: `1` limita las rondas de evaluación de la vista del duelo (no es parte de la demo) a pares que además revisó una persona nativa |
 | `MOCK_AI` | `0` | `1` evita la nube y la GPU (pruebas y ensayos) |
 
 `.env` solo pone valores por defecto: lo que pases por la línea de comandos o el entorno gana (`MOCK_AI=1 make up` y `make up MOCK_AI=1` hacen lo mismo). El `Makefile` convierte cada `CLAVE=valor` de `.env` en `CLAVE ?= valor` (archivo `.env.mk`, ignorado por git).
@@ -128,8 +128,8 @@ de datos sin ejecutarlo (`DEPLOY_ONLY=1 infra/10-data-job.sh`), la cuenta de ser
 entrenamiento y el Cloud Run Job `tzij-train` con su imagen. Todo es idempotente: se puede volver a
 correr.
 
-**El servicio de duelo y las dos vistas no se despliegan, a propósito:** corren en la laptop porque
-la charla mide lo que pasa sin internet (`make up`).
+**El servicio de Tzij y la página del traductor no se despliegan, a propósito:** corren en la laptop
+porque la charla muestra lo que pasa sin internet (`make up`).
 
 Lo único que no se puede automatizar: aceptar los términos de BOUQuET con tu cuenta de Hugging Face
 (antes de crear el token) y tener cuota de GPU NVIDIA L4 para Cloud Run en `europe-west4`.
@@ -240,49 +240,52 @@ make eval EVAL_ARGS="--run final-20261002 --only tzij-2026-10-mix-s7+hybrid+mbr4
 make eval EVAL_ARGS="--split dev_domain --run dev-domain --out evals/dev_domain_report.md"  # decisiones en el dominio de la prueba, sin tocarla
 ```
 
-Necesita internet y ADC para las variantes de Gemini, y en Ollama todos los tags de `BASE_MODEL_TAGS` y `FINETUNED_MODEL_TAGS`. Las predicciones se guardan en `evals/runs/<run>/<variante>.jsonl`, así que una ejecución interrumpida se retoma con `--run`. El reporte incluye todas las variantes que tengan resultados en esa ejecución y dice cuál debe subir al escenario: la mejor variante local. Ese tag va en `LOCAL_MODEL_TAG`.
+Necesita internet y ADC para las variantes de Gemini, y en Ollama todos los tags de `BASE_MODEL_TAGS` y `FINETUNED_MODEL_TAGS`. Las predicciones se guardan en `evals/runs/<run>/<variante>.jsonl`, así que una ejecución interrumpida se retoma con `--run`. El reporte incluye todas las variantes que tengan resultados en esa ejecución y dice cuál debe ir en la demo: la mejor variante local. Ese tag va en `LOCAL_MODEL_TAG`. Si cambias de David, revisa también los ejemplos con `make examples`.
 
-## 7. Correr el duelo (y sin internet)
+## 7. Correr el traductor (y sin internet)
 
 ```bash
 make up            # o `make up MOCK_AI=1` para ensayar sin nube ni GPU
 ```
 
-- Presentador: `http://127.0.0.1:8787/presentador/` (1920×1080). Atajos: `/` escribir una frase en vivo, `E` frase de evaluación, `D` cambiar dirección, `M` ficha del modelo, `Esc` cerrar. La barra de comandos incluye frases sugeridas de los datos, el interruptor "Simular sin Wi-Fi (ensayo)" y "Reiniciar marcador".
-- **Rondas de evaluación:** frases de prueba de Bloom (2 a 14 palabras, nunca de BOUQuET) con su referencia; se califican con chrF++.
-- **Rondas en vivo (opcionales):** cualquier frase; las califica una persona validadora si la hay. Sin validador, usa rondas de evaluación.
-- `make reset` borra rondas y veredictos (`duel/state/rounds.json`).
+Abre `http://127.0.0.1:8787/traductor/` en la laptop (1920×1080 en el proyector; también se ve
+bien a 1280×800). La página tiene:
 
-**Sin internet.** Todo lo que usa David está en la laptop. El servicio comprueba la conectividad cada 3 s con una conexión TCP de 0.8 s a `aiplatform.googleapis.com:443`. Sin red, la pastilla cambia a "Sin conexión", Goliath muestra "Sin conexión" en vez de llamar a Gemini, y David traduce igual. Dos formas de probarlo:
+- **El cuadro para escribir** y el botón **Traducir** (o `Enter`). El botón ⇄ cambia la dirección:
+  español → Kʼicheʼ o Kʼicheʼ → español.
+- **Las frases de ejemplo** de Firefox Focus (`duel/examples.json`). Al tocar una, se llena el
+  cuadro, se traduce y arriba aparece la traducción correcta, con su fuente y su licencia.
+- **Dos columnas:** David (en la laptop) y Goliath (en la nube). Cada una pide su traducción por
+  separado (`POST /api/translate` con `side`) y se llena en cuanto su modelo responde, con el
+  tiempo y el costo de esa traducción. En los ejemplos, cada columna muestra además «Se parece a la
+  correcta»: chrF++ contra la traducción correcta, en porcentaje.
 
-1. **Real:** apaga el Wi-Fi de la laptop (o desconecta la salida a internet del router) y lanza una ronda.
-2. **Simulada:** `make up FORCE_OFFLINE=1`, o el interruptor de la barra de comandos. No toca el sistema operativo y deja la LAN intacta para el teléfono.
+Las traducciones de la página no se guardan en ningún lado: no hay marcador ni historial.
 
-Requisito previo: `make web` **con** internet al menos una vez, porque `next/font` descarga las tipografías al compilar. Después las vistas no piden nada a internet.
+**Sin internet.** Todo lo que usa David está en la laptop. El servicio comprueba la conectividad cada 3 s con una conexión TCP de 0.8 s a `aiplatform.googleapis.com:443`. Sin red, la página dice «Sin internet: David sigue traduciendo», la columna de Goliath dice «Sin conexión» en vez de llamar a Gemini, y David traduce igual. Dos formas de probarlo:
 
-## 8. El validador (opcional): emulador Android y LAN real
+1. **Real:** apaga el Wi-Fi de la laptop y toca un ejemplo.
+2. **Simulada:** `make up FORCE_OFFLINE=1`. No toca el sistema operativo.
 
-### Emulador Android (`10.0.2.2`)
+Requisito previo: `make web` **con** internet al menos una vez, porque `next/font` descarga las tipografías al compilar. Después la página no pide nada a internet.
 
-Desde el emulador, `10.0.2.2` es el `localhost` de la laptop.
+### Las frases de ejemplo
 
-```bash
-emulator -avd Pixel_9_API_36_1 &   # el AVD de los demos 2027 (cualquiera con Chrome sirve)
-make up                            # en otra terminal
-make emulator                      # el primer emulador de `adb devices` (o ANDROID_SERIAL=…)
-make emulator BASE_URL=http://127.0.0.1:8788   # si el duelo corre en otro puerto (DUEL_PORT)
-```
+`make examples` traduce en vivo cada ejemplo 3 veces con David y con Goliath, como la página, y
+guarda en `duel/examples.json` solo los que, las 3 veces, David dejó cerca de la traducción
+correcta (chrF++ de 50 o más) y por lo menos 15 puntos más cerca que Goliath, con las salidas y los
+puntajes medidos. Con `IDS=pair_id,…` prueba otras frases de `test_niche` (español → Kʼicheʼ).
+`make preflight` falla si los ejemplos no están en el dataset actual o se revisaron con otros
+modelos.
 
-`web/tests/emulator.mjs` abre `http://10.0.2.2:8787/validar/` en el Chrome del emulador, lo controla por DevTools (`adb forward tcp:9333`), lanza una ronda en vivo, vota y mide cuánto tarda el voto en aparecer en el presentador. **Falla si tarda más de 1 s.** Las capturas quedan en `web/test-results/screens/`. Para probar a mano, abre `http://10.0.2.2:8787/validar/` en el Chrome del emulador.
+## 8. La vista del duelo (no es parte de la demo)
 
-### LAN real (un teléfono físico)
-
-1. Laptop y teléfono en la **misma red**. Sirve cualquier LAN aunque no tenga salida a internet: un router de viaje, el hotspot del teléfono con los datos móviles apagados, o Compartir Internet de macOS (`bridge100`).
-2. `make up`. El servicio escucha en `0.0.0.0:8787`. Si macOS pregunta, permite conexiones entrantes para Python.
-3. Escanea el QR del presentador. Apunta a `http://<IP de la LAN>:8787/validar/`, calculada por `duel/tzij_duel/lan.py`. Si la IP detectada no es la correcta (varias interfaces, VPN), fíjala en `.env` con `PUBLIC_URL=http://<ip>:8787`.
-4. El teléfono ve la frase y dos traducciones en orden aleatorio, sin modelo, latencia ni costo, y vota correcta / aceptable / incorrecta. El identificador del votante queda en `localStorage`; cada voto aparece al instante en la pantalla del presentador.
-
-Las redes de eventos suelen aislar a los clientes entre sí (*client isolation*). Si el teléfono no carga la página, usa tu propia red.
+El servicio todavía sirve la vista del duelo, de una versión anterior de la charla:
+`/presentador/`, con rondas, marcador y teclas (`E`, `S`, `D`, `M`, `/`), y `/validar/`, para que
+una persona hablante vote desde su teléfono. La charla no la usa. Sus comandos siguen funcionando:
+`make reset` (borra rondas y veredictos), `make demo-screens` (sus capturas) y `make emulator` (el
+validador en el Chrome del emulador Android, que llega a la laptop por `10.0.2.2`; falla si el voto
+tarda más de 1 s). Solo responde a peticiones desde la laptop (`127.0.0.1`); el teléfono usa el QR.
 
 ## 9. Revisión con hablantes nativos (opcional)
 
@@ -301,7 +304,7 @@ make eval                                 # vuelve a puntuar con las referencias
 - `ok` → `status=validated`. `fix` → se usa el K'iche' corregido (normalizado) y queda validado. `reject` → el par sale del conjunto de prueba. Sin veredicto → sigue `pending_native_review`.
 - `apply-review` reescribe `data/processed/<versión>/test.jsonl` en su lugar. Guarda el CSV: es la única copia de los veredictos.
 - El CSV incluye pares de BOUQuET. Sus términos solo permiten redistribución privada: compártelo solo con la persona revisora y nunca lo publiques.
-- Con pares validados, `make up REQUIRE_VALIDATED_TEST=1` limita las rondas de evaluación a ellos. Si todavía no hay ninguno validado, el mazo queda vacío y la ronda responde "No quedan frases de evaluación en esta dirección."
+- Con pares validados, `make up REQUIRE_VALIDATED_TEST=1` limita a ellos las rondas de evaluación de la vista del duelo.
 
 ### Evaluación humana a ciegas (`evals/human_eval.md`)
 
@@ -318,33 +321,33 @@ Escribe `evals/runs/<run>/human_eval_sheet.csv` (sin nombres de modelo, filas me
 ## 10. Pruebas y ensayo
 
 ```bash
-make test        # 127 pruebas de Python (MOCK_AI=1, sin red) + 5 de la web (vitest)
-make screenshots # con el servicio corriendo: capturas en web/test-results/screens/
+make test                # pruebas de Python (MOCK_AI=1, sin red) + las de la web (vitest)
+make translator-screens  # con `make up` y los modelos reales: usa la página y deja capturas en docs/demo/
 ```
 
-Las pruebas que necesitan Ollama de verdad están marcadas `@pytest.mark.ollama` y se saltan si Ollama o el modelo no están. El ensayo completo sin nube ni Ollama es `MOCK_AI=1 make up`: no necesita Ollama, ni `make index`, ni el dataset. Usa `duel/mock_data/` (26 pares con licencia indexados con embeddings de hash y 8 frases de prueba de Bloom). Goliath devuelve el texto de entrada sin cambios y David el mejor ejemplo recuperado, así que todo el K'iche' en pantalla viene de datos con licencia. Sirve para ensayar el flujo, no los números.
+Las pruebas que necesitan Ollama de verdad están marcadas `@pytest.mark.ollama` y se saltan si Ollama o el modelo no están. El ensayo completo sin nube ni Ollama es `MOCK_AI=1 make up`: no necesita Ollama, ni `make index`, ni el dataset. Usa `duel/mock_data/` (26 pares con licencia indexados con embeddings de hash). Goliath devuelve el texto de entrada sin cambios y David el mejor ejemplo recuperado, así que todo el Kʼicheʼ en pantalla viene de datos con licencia. Sirve para ensayar el flujo, no los números.
 
 ## 11. Recorrido por el código: una traducción
 
-Una ronda en vivo, de "Traducir en vivo" a la puntuación:
+De tocar un ejemplo en `/traductor/` a las dos columnas llenas:
 
-1. **Entrada.** La vista del presentador (`web/components/presenter/CommandBar.tsx`) hace `POST /api/rounds` con `{kind, direction, text}`. `Service.start_round` (`duel/tzij_duel/main.py`) crea la ronda en `RoundStore` (`rounds.py`), publica el estado por SSE y lanza `run_round` en segundo plano. En una ronda de evaluación, la frase y su referencia salen de `Deck.next` (`deck.py`).
-2. **Conectividad.** `run_round` llama a `refresh_online()`. `Connectivity.is_online` (`duel/duel_core/connectivity.py`) abre una conexión TCP a `aiplatform.googleapis.com:443` con 0.8 s de timeout y cachea el resultado 3 s.
-3. **En paralelo.** `asyncio.gather` corre `translate(david, …)` con el retriever y `translate(goliath, …)` sin él (`duel/tzij_duel/variants.py`).
+1. **Entrada.** La página (`web/app/traductor/page.tsx`) hace dos `POST /api/translate`, uno con `side: "david"` y otro con `side: "goliath"`, con `{text, direction, example}`. `Service.translate_text` (`duel/tzij_duel/main.py`) busca el ejemplo en `duel/examples.json` (`examples.py`) para tener la traducción correcta; si el texto ya no es el del ejemplo, lo trata como frase escrita, sin referencia.
+2. **Conectividad.** `refresh_online()` usa `Connectivity.is_online` (`duel/duel_core/connectivity.py`): una conexión TCP a `aiplatform.googleapis.com:443` con 0.8 s de timeout, cacheada 3 s.
+3. **Traducir.** `translate(variant, …)` (`duel/tzij_duel/variants.py`) es la misma función para los dos; David recibe el retriever, Goliath no.
 4. **Normalizar.** `translate` normaliza la entrada con `normalize_kiche` o `normalize_spanish` (`data/normalize.py`): todos los saltillos pasan a `'`, se unifican espacios, comillas y guiones, y se pliegan las vocales con diéresis.
-5. **Recuperar (solo David).** `Retriever.retrieve` (`rag/retrieve.py`) normaliza de nuevo, calcula el embedding con EmbeddingGemma en Ollama (`rag/embedder.py`, prefijo `task: sentence similarity | query: `) y hace dos búsquedas en `sqlite-vec`, filtradas por dirección:
-   - **ejemplos:** los `RAG_K` pares de oraciones más cercanos;
-   - **glosario:** coincidencias exactas (entrada completa, bigramas, palabras) y luego las entradas de diccionario más cercanas.
+5. **Recuperar (solo David).** `Retriever.retrieve` (`rag/retrieve.py`) normaliza de nuevo y combina BM25 (SQLite FTS5) con la búsqueda por vectores de EmbeddingGemma en `sqlite-vec` (`rag/embedder.py`), fusionadas con Reciprocal Rank Fusion y filtradas por dirección:
+   - **ejemplos:** los `RAG_K` pares de oraciones más cercanos, con el más parecido al final;
+   - **glosario:** coincidencias exactas y difusas, y luego las entradas de diccionario más cercanas.
 
    `as_prompt_context()` arma el bloque `Glosario:` / `Ejemplos:`. El tiempo de recuperación se suma a la latencia de David.
-6. **Prompt.** `translation_messages` (`duel/tzij_duel/prompts.py`, versión `tzij-translate-v1`) arma el mensaje de sistema (traductor cuidadoso, ortografía ALMG, apóstrofo para el saltillo, solo la traducción) y el de usuario. Si hay contexto, le antepone el encabezado del material de referencia.
+6. **Prompt.** `translation_messages` (`duel/tzij_duel/prompts.py`) arma el mensaje de sistema (traductor cuidadoso, ortografía ALMG, apóstrofo para el saltillo, solo la traducción) y el de usuario. Si hay contexto, le antepone el encabezado del material de referencia.
 7. **Modelo.**
-   - David: `OllamaClient.complete` (`duel/duel_core/ollama_client.py`) llama a `POST /api/chat` sin streaming, con `temperature` 0.2, `num_predict` 128, `think: false`, `keep_alive` 30m y `num_ctx` 4096.
+   - David: con `MBR_ON_STAGE=1`, `_mbr` pide 4 traducciones a temperatura 0.7 a Ollama (`duel/duel_core/ollama_client.py`, `POST /api/chat`, `num_ctx` 4096) y se queda con la de mayor chrF++ promedio contra las otras.
    - Goliath: `GeminiClient.complete` (`gemini_client.py`) llama a Vertex AI con `google-genai`, `thinking_level=low` y 20 s de timeout. Un error de red se convierte en estado `offline` y un timeout en `error`.
 
-   `run_duel` (`duel/duel_core/duel.py`) nunca deja que un contendiente que falla tumbe la ronda.
-8. **Limpiar y puntuar.** `clean_translation` (`duel_core/prompts.py`) se queda con la primera línea y quita prefijos tipo "Traducción:" y comillas. `normalize_output` aplica la misma normalización que a las referencias. En rondas de evaluación, `chrf_pp` (`duel_core/metrics.py`, sacrebleu `CHRF(word_order=2)`) puntúa contra la referencia. El costo sale de `cost_usd` (tokens × precio de `.env`; David es $0).
-9. **Publicar y votar.** `RoundStore.set_results` guarda la ronda y `publish()` envía por SSE dos estados: el del presentador, con nombres, latencia, costo y chrF++; y el del validador, a ciegas (`Round.blind`). El teléfono vota con `POST /api/rounds/{id}/verdicts` y el marcador (`RoundStore.scoreboard`) se actualiza al instante.
+   `run_duel` (`duel/duel_core/duel.py`) nunca deja que un modelo que falla tumbe al otro.
+8. **Limpiar y medir.** `clean_translation` (`duel_core/prompts.py`) se queda con la primera línea y quita prefijos tipo "Traducción:" y comillas. `normalize_output` aplica la misma normalización que a las referencias. Con un ejemplo, `chrf_pp` (`duel_core/metrics.py`, sacrebleu `CHRF(word_order=2)`) mide contra la traducción correcta: es el «Se parece a la correcta». El costo sale de `cost_usd` (tokens × precio de `.env`; David es $0).
+9. **Mostrar.** Cada respuesta llena su columna (`Column` en `page.tsx`); los helpers de formato (porcentaje, segundos, costo) están en `web/lib/translator.ts`.
 
 `make eval` usa exactamente la misma función `translate` con cada variante (`evals/run_eval.py`), pero puntúa con chrF++ a nivel corpus en vez de por oración.
 
@@ -352,21 +355,17 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 
 | Síntoma | Causa probable | Qué hacer |
 | --- | --- | --- |
-| La vista del presentador dice "Solo desde la laptop del presentador" o las rondas responden 403 | Se abrió con la IP de la LAN en vez de `127.0.0.1` | Abre `http://127.0.0.1:8787/presentador/` en la laptop; el teléfono usa el QR |
-| El teléfono dice "Esta traducción ya tiene veredicto" | Una traducción acepta un solo veredicto por ronda | Es lo esperado; espera la siguiente ronda en vivo |
+| La página dice «No hay conexión con el servicio de Tzij» | El servicio no está corriendo | `make up` y recarga |
+| No aparecen las frases de ejemplo | Falta `duel/examples.json` o la página no está construida | `make preflight` dice cuál: `make examples` o `make web` |
 | `!! el índice de recuperación es del dataset …` al arrancar, o `make eval` se niega a correr | El índice se construyó con otra versión del dataset | `make index` |
 | `!! David (tzij-2026-10-mix-s7) no está en Ollama` al hacer `make up` | El modelo no está descargado | `make pull-model TAG=tzij-2026-10-mix-s7` (o `LOCAL_MODEL_TAG=gemma4:e4b` y `ollama pull gemma4:e4b`) |
-| David responde "índice de recuperación no disponible" | Falta `rag/index/tzij.sqlite`, o el servicio lo desactivó al arrancar (`!! retrieval disabled` en la consola) | `make index`; reinicia `make up` |
+| La columna de David dice «No pudo traducir esta frase» y la consola de `make up` muestra `índice de recuperación no disponible` | Falta `rag/index/tzij.sqlite`, o el servicio lo desactivó al arrancar (`!! retrieval disabled` en la consola) | `make index`; reinicia `make up` |
 | `index built with 'X' but queries use 'Y'` | El índice se construyó con otro `EMBEDDING_MODEL` | `make index` con el modelo de `.env` |
-| David responde `recuperación: …` | Ollama no responde a `/api/embed` (EmbeddingGemma no está o Ollama se cayó) | `ollama pull embeddinggemma`; `curl 127.0.0.1:11434/api/version` |
-| La primera ronda tarda varios segundos | Modelo frío, o `num_ctx` distinto al de la precarga (fuerza una recarga) | Usa `make up` (precarga); no cambies `OLLAMA_NUM_CTX` en caliente |
-| Goliath sale "Sin conexión" con internet | `FORCE_OFFLINE=1` o el interruptor de ensayo activado; o la red bloquea `aiplatform.googleapis.com:443` | Revisa `.env` y la barra de comandos; prueba `nc -z aiplatform.googleapis.com 443` |
+| La consola muestra `recuperación: …` en las traducciones de David | Ollama no responde a `/api/embed` (EmbeddingGemma no está o Ollama se cayó) | `ollama pull embeddinggemma`; `curl 127.0.0.1:11434/api/version` |
+| La primera traducción de David tarda varios segundos | Modelo frío, o `num_ctx` distinto al de la precarga (fuerza una recarga) | Usa `make up` (precarga); no cambies `OLLAMA_NUM_CTX` en caliente |
+| Goliath sale "Sin conexión" con internet | `FORCE_OFFLINE=1` en `.env`, o la red bloquea `aiplatform.googleapis.com:443` | Revisa `.env`; prueba `nc -z aiplatform.googleapis.com 443` |
 | Goliath sale con error (no "sin conexión") | ADC vencido, permisos de Vertex AI o timeout de 20 s | `gcloud auth application-default login`; revisa `GEMINI_MODEL` |
 | `/` responde `Web views not built: run make web` | Falta `web/out/` | `make web` (con internet, por las tipografías) |
-| El teléfono no abre el QR | Otra red, aislamiento de clientes, firewall de macOS o IP equivocada | Misma red; permite Python en el firewall; fija `PUBLIC_URL` |
-| `make emulator` no encuentra la pestaña o falla por más de 1 s | Serial equivocado, Chrome sin abrir, o pestañas viejas con conexiones SSE abiertas | `adb devices`; `make emulator ANDROID_SERIAL=…`; el script cierra las pestañas viejas, vuelve a correrlo |
-| "Hay una ronda en curso." (409) | La ronda anterior sigue traduciendo | Espera a que termine |
-| "No quedan frases de evaluación en esta dirección." (404) | Se usaron todas, o `REQUIRE_VALIDATED_TEST=1` sin pares validados | `make reset`, cambia de dirección (`D`) o aplica la revisión nativa |
 | `bouquet: skipped (needs HF_TOKEN …)` en el pipeline | No hay token ni acceso al secreto | §4: acepta los términos, crea `hf-token`, vuelve a correr `infra/10-data-job.sh` para dar acceso a la cuenta de servicio |
 | Errores 429 de Hugging Face en Cloud Run | Descargas anónimas desde IPs compartidas | Mismo arreglo: el token |
 | `make train` termina en `JOB_STATE_FAILED` por memoria | Esperado con E4B: el entrenamiento terminó, el merge no cabe en 32 GiB | Revisa `train/runs/<tag>.json` (`training: succeeded`) y corre `make train-finish TAG=…` |
@@ -381,29 +380,24 @@ Una ronda en vivo, de "Traducir en vivo" a la puntuación:
 - [ ] Dataset y modelos al día: `make data-pull && make niche-data` (`LATEST` = `20261002-173447`, con `test_niche.jsonl`), `ollama list` (con `LOCAL_MODEL_TAG` y `embeddinggemma`).
 - [ ] `LOCAL_MODEL_TAG` coincide con la mejor variante local de `evals/report.md`.
 - [ ] Precios de Gemini en `.env` vigentes para la fecha de la charla. Desde el 1 de enero de 2027: `GEMINI_INPUT_USD_PER_M=1.50`, `GEMINI_OUTPUT_USD_PER_M=7.50`.
-- [ ] (Opcional) Si hubo revisión nativa, aplicarla con `make apply-review`. No es requisito: el conjunto de prueba ya está `auto_validated`.
-- [ ] `make web` con internet (tipografías) y `make emulator` en verde (voto en menos de 1 s).
+- [ ] `make web` con internet (tipografías) y `make examples` en verde (los 12 ejemplos siguen pasando).
 
 **El día, con internet**
 
 - [ ] `gcloud auth application-default print-access-token` funciona (ADC vigente).
 - [ ] Energía conectada; suspensión desactivada (`caffeinate -dims` en una terminal); No Molestar activado; pantalla a 1920×1080.
-- [ ] `make up`. Sin avisos `!!`. La pastilla dice "En línea".
-- [ ] Una ronda de evaluación (`E`) y una en vivo (`/`): David y Goliath responden y se ven latencia y costo.
-- [ ] (Opcional, solo si hay validador) El teléfono escanea el QR, vota, y el voto aparece en la pantalla.
+- [ ] `make up` sin avisos `!!`, y `make stage-on && make warmup && make preflight` hasta «preflight ok».
+- [ ] En `/traductor/`, toca un ejemplo: las dos columnas se llenan, con tiempo, costo y «Se parece a la correcta». Escribe una frase y tradúcela.
 
 **Prueba con el Wi-Fi apagado (obligatoria)**
 
-- [ ] Apaga el Wi-Fi de la laptop. En pocos segundos (el sondeo corre cada 3 s) la pastilla cambia a "Sin conexión".
-- [ ] Ronda de evaluación: David traduce con latencia normal y Goliath muestra "Sin conexión". Ninguna pantalla se queda colgada.
-- [ ] Ronda en vivo con una frase en español: David responde.
-- [ ] Recarga `/presentador/`: carga completa, con tipografías, sin internet.
-- [ ] (Opcional) Si el teléfono va a votar durante el segmento sin internet, comprueba que la LAN sigue en pie (router o hotspot sin salida a internet). Si no, usa el interruptor "Simular sin Wi-Fi", que deja la LAN intacta.
-- [ ] Vuelve a encender el Wi-Fi y comprueba que la pastilla regresa a "En línea".
+- [ ] Apaga el Wi-Fi de la laptop. En pocos segundos (el sondeo corre cada 3 s) la página dice «Sin internet: David sigue traduciendo».
+- [ ] Toca un ejemplo: David traduce con su tiempo normal y Goliath dice «Sin conexión». Nada se queda colgado.
+- [ ] Recarga `/traductor/`: carga completa, con tipografías, sin internet.
+- [ ] Vuelve a encender el Wi-Fi y comprueba que la página vuelve a «Con internet».
 
 **Justo antes de empezar**
 
-- [ ] `make reset` (marcador en cero).
-- [ ] El interruptor "Simular sin Wi-Fi" está apagado.
-- [ ] Pestaña del presentador en pantalla completa; la barra de comandos cerrada (`Esc`).
-- [ ] Plan B si se cae la red del evento: el segmento sin internet *es* la demo. David sigue traduciendo.
+- [ ] `FORCE_OFFLINE=0` en `.env`.
+- [ ] `/traductor/` en pantalla completa (`⌃⌘F`), con el cuadro vacío.
+- [ ] Plan B si se cae la red del evento: el momento sin internet *es* la demo. David sigue traduciendo.

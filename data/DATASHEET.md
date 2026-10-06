@@ -93,7 +93,7 @@ the selection is reproducible and spread across the New Testament.
 - Source-level split: test sources are never used for training or retrieval, and any
   train/retrieval pair that repeats a test sentence is removed (`leaks_test_sentence`).
 - 1654 pairs per direction (1645 of them sentences).
-  **1558 are `auto_validated`** and used by `make eval` and the evaluation
+  **1558 are `auto_validated`** and used by `make eval` and the duel view's evaluation
   rounds (bloom_kiche 257, bouquet 1301); the rest are `auto_rejected` (loose_translation_ratio 16, spanish_side_not_spanish 58, not_a_sentence 9, overlaps_train 13).
 - Validation is automatic, with no human step (`pipeline/validate_test.py`). Criteria:
   - source-level split (test-only sources)
@@ -106,7 +106,7 @@ the selection is reproducible and spread across the New Testament.
   (upgrades pairs to `validated`); the demo never waits for it.
 - Target: ≥ 200 pairs per direction.
 
-## Niche (specialty round)
+## Niche (specialty test)
 
 Derived from **`20261002-022500`** by `pipeline/niche.py` (pre-registered in
 `evals/niche.md`). The Pontoon product `focus-for-android` is held out as `test_niche`:
