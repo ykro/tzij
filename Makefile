@@ -15,7 +15,7 @@ REVIEW_CSV ?=
 DUEL_PORT ?= 8787
 OLLAMA ?= $(if $(OLLAMA_URL),$(OLLAMA_URL),http://127.0.0.1:11434)
 
-.PHONY: help demo-screens deploy tune-retrieval niche niche-data distill train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator stage-on stage-off warmup preflight
+.PHONY: help demo-screens deploy tune-retrieval niche niche-data distill train-data-raft-bt monolingual back-translate train-data train-data-raft train train-local train-finish pull-model data data-cloud data-pull index review-test apply-review fertility datasheet eval human-eval-sheet web duel test up reset screenshots emulator stage-on stage-off warmup preflight examples translator-screens
 
 help: ## Show targets
 	@grep -hE '^[a-z-]+:.*## ' Makefile | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -147,6 +147,9 @@ stage-on: ## Talk day: nothing to scale (no cloud services; everything on stage 
 stage-off: ## After the talk: nothing to scale down (no cloud services)
 	@echo "Tzij no tiene servicios en la nube que escalar: no queda nada cobrando."
 
+examples: ## Check the translator page's example phrases live with David -> duel/examples.json: [IDS=pair_id,...]
+	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.examples $(if $(IDS),--ids $(IDS))
+
 warmup: ## Load David + the embedding model in Ollama, one David translation (retrieval + MBR) and one Goliath call
 	@PYTHONPATH=$(CURDIR):$(CURDIR)/duel $(UV) run python -m tzij_duel.warmup
 
@@ -158,6 +161,9 @@ emulator: ## Validator in Chrome on the Android emulator (first emulator in adb 
 
 demo-screens: ## Screenshots for docs/DEMO.md, driven with the stage keys (needs `make up` with the real stage variant; EMULATOR=0 skips the phone)
 	cd web && node tests/demo.mjs
+
+translator-screens: ## Screenshots of the translator page for docs/DEMO.md, clicking an example and typing a phrase (needs `make up`)
+	cd web && node tests/translator.mjs
 
 screenshots: ## Playwright screenshots of both views at 1920x1080 and 390x844 (service must be running)
 	cd web && node tests/screenshots.mjs

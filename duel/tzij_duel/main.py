@@ -1,5 +1,6 @@
 """FastAPI duel service. Serves the API, the live event stream and the built web views.
 
+  /traductor     translator page: David alone, a text box and example buttons (the talk's demo)
   /presentador   presenter screen (1920x1080, laptop / projector)
   /validar       validator screen (the native speaker's phone, over the LAN)
   /api/...       rounds, verdicts, state, events
@@ -24,6 +25,7 @@ from duel_core import Connectivity, OllamaClient
 from rag.retrieve import Retriever
 
 from .deck import Deck
+from .examples import load_examples, public
 from .events import PRESENTER, VALIDATOR, Broadcaster
 from .lan import public_url
 from .model_card import model_card
@@ -66,6 +68,11 @@ class NewRound(BaseModel):
     # Specialty round: a phrase from the niche (evals/niche.md: a Pontoon product held out as a
     # translation-memory test). Always Spanish -> K'iche', the direction the niche measures.
     specialty: bool = False
+
+
+class Translation(BaseModel):
+    text: str = Field(min_length=1, max_length=MAX_PHRASE_CHARS)
+    direction: Literal["es-quc", "quc-es"] = "es-quc"
 
 
 class Verdict(BaseModel):
@@ -197,6 +204,15 @@ class Service:
         self.publish()
         return round_.blind()
 
+    async def translate_text(self, body: Translation) -> dict[str, Any]:
+        """The translator page (/traductor/): David alone, exactly as on stage. No round, no score."""
+        text = body.text.strip()
+        if not text:
+            raise HTTPException(422, "Escribe una frase para traducir.")
+        result = await translate(self.david, text, body.direction, retriever=self.retriever, online=True)
+        return {"direction": body.direction, "source_text": text, "status": result.status, "text": result.text,
+                "latency_ms": result.latency_ms, "error": result.error, "model": self.david.model}
+
     def reset(self) -> None:
         self.store.reset()
         self.deck.reset()
@@ -324,6 +340,14 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
         svc.reset()
         return {"ok": True}
 
+    @app.post("/api/translate", dependencies=local)
+    async def translate_text(body: Translation) -> dict[str, Any]:
+        return await svc.translate_text(body)
+
+    @app.get("/api/examples", dependencies=local)
+    async def examples() -> list[dict]:
+        return [public(e) for e in load_examples()]
+
     @app.get("/api/verdicts")
     async def verdict_options() -> list[str]:
         return list(VERDICTS)
@@ -332,7 +356,7 @@ def create_app(settings: Settings | None = None, service: Service | None = None)
     if web.exists():
         @app.get("/", include_in_schema=False)
         async def root() -> RedirectResponse:
-            return RedirectResponse("/presentador/")
+            return RedirectResponse("/traductor/")
 
         app.mount("/", StaticFiles(directory=web, html=True), name="web")
     else:

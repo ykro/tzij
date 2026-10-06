@@ -7,8 +7,12 @@ One Spanish line per check, `[ok]` or `[FALLA]` with the fix. Exit code = number
   - David never trained on Firefox Focus (otherwise the specialty round is not a fair test)
   - the retrieval index exists, loads, and comes from the dataset in data/processed/LATEST
   - the evaluation deck and the specialty deck (test_niche) have phrases
+  - the translator page (/traductor/, the talk's demo): built, served if the service is running, and
+    its example phrases (duel/examples.json) are in test_niche, checked with this David, and one of
+    them translated live stays at or above the chrF++ bar against its licensed reference
   - the duel service's /api/health, if it is running
-  - Gemini answers (one tiny call)
+  - Gemini answers (one tiny call). The translator page doesn't use Goliath: without internet this
+    and the duel's "online" check are notices, not failures
   - at least 10 GB free on disk
   - one timed David translation as on stage (retrieval + MBR if MBR_ON_STAGE=1) within the 5 s p50 budget
 """
@@ -16,6 +20,7 @@ One Spanish line per check, `[ok]` or `[FALLA]` with the fix. Exit code = number
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import shutil
 import statistics
@@ -26,6 +31,7 @@ import httpx
 from duel_core import GeminiClient
 
 from .deck import Deck, latest_dataset
+from .examples import EXAMPLES, MIN_CHRF, load_examples, niche_pairs
 from .main import _load_retriever, index_mismatch
 from .settings import REPO_ROOT, get_settings
 from .variants import stage_variants, translate
@@ -56,6 +62,9 @@ class Report:
     def fail(self, text: str, fix: str) -> None:
         self.failures += 1
         print(f"  [FALLA] {text}\n          → {fix}", flush=True)
+
+    def note(self, text: str) -> None:
+        print(f"  [aviso] {text}", flush=True)
 
 
 def check_ollama(r: Report, s) -> None:
@@ -122,7 +131,7 @@ def check_duel(r: Report, s) -> None:
     elif not h.get("retrieval"):
         r.fail("El duelo corre sin recuperación", "make index y reinicia make up")
     elif not h.get("online"):
-        r.fail("El duelo no ve internet: Goliath saldría «Sin conexión»", "revisa el Wi-Fi o FORCE_OFFLINE en .env")
+        r.note("El duelo no ve internet: el traductor funciona igual (solo David); Goliath saldría «Sin conexión»")
     else:
         r.ok(f"/api/health en :{s.port}: en línea, con recuperación")
 
@@ -137,8 +146,53 @@ def check_gemini(r: Report, s) -> None:
         res = asyncio.run(client.complete([{"role": "user", "content": "Responde solo: ok"}], model=s.gemini_model))
         r.ok(f"{s.gemini_model} responde en {res.latency_ms / 1000:.2f}s ({res.input_tokens}+{res.output_tokens} tokens)")
     except Exception as exc:
-        r.fail(f"{s.gemini_model} no responde ({type(exc).__name__}: {str(exc)[:100]})",
-               "gcloud auth application-default login y revisa la conexión")
+        r.note(f"{s.gemini_model} no responde ({type(exc).__name__}: {str(exc)[:80]}). El traductor no lo usa; "
+               "para el duelo: gcloud auth application-default login y revisa la conexión")
+
+
+def check_translator(r: Report, s, retriever) -> None:
+    print("Página del traductor (/traductor/)", flush=True)
+    page = s.web_dir / "traductor" / "index.html"
+    if page.exists():
+        r.ok(f"Página construida: {page.relative_to(REPO_ROOT)}")
+    else:
+        r.fail("La página del traductor no está construida", "make web")
+    examples = load_examples()
+    pairs = niche_pairs(s.processed_dir)
+    stale = [e for e in examples if pairs.get(e["pair_id"], {}).get("source_text") != e["text"]]
+    if not examples:
+        r.fail("No hay frases de ejemplo (duel/examples.json)", "make examples IDS=<pair_ids de test_niche>")
+        return
+    if stale:
+        r.fail(f"{len(stale)} ejemplos no están en test_niche.jsonl del dataset actual («{stale[0]['text']}»)", "make examples")
+    else:
+        r.ok(f"{len(examples)} frases de ejemplo de Firefox Focus, todas en test_niche (español → Kʼicheʼ)")
+    try:
+        checked_with = json.loads(EXAMPLES.read_text(encoding="utf-8")).get("david")
+    except (OSError, ValueError):
+        checked_with = None
+    if checked_with != s.david_model:
+        r.fail(f"Los ejemplos se revisaron con {checked_with}, pero LOCAL_MODEL_TAG es {s.david_model}", "make examples")
+    try:
+        served = httpx.get(f"http://127.0.0.1:{s.port}/traductor/", timeout=3)
+        listed = httpx.get(f"http://127.0.0.1:{s.port}/api/examples", timeout=3).json()
+        if served.status_code == 200 and len(listed) == len(examples):
+            r.ok(f"http://127.0.0.1:{s.port}/traductor/ responde con {len(listed)} ejemplos")
+        else:
+            r.fail(f"/traductor/ respondió {served.status_code} con {len(listed)} ejemplos", "make web y reinicia make up")
+    except (httpx.HTTPError, ValueError):
+        r.ok(f"El servicio no está corriendo en :{s.port}; la página se revisa cuando corras make up (no es una falla)")
+    if s.mock_ai or retriever is None:
+        return
+    david, _ = stage_variants(s)
+    first = examples[0]
+    res = asyncio.run(translate(david, first["text"], first["direction"], retriever=retriever, online=False,
+                                reference=first["reference"]))
+    if res.status == "ok" and res.chrf is not None and res.chrf >= MIN_CHRF:
+        r.ok(f"«{first['text']}» → «{res.text}» (chrF++ {res.chrf:.0f} contra la referencia con licencia)")
+    else:
+        r.fail(f"«{first['text']}» salió «{res.text or res.error}» (chrF++ {res.chrf}, mínimo {MIN_CHRF:g})",
+               "make warmup y make examples (revisa los ejemplos con este David)")
 
 
 def check_disk(r: Report) -> None:
@@ -183,6 +237,7 @@ def main() -> int:
         r.fail("MOCK_AI=1: en escena los modelos serían simulados", "pon MOCK_AI=0 en .env")
     check_ollama(r, s)
     retriever = check_index_and_decks(r, s)
+    check_translator(r, s, retriever)
     check_duel(r, s)
     check_gemini(r, s)
     check_disk(r)

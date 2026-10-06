@@ -1,0 +1,177 @@
+{
+  "about": "Example buttons of /traductor/: licensed español → Kʼicheʼ pairs from the Firefox Focus translation memory (test_niche), translated live by David 3 times with chrF++ >= 50 against the reference. Built by `make examples`.",
+  "dataset": "20261002-173447",
+  "david": "tzij-2026-10-mix-s7",
+  "min_chrf": 50.0,
+  "checked": "2026-10-06",
+  "examples": [
+    {
+      "pair_id": "pontoon_mozilla-2a49f590beb2",
+      "direction": "es-quc",
+      "text": "Conexión segura",
+      "reference": "Chajital t'iqonem",
+      "english": "Secure Connection",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Chajital t'iqonem",
+        "Chajital t'iqonem",
+        "Chajital t'iqonem"
+      ],
+      "chrf": [
+        100.0,
+        100.0,
+        100.0
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-d13c27da806d",
+      "direction": "es-quc",
+      "text": "Conexión insegura",
+      "reference": "Man chajital ta t'iqonem",
+      "english": "Insecure Connection",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Man chajital ta le t'iqonem",
+        "Man chajital ta t'iqonem",
+        "Man chajital ta le t'iqonem"
+      ],
+      "chrf": [
+        82.55,
+        100.0,
+        82.55
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-9345f5da0a1b",
+      "direction": "es-quc",
+      "text": "Bloquear cookies entre sitios",
+      "reference": "Chaq'atej cookies pa taq uk'olib'al web'",
+      "english": "Block cross-site cookies",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Chaq'atexik taq yayet pa taq uk'olib'al web'",
+        "Chaq'atej taq yayet pa taq uk'olib'al web'",
+        "Chaq'atej yayet pa taq uk'olib'al web'"
+      ],
+      "chrf": [
+        67.39,
+        71.35,
+        72.88
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-a5f8c301bee1",
+      "direction": "es-quc",
+      "text": "Enviar datos de uso",
+      "reference": "Utaqik taq juq'attzij rech ukojik",
+      "english": "Send usage data",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Chataqa' taq juq'attzij rech uterkexik",
+        "Chataqa' taq juq'attzij rech uterkexik ukojik",
+        "Chataqa' taq juq'attzij rech uterkexik"
+      ],
+      "chrf": [
+        59.55,
+        67.52,
+        59.55
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-9c66279dcf8d",
+      "direction": "es-quc",
+      "text": "Autocompletar URL",
+      "reference": "Utz'aqatisaxik pa utukelam URL",
+      "english": "URL Autocomplete",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Utz'aqatisaxik pa utukelam URL",
+        "Utz'aqatisaxik pa utukelam URL",
+        "Utz'aqatisaxik pa utukelam URL"
+      ],
+      "chrf": [
+        100.0,
+        100.0,
+        100.0
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-ab7694d1bd24",
+      "direction": "es-quc",
+      "text": "Información de licencia",
+      "reference": "Q'alajisanem rech wujil",
+      "english": "Licensing information",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Q'alajisanem rech rajilab'al",
+        "Q'alajisanem rech rajilatinik",
+        "Q'alajisanem rech uchilajil"
+      ],
+      "chrf": [
+        69.97,
+        69.46,
+        71.07
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-863046c5adf6",
+      "direction": "es-quc",
+      "text": "Agregar y gestionar el autocompletado de URL personalizadas.",
+      "reference": "Chaya' chi'l chawilawachij winaqirisam utz'aqatisaxik pa utukelam URLs.",
+      "english": "Add and manage custom autocomplete URLs.",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Chatz'ib'aj xuquje' chawachixik le utz'aqatisaxik pa utukelam rech winaqirisam URLs.",
+        "Chatz'ib'aj xuquje' chawilachixik le utz'aqatisaxik pa utukelam rech winaqirisam URLs.",
+        "Chatz'ib'aj xuquje' chachajilaj ri utz'aqatisaxik pa utukelam rech winaqirisam URLs."
+      ],
+      "chrf": [
+        61.16,
+        62.22,
+        58.99
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-f80461e7056f",
+      "direction": "es-quc",
+      "text": "+ Agregar otro motor de búsqueda",
+      "reference": "+ Chaya' jun chi ch'ich' rech tzukub'al",
+      "english": "+ Add another search engine",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "+ Chaya' jun chi yab'al uchuq'ab' rech utzukunem",
+        "+ Chaya' jun chi yab'al uchuq'ab' rech utzukunem",
+        "+ Chaya' jun chi yab'al uchuq'ab' rech utzukuxik"
+      ],
+      "chrf": [
+        58.02,
+        58.02,
+        58.38
+      ]
+    }
+  ]
+}
