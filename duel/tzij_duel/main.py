@@ -1,6 +1,6 @@
 """FastAPI duel service. Serves the API, the live event stream and the built web views.
 
-  /traductor     translator page: David alone, a text box and example buttons (the talk's demo)
+  /traductor     translator page: David and Goliath side by side, a text box and example buttons (the talk's demo)
   /presentador   presenter screen (1920x1080, laptop / projector)
   /validar       validator screen (the native speaker's phone, over the LAN)
   /api/...       rounds, verdicts, state, events
@@ -73,6 +73,11 @@ class NewRound(BaseModel):
 class Translation(BaseModel):
     text: str = Field(min_length=1, max_length=MAX_PHRASE_CHARS)
     direction: Literal["es-quc", "quc-es"] = "es-quc"
+    # An example button sends its pair_id: the page then shows the licensed correct translation
+    # and how close each side got to it. Typed text has no reference.
+    example: str | None = None
+    # The page asks for each side on its own so each column fills as soon as its model answers.
+    side: Literal["david", "goliath"] | None = None
 
 
 class Verdict(BaseModel):
@@ -205,13 +210,31 @@ class Service:
         return round_.blind()
 
     async def translate_text(self, body: Translation) -> dict[str, Any]:
-        """The translator page (/traductor/): David alone, exactly as on stage. No round, no score."""
+        """The translator page (/traductor/): David and Goliath translate the same text in parallel,
+        as on stage. No round, no score, no winner: the two translations with their time and cost and,
+        for an example, the licensed correct translation and how close each one got to it (chrF++)."""
         text = body.text.strip()
         if not text:
             raise HTTPException(422, "Escribe una frase para traducir.")
-        result = await translate(self.david, text, body.direction, retriever=self.retriever, online=True)
-        return {"direction": body.direction, "source_text": text, "status": result.status, "text": result.text,
-                "latency_ms": result.latency_ms, "error": result.error, "model": self.david.model}
+        example = next((e for e in load_examples() if e["pair_id"] == body.example), None) if body.example else None
+        if example is not None and (example["text"] != text or example["direction"] != body.direction):
+            example = None  # the box was edited after picking the example: it's typed text now
+        reference = example["reference"] if example else None
+        online = await self.refresh_online()
+        names = [body.side] if body.side else ["david", "goliath"]
+        variants = {"david": (self.david, self.retriever), "goliath": (self.goliath, None)}
+        results = await asyncio.gather(*(
+            translate(variants[n][0], text, body.direction, retriever=variants[n][1], online=online, reference=reference)
+            for n in names))
+
+        def side(r) -> dict[str, Any]:
+            return {"status": r.status, "text": r.text, "latency_ms": r.latency_ms, "cost_usd": r.cost_usd,
+                    "closeness": r.chrf, "error": r.error, "model": r.model}
+
+        return {"direction": body.direction, "source_text": text, "online": online,
+                "reference": ({"text": reference, "source": example["source"], "license": example["license"],
+                               "url": example["url"]} if example else None),
+                **{n: side(r) for n, r in zip(names, results)}}
 
     def reset(self) -> None:
         self.store.reset()

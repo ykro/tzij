@@ -1,8 +1,10 @@
 {
-  "about": "Example buttons of /traductor/: licensed español → Kʼicheʼ pairs from the Firefox Focus translation memory (test_niche), translated live by David 3 times with chrF++ >= 50 against the reference. Built by `make examples`.",
+  "about": "Example buttons of /traductor/: licensed español → Kʼicheʼ pairs from the Firefox Focus translation memory (test_niche), translated live 3 times by David and Goliath; every time David had chrF++ >= 50 against the reference and beat Goliath by >= 15. Built by `make examples`.",
   "dataset": "20261002-173447",
   "david": "tzij-2026-10-mix-s7",
+  "goliath": "gemini-3.8-flash",
   "min_chrf": 50.0,
+  "min_margin": 15.0,
   "checked": "2026-10-06",
   "examples": [
     {
@@ -20,10 +22,20 @@
         "Chajital t'iqonem",
         "Chajital t'iqonem"
       ],
-      "chrf": [
+      "goliath_outputs": [
+        "Jikilik tzijob'alil",
+        "Jikil t'iqoj",
+        "Jikil tzijob'alil"
+      ],
+      "david_chrf": [
         100.0,
         100.0,
         100.0
+      ],
+      "goliath_chrf": [
+        6.91,
+        21.64,
+        7.92
       ]
     },
     {
@@ -37,14 +49,55 @@
       "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
       "license": "MPL-2.0 (Mozilla Pontoon localizations)",
       "david_outputs": [
-        "Man chajital ta le t'iqonem",
         "Man chajital ta t'iqonem",
-        "Man chajital ta le t'iqonem"
+        "Man chajital ta t'iqonem",
+        "Man chajital taj t'iqonik"
       ],
-      "chrf": [
-        82.55,
+      "goliath_outputs": [
+        "Man jikil taj ri t'iqb'al ib'",
+        "Man jikil taj ri t'iqonik",
+        "Itzel t'iqonik man jikom taj"
+      ],
+      "david_chrf": [
         100.0,
-        82.55
+        100.0,
+        65.78
+      ],
+      "goliath_chrf": [
+        20.21,
+        27.11,
+        22.07
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-3ea516e9b71a",
+      "direction": "es-quc",
+      "text": "Tu lista de autocompletado:",
+      "reference": "Ucholajil utz'aqatisaxik pa utukelam:",
+      "english": "Your autocomplete list:",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Le acholajil utz'aqatisaxik pa utukelam:",
+        "Le acholajil utz'aqatisaxik pa utukelam:",
+        "Le acholajil utz'aqatisaxik pa utukelam:"
+      ],
+      "goliath_outputs": [
+        "Ri acholob'al rech nojisab'al:",
+        "Ri acholb'al rech tz'aqatisab'al awib':",
+        "Ri cholaj richin ri awik'owisab'al tz'ib'anik:"
+      ],
+      "david_chrf": [
+        90.29,
+        90.29,
+        90.29
+      ],
+      "goliath_chrf": [
+        13.45,
+        27.42,
+        18.35
       ]
     },
     {
@@ -58,14 +111,24 @@
       "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
       "license": "MPL-2.0 (Mozilla Pontoon localizations)",
       "david_outputs": [
-        "Chaq'atexik taq yayet pa taq uk'olib'al web'",
-        "Chaq'atej taq yayet pa taq uk'olib'al web'",
+        "Chaq'atej yayet pa taq uk'olib'al web'",
+        "Chaq'atej yayet pa taq uk'olib'al web'",
         "Chaq'atej yayet pa taq uk'olib'al web'"
       ],
-      "chrf": [
-        67.39,
-        71.35,
+      "goliath_outputs": [
+        "Uq'atexik taq cookies pa kiwi' taq k'olib'al k'aslemal",
+        "Uq'atexik le cookies chi kixo'l le k'olib'al",
+        "Uq'atexik ri cookies chkixo'l ri k'olib'al"
+      ],
+      "david_chrf": [
+        72.88,
+        72.88,
         72.88
+      ],
+      "goliath_chrf": [
+        45.29,
+        32.91,
+        32.81
       ]
     },
     {
@@ -79,14 +142,24 @@
       "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
       "license": "MPL-2.0 (Mozilla Pontoon localizations)",
       "david_outputs": [
-        "Chataqa' taq juq'attzij rech uterkexik",
+        "Chataqa' taq juq'attzij rech uterkexik ukojik",
         "Chataqa' taq juq'attzij rech uterkexik ukojik",
         "Chataqa' taq juq'attzij rech uterkexik"
       ],
-      "chrf": [
-        59.55,
+      "goliath_outputs": [
+        "Utaqik reta'mab'al kowinik",
+        "Utaqik le reta'mab'alil le kojb'al",
+        "Utaqik reta'mab'al kowikem"
+      ],
+      "david_chrf": [
+        67.52,
         67.52,
         59.55
+      ],
+      "goliath_chrf": [
+        19.98,
+        19.02,
+        19.53
       ]
     },
     {
@@ -104,10 +177,20 @@
         "Utz'aqatisaxik pa utukelam URL",
         "Utz'aqatisaxik pa utukelam URL"
       ],
-      "chrf": [
+      "goliath_outputs": [
+        "Upaqab'isaxik URL pa rib'il rib'",
+        "Utz'aqatisaxik URL pa utukelam",
+        "Unojisaxik URL pa rib'il"
+      ],
+      "david_chrf": [
         100.0,
         100.0,
         100.0
+      ],
+      "goliath_chrf": [
+        24.53,
+        77.23,
+        23.13
       ]
     },
     {
@@ -122,13 +205,23 @@
       "license": "MPL-2.0 (Mozilla Pontoon localizations)",
       "david_outputs": [
         "Q'alajisanem rech rajilab'al",
-        "Q'alajisanem rech rajilatinik",
-        "Q'alajisanem rech uchilajil"
+        "Q'alajisanem rech uchajil",
+        "Q'alajisanem rech rajilab'al"
       ],
-      "chrf": [
+      "goliath_outputs": [
+        "Ub'ixikil ri ya'talik rech k'olib'alil",
+        "Uq'ijob'alil ri ya'talik rech b'anowik",
+        "Retamab'alil ri ya'b'al b'e"
+      ],
+      "david_chrf": [
         69.97,
-        69.46,
-        71.07
+        72.2,
+        69.97
+      ],
+      "goliath_chrf": [
+        15.69,
+        17.84,
+        9.4
       ]
     },
     {
@@ -142,14 +235,24 @@
       "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
       "license": "MPL-2.0 (Mozilla Pontoon localizations)",
       "david_outputs": [
-        "Chatz'ib'aj xuquje' chawachixik le utz'aqatisaxik pa utukelam rech winaqirisam URLs.",
-        "Chatz'ib'aj xuquje' chawilachixik le utz'aqatisaxik pa utukelam rech winaqirisam URLs.",
-        "Chatz'ib'aj xuquje' chachajilaj ri utz'aqatisaxik pa utukelam rech winaqirisam URLs."
+        "Chatz'ib'aj xuquje' chawilachij le utz'aqatisaxik pa utukelam le winaqirisam URLs.",
+        "Chak'utuch'ab'axik xuquje' chachajij le utz'aqatisaxik pa utukelam rech winaqirisam URLs.",
+        "Chatz'ib'aj xuquje' chachajil le utz'aqatisaxik pa utukelam le winaqirisam URLs."
       ],
-      "chrf": [
-        61.16,
-        62.22,
-        58.99
+      "goliath_outputs": [
+        "Uya'ik xuquje' uchajixik ri utz'aqatisaxik pa urik'iil kib'i' ri k'olib'al rech ri winaq.",
+        "Uya'ik xuquje' uchajixik ri utukel k'isb'al rech ri kemtz'ib'awuj rech winaqilal.",
+        "Uya'ik xuquje' uchajixik ri utz'aqatisaxik pa urikelebil kib'i' kemk'at rech winaqil."
+      ],
+      "david_chrf": [
+        63.07,
+        57.71,
+        58.43
+      ],
+      "goliath_chrf": [
+        32.16,
+        21.58,
+        34.44
       ]
     },
     {
@@ -165,12 +268,115 @@
       "david_outputs": [
         "+ Chaya' jun chi yab'al uchuq'ab' rech utzukunem",
         "+ Chaya' jun chi yab'al uchuq'ab' rech utzukunem",
-        "+ Chaya' jun chi yab'al uchuq'ab' rech utzukuxik"
+        "+ Chaya' jun chi yab'al uchuq'ab' rech utzukunem"
       ],
-      "chrf": [
+      "goliath_outputs": [
+        "+ Utz'aqatisaxik jun chik tzukunel",
+        "+ Uya'ik jun chik tzukunel kemk'atzoj",
+        "+ Utz'aqatisaxik jun chik tzukunel kemk'atz"
+      ],
+      "david_chrf": [
         58.02,
         58.02,
-        58.38
+        58.02
+      ],
+      "goliath_chrf": [
+        21.23,
+        22.86,
+        20.68
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-571842f850b0",
+      "direction": "es-quc",
+      "text": "Eliminar las URL personalizadas",
+      "reference": "Chawelesaj winaqirisam URLs",
+      "english": "Remove custom URLs",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Chupik utz'ib'axik winaqirisam URLs",
+        "Chupik utz'ib'axik winaqirisam URLs",
+        "Chupik utz'ib'axik winaqirisam URLs"
+      ],
+      "goliath_outputs": [
+        "Kelesax ri taq kemk'olib'alib'al rech winaq",
+        "Kechojqixik ri URL rech winaq",
+        "Keyuj ri ichinan URL"
+      ],
+      "david_chrf": [
+        54.47,
+        54.47,
+        54.47
+      ],
+      "goliath_chrf": [
+        17.95,
+        15.57,
+        10.37
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-d9e4a2fc46ce",
+      "direction": "es-quc",
+      "text": "Cookies y datos del sitio",
+      "reference": "Cookies chi'l taq juq'attzij rech wokk'olib'al web'",
+      "english": "Cookies and Site Data",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Taq k'olweb' xuquje' taq juq'attzij rech uk'olib'al web'",
+        "Taq k'olweb' xuquje' juq'attzij rech uk'olib'al web'",
+        "K'olweb' xuquje' taq juq'attzij rech uk'olib'al web'"
+      ],
+      "goliath_outputs": [
+        "Kukis xuquje' reta'mab'alil le k'olb'al rech k'at rechatzij",
+        "Taq cookies ruk' keta'mab'al ri k'olb'al",
+        "Cookies ruk' taq reta'mab'al k'olb'al rech k'at rech kematz'ib'"
+      ],
+      "david_chrf": [
+        57.08,
+        50.35,
+        57.71
+      ],
+      "goliath_chrf": [
+        22.21,
+        19.47,
+        29.26
+      ]
+    },
+    {
+      "pair_id": "pontoon_mozilla-76eaaf4bf8ff",
+      "direction": "es-quc",
+      "text": "Contenido web",
+      "reference": "Upam chak rech web'",
+      "english": "Web Content",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Upan chak rech web'",
+        "Upam chak rech uk'olib'al web'",
+        "Upan chak rech web'"
+      ],
+      "goliath_outputs": [
+        "Upam kematz'ib' rech k'atz'ib'",
+        "Upam kematz'ib'",
+        "Upam k'atuximuk'aj"
+      ],
+      "david_chrf": [
+        76.69,
+        74.34,
+        76.69
+      ],
+      "goliath_chrf": [
+        26.1,
+        18.97,
+        13.74
       ]
     }
   ]

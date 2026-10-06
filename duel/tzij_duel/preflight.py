@@ -8,8 +8,9 @@ One Spanish line per check, `[ok]` or `[FALLA]` with the fix. Exit code = number
   - the retrieval index exists, loads, and comes from the dataset in data/processed/LATEST
   - the evaluation deck and the specialty deck (test_niche) have phrases
   - the translator page (/traductor/, the talk's demo): built, served if the service is running, and
-    its example phrases (duel/examples.json) are in test_niche, checked with this David, and one of
-    them translated live stays at or above the chrF++ bar against its licensed reference
+    its example phrases (duel/examples.json) are in test_niche and were checked with today's David and
+    Goliath; one of them is translated live by both: David must stay close to the correct translation
+    and clearly ahead of Goliath (Goliath offline is a notice, not a failure)
   - the duel service's /api/health, if it is running
   - Gemini answers (one tiny call). The translator page doesn't use Goliath: without internet this
     and the duel's "online" check are notices, not failures
@@ -31,7 +32,7 @@ import httpx
 from duel_core import GeminiClient
 
 from .deck import Deck, latest_dataset
-from .examples import EXAMPLES, MIN_CHRF, load_examples, niche_pairs
+from .examples import EXAMPLES, MIN_CHRF, MIN_MARGIN, load_examples, niche_pairs
 from .main import _load_retriever, index_mismatch
 from .settings import REPO_ROOT, get_settings
 from .variants import stage_variants, translate
@@ -171,8 +172,10 @@ def check_translator(r: Report, s, retriever) -> None:
         checked_with = json.loads(EXAMPLES.read_text(encoding="utf-8")).get("david")
     except (OSError, ValueError):
         checked_with = None
-    if checked_with != s.david_model:
-        r.fail(f"Los ejemplos se revisaron con {checked_with}, pero LOCAL_MODEL_TAG es {s.david_model}", "make examples")
+    meta = json.loads(EXAMPLES.read_text(encoding="utf-8"))
+    if checked_with != s.david_model or meta.get("goliath") != s.gemini_model:
+        r.fail(f"Los ejemplos se revisaron con {checked_with} y {meta.get('goliath')}, pero hoy son "
+               f"{s.david_model} y {s.gemini_model}", "make examples")
     try:
         served = httpx.get(f"http://127.0.0.1:{s.port}/traductor/", timeout=3)
         listed = httpx.get(f"http://127.0.0.1:{s.port}/api/examples", timeout=3).json()
@@ -184,15 +187,33 @@ def check_translator(r: Report, s, retriever) -> None:
         r.ok(f"El servicio no está corriendo en :{s.port}; la página se revisa cuando corras make up (no es una falla)")
     if s.mock_ai or retriever is None:
         return
-    david, _ = stage_variants(s)
+    david, goliath = stage_variants(s)
     first = examples[0]
-    res = asyncio.run(translate(david, first["text"], first["direction"], retriever=retriever, online=False,
-                                reference=first["reference"]))
-    if res.status == "ok" and res.chrf is not None and res.chrf >= MIN_CHRF:
-        r.ok(f"«{first['text']}» → «{res.text}» (chrF++ {res.chrf:.0f} contra la referencia con licencia)")
+    d, g = asyncio.run(_both(david, goliath, first, retriever))
+    if d.status == "ok" and d.chrf is not None and d.chrf >= MIN_CHRF:
+        r.ok(f"David: «{first['text']}» → «{d.text}» (se parece {d.chrf:.0f} % a la correcta)")
     else:
-        r.fail(f"«{first['text']}» salió «{res.text or res.error}» (chrF++ {res.chrf}, mínimo {MIN_CHRF:g})",
+        r.fail(f"David: «{first['text']}» salió «{d.text or d.error}» (chrF++ {d.chrf}, mínimo {MIN_CHRF:g})",
                "make warmup y make examples (revisa los ejemplos con este David)")
+    if g.status == "offline":
+        r.note("Goliath: sin internet, su columna dirá «Sin conexión» (David traduce igual)")
+    elif g.status != "ok" or g.chrf is None:
+        r.note(f"Goliath no respondió ({g.error or g.status}); su columna mostrará el error")
+    elif d.chrf is not None and d.chrf - g.chrf >= MIN_MARGIN:
+        r.ok(f"Goliath: «{g.text}» (se parece {g.chrf:.0f} %): David queda {d.chrf - g.chrf:.0f} puntos más cerca")
+    else:
+        r.fail(f"Goliath: «{g.text}» se parece {g.chrf:.0f} %, a menos de {MIN_MARGIN:g} puntos de David en un ejemplo",
+               "make examples (vuelve a revisar los ejemplos con los dos)")
+
+
+async def _both(david, goliath, example, retriever):
+    from duel_core import Connectivity
+
+    online = await Connectivity().is_online()
+    return await asyncio.gather(
+        translate(david, example["text"], example["direction"], retriever=retriever, online=online, reference=example["reference"]),
+        translate(goliath, example["text"], example["direction"], retriever=None, online=online, reference=example["reference"]),
+    )
 
 
 def check_disk(r: Report) -> None:
