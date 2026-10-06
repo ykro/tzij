@@ -14,4 +14,9 @@ export async function unlockEmulator(adb, pin = process.env.EMULATOR_PIN ?? "123
   adb("shell", "input", "keyevent", "KEYCODE_ENTER");
   for (let i = 0; i < 20 && locked(); i++) await sleep(500);
   if (locked()) throw new Error(`The emulator is still locked: set EMULATOR_PIN to its screen PIN (tried ${pin})`);
+  // Chrome only becomes startable a moment after the first unlock (its storage unlocks then).
+  const chromeReady = () =>
+    !adb("shell", "cmd", "package", "resolve-activity", "--brief", "-c", "android.intent.category.LAUNCHER", "com.android.chrome")
+      .toString().includes("No activity found");
+  for (let i = 0; i < 30 && !chromeReady(); i++) await sleep(500);
 }
