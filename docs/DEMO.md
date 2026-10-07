@@ -98,7 +98,7 @@ del Kʼicheʼ al español (con el botón ⇄), pero esa dirección no se muestra
 
 Salen solo de casos de uso que David gana como conjunto completo, no de frases sueltas: la interfaz
 de Firefox Focus (6 frases, de 144 donde David saca 37.4 y Goliath 28.9), palabras cotidianas del
-diccionario GATITOS (8, de 150: 57.5 contra 22.1) y nombres de emoji de Unicode CLDR (7, de 100:
+diccionario GATITOS (8, de 150: 57.5 contra 22.1) y nombres de emoji de Unicode CLDR (6, de 100:
 60.9 contra 25.7). Están en [`duel/examples.json`](../duel/examples.json), con su traducción
 correcta, su fuente, su licencia y las traducciones y puntajes medidos. Cada una se tradujo 3 veces
 con el David de la nube y con Goliath; quedaron solo las que, las 3 veces, David tradujo cerca de la

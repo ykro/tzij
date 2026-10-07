@@ -13,6 +13,7 @@
       "text": "Conexión segura",
       "reference": "Chajital t'iqonem",
       "english": "Secure Connection",
+      "group": "focus",
       "source": "Mozilla Pontoon (Firefox Focus)",
       "product": "focus-for-android",
       "product_name": "Firefox Focus",
@@ -24,8 +25,8 @@
         "Chajital t'iqonem"
       ],
       "goliath_outputs": [
-        "Jikilik t'iqik",
-        "Jikitoj t'iqoj",
+        "Jiq'il t'iqonik",
+        "Jikib'am t'iqonik",
         "Jiklik t'iqb'al ib'"
       ],
       "david_chrf": [
@@ -34,21 +35,20 @@
         100.0
       ],
       "goliath_chrf": [
-        10.35,
-        16.75,
+        25.7,
+        20.87,
         11.4
       ],
       "david_ms": [
-        10811.8,
-        633.0,
-        612.1
+        11094.7,
+        569.8,
+        553.9
       ],
       "goliath_ms": [
-        1923.4,
-        1135.7,
-        987.2
-      ],
-      "group": "focus"
+        2126.6,
+        1688.0,
+        1827.7
+      ]
     },
     {
       "pair_id": "pontoon_mozilla-ab7694d1bd24",
@@ -56,42 +56,42 @@
       "text": "Información de licencia",
       "reference": "Q'alajisanem rech wujil",
       "english": "Licensing information",
+      "group": "focus",
       "source": "Mozilla Pontoon (Firefox Focus)",
       "product": "focus-for-android",
       "product_name": "Firefox Focus",
       "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
       "license": "MPL-2.0 (Mozilla Pontoon localizations)",
       "david_outputs": [
+        "Q'alajisanem rech uchajilajisaxik",
         "Q'alajisanem rech rajilab'al",
-        "Q'alajisanem rech uk'amik",
-        "Q'alajisanem rech uchajilajisaxik"
+        "Q'alajisanem rech uchajil"
       ],
       "goliath_outputs": [
-        "Ub'ixikil ri wujil ya'b'al b'e",
-        "Uwach k'utb'al rech ya'talik rech b'anowik",
-        "Eta'mab'al rech ya'b'al b'e"
+        "Utsijoxik ri ya'b'al b'e",
+        "Retamab'alil ri ya'b'al b'e",
+        "Uya'ik ub'ixik re ri wuj re ya'b'al q'ij"
       ],
       "david_chrf": [
+        68.12,
         69.97,
-        69.17,
-        68.12
+        72.2
       ],
       "goliath_chrf": [
-        18.62,
-        17.26,
-        16.48
+        7.86,
+        9.4,
+        11.44
       ],
       "david_ms": [
-        974.1,
-        746.9,
-        759.6
+        1019.4,
+        651.6,
+        607.0
       ],
       "goliath_ms": [
-        2725.0,
-        1484.6,
-        3178.1
-      ],
-      "group": "focus"
+        1797.0,
+        1250.8,
+        1463.7
+      ]
     },
     {
       "pair_id": "pontoon_tmx-f5597a164995",
@@ -99,6 +99,7 @@
       "text": "Contraseña",
       "reference": "Retokib'al",
       "english": "Password",
+      "group": "focus",
       "source": "Mozilla Pontoon (Firefox Focus)",
       "product": "focus-for-android",
       "product_name": "Firefox Focus",
@@ -110,9 +111,9 @@
         "Retokib'al"
       ],
       "goliath_outputs": [
-        "Retz'ib'axik rech okem",
-        "Retal tz'ib'",
-        "retalokib'al"
+        "Retz'ib'axik awachibal",
+        "Retal ch'ab'al",
+        "Retal etz'ib'"
       ],
       "david_chrf": [
         100.0,
@@ -120,21 +121,20 @@
         100.0
       ],
       "goliath_chrf": [
-        24.4,
-        22.45,
-        51.24
+        23.97,
+        23.74,
+        21.99
       ],
       "david_ms": [
-        804.6,
-        504.0,
-        603.5
+        743.8,
+        473.1,
+        563.2
       ],
       "goliath_ms": [
-        1968.8,
-        1995.4,
-        953.8
-      ],
-      "group": "focus"
+        1126.9,
+        19427.3,
+        1246.2
+      ]
     },
     {
       "pair_id": "pontoon_tmx-08b0d1fdd173",
@@ -142,6 +142,7 @@
       "text": "Privacidad",
       "reference": "Echeb'alil",
       "english": "Privacy",
+      "group": "focus",
       "source": "Mozilla Pontoon (Firefox Focus)",
       "product": "focus-for-android",
       "product_name": "Firefox Focus",
@@ -153,9 +154,9 @@
         "Echeb'alil"
       ],
       "goliath_outputs": [
-        "Awachib'al",
-        "Ewatzijol",
-        "Awaxik"
+        "Ewatalik",
+        "Ewalik",
+        "Ewalik"
       ],
       "david_chrf": [
         100.0,
@@ -163,21 +164,20 @@
         100.0
       ],
       "goliath_chrf": [
-        21.96,
-        5.83,
-        3.11
+        11.16,
+        11.69,
+        11.69
       ],
       "david_ms": [
-        909.4,
-        573.4,
-        622.5
+        836.5,
+        504.0,
+        595.5
       ],
       "goliath_ms": [
-        813.7,
-        1839.9,
-        1066.1
-      ],
-      "group": "focus"
+        1246.6,
+        1663.9,
+        4371.0
+      ]
     },
     {
       "pair_id": "pontoon_tmx-8e3cd7e720ba",
@@ -185,6 +185,7 @@
       "text": "Cerrar pestaña",
       "reference": "Utz'apixik k'utjaqb'al",
       "english": "Close tab",
+      "group": "focus",
       "source": "Mozilla Pontoon (Firefox Focus)",
       "product": "focus-for-android",
       "product_name": "Firefox Focus",
@@ -197,7 +198,7 @@
       ],
       "goliath_outputs": [
         "Utz'apixik ri uwi' wuj",
-        "Utz'apixik ri uwi' wuj",
+        "Utz'apixik uwi' wuj",
         "Utz'apixik ri uwi' wuj"
       ],
       "david_chrf": [
@@ -207,20 +208,19 @@
       ],
       "goliath_chrf": [
         38.07,
-        38.07,
+        39.05,
         38.07
       ],
       "david_ms": [
-        1021.0,
-        673.2,
-        690.5
+        1024.8,
+        756.8,
+        660.8
       ],
       "goliath_ms": [
-        1976.6,
-        2544.3,
-        2070.7
-      ],
-      "group": "focus"
+        6255.1,
+        1429.7,
+        2397.8
+      ]
     },
     {
       "pair_id": "pontoon_tmx-4d37b7a27e01",
@@ -228,6 +228,7 @@
       "text": "Nueva pestaña abierta",
       "reference": "Jaqatal K'ak' k'utjaqb'al",
       "english": "New tab opened",
+      "group": "focus",
       "source": "Mozilla Pontoon (Firefox Focus)",
       "product": "focus-for-android",
       "product_name": "Firefox Focus",
@@ -240,7 +241,7 @@
       ],
       "goliath_outputs": [
         "K'ak' jaqatalik uxaq wuj",
-        "K'ak' jaqinaq uxaq wuj",
+        "K'ak' jaqatalik uxaq wuj",
         "K'ak' jaqatalik uxaq wuj"
       ],
       "david_chrf": [
@@ -250,20 +251,19 @@
       ],
       "goliath_chrf": [
         35.98,
-        25.4,
+        35.98,
         35.98
       ],
       "david_ms": [
-        1057.2,
-        724.4,
-        735.6
+        1039.2,
+        728.7,
+        722.7
       ],
       "goliath_ms": [
-        1276.5,
-        1895.6,
-        2085.4
-      ],
-      "group": "focus"
+        2086.7,
+        1650.2,
+        1753.1
+      ]
     },
     {
       "pair_id": "gatitos-e641a8bc6040-es-quc",
@@ -283,9 +283,9 @@
         "ja chakub'al"
       ],
       "goliath_outputs": [
-        "chakpatal",
-        "chakib'al",
-        "chakb'al"
+        "chakub'al",
+        "chakb'al",
+        "ofisina"
       ],
       "david_chrf": [
         100.0,
@@ -293,9 +293,19 @@
         100.0
       ],
       "goliath_chrf": [
-        20.6,
-        30.1,
-        30.8
+        76.1,
+        30.78,
+        1.4
+      ],
+      "david_ms": [
+        914.5,
+        464.7,
+        512.3
+      ],
+      "goliath_ms": [
+        1037.1,
+        1401.4,
+        1237.5
       ]
     },
     {
@@ -316,9 +326,9 @@
         "ajpuqno'jib'al"
       ],
       "goliath_outputs": [
-        "ajno'jib'",
-        "ajno'j",
-        "ajyakonel"
+        "ajchak'aslemal",
+        "ajtz'aqanel",
+        "ajtz'aqanel"
       ],
       "david_chrf": [
         100.0,
@@ -326,9 +336,19 @@
         100.0
       ],
       "goliath_chrf": [
-        38.8,
-        16.2,
-        7.8
+        8.4,
+        9.77,
+        9.77
+      ],
+      "david_ms": [
+        863.2,
+        528.0,
+        609.1
+      ],
+      "goliath_ms": [
+        1032.1,
+        1113.3,
+        1490.3
       ]
     },
     {
@@ -349,9 +369,9 @@
         "uwaq q'ij"
       ],
       "goliath_outputs": [
-        "Waqq'ij",
-        "Waqaq'ij",
-        "Waqxaq'ij"
+        "Waqiq'ij",
+        "Waqxaq'ij",
+        "Waqq'ij"
       ],
       "david_chrf": [
         100.0,
@@ -359,9 +379,19 @@
         100.0
       ],
       "goliath_chrf": [
-        52.9,
         26.5,
-        25.7
+        25.75,
+        52.94
+      ],
+      "david_ms": [
+        847.1,
+        578.3,
+        543.3
+      ],
+      "goliath_ms": [
+        1410.0,
+        2082.3,
+        1260.0
       ]
     },
     {
@@ -392,9 +422,19 @@
         100.0
       ],
       "goliath_chrf": [
-        21.4,
-        21.4,
-        21.4
+        21.41,
+        21.41,
+        21.41
+      ],
+      "david_ms": [
+        683.4,
+        433.3,
+        436.6
+      ],
+      "goliath_ms": [
+        1537.6,
+        1009.5,
+        881.4
       ]
     },
     {
@@ -415,9 +455,9 @@
         "uk'u'x k'ayib'al"
       ],
       "goliath_outputs": [
-        "k'olb'al k'ayij",
-        "k'ayib'al nim ja",
-        "k'ayib'al nimja"
+        "K'ayib'al ri'j",
+        "K'olb'al k'ayib'al",
+        "k'ayb'al"
       ],
       "david_chrf": [
         100.0,
@@ -425,9 +465,19 @@
         100.0
       ],
       "goliath_chrf": [
-        25.8,
-        44.8,
-        45.2
+        34.11,
+        45.01,
+        22.84
+      ],
+      "david_ms": [
+        873.1,
+        574.2,
+        574.8
+      ],
+      "goliath_ms": [
+        1045.0,
+        1638.2,
+        1189.2
       ]
     },
     {
@@ -448,9 +498,9 @@
         "porom xan"
       ],
       "goliath_outputs": [
-        "xan",
-        "xotab'aj",
-        "xotab'aj"
+        "xot",
+        "xaxoj xan",
+        "xan"
       ],
       "david_chrf": [
         100.0,
@@ -458,9 +508,19 @@
         100.0
       ],
       "goliath_chrf": [
-        38.3,
-        5.4,
-        5.4
+        7.14,
+        18.15,
+        38.3
+      ],
+      "david_ms": [
+        692.0,
+        433.9,
+        549.3
+      ],
+      "goliath_ms": [
+        929.0,
+        2478.3,
+        1478.3
       ]
     },
     {
@@ -476,24 +536,34 @@
       "url": "https://huggingface.co/datasets/google/smol",
       "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
       "david_outputs": [
-        "kchaqij uchi'",
+        "Are kchaqij uchi'",
         "kchaqij uchi'",
         "kchaqij uchi'"
       ],
       "goliath_outputs": [
+        "k'atnaq chi'aj",
         "chaq'ijchi'",
-        "chaq'ijchi'",
-        "kacha'kik'"
+        "chaqi'j chi'aj"
       ],
       "david_chrf": [
-        100.0,
+        93.55,
         100.0,
         100.0
       ],
       "goliath_chrf": [
-        31.2,
-        31.2,
-        14.6
+        16.47,
+        31.16,
+        29.79
+      ],
+      "david_ms": [
+        813.9,
+        552.1,
+        521.2
+      ],
+      "goliath_ms": [
+        1344.1,
+        1363.6,
+        1175.2
       ]
     },
     {
@@ -509,24 +579,34 @@
       "url": "https://huggingface.co/datasets/google/smol",
       "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
       "david_outputs": [
-        "uya'ik ub'ixik apanoq",
+        "u_ya'ik ub'ixik apanoq",
         "uya'ik ub'ixik apanoq",
         "uya'ik ub'ixik apanoq"
       ],
       "goliath_outputs": [
-        "retab'alil ri k'ulmatajem",
-        "b'i'tzij na'talik",
-        "k'utb'al chiwach"
+        "b'iq'ob'al wachil",
+        "b'ixikil na'tajik re ri petinaq",
+        "ub'ixik pe ri k'o chi k'ulmatajik"
       ],
       "david_chrf": [
-        100.0,
+        84.8,
         100.0,
         100.0
       ],
       "goliath_chrf": [
-        7.6,
-        10.4,
-        6.2
+        8.31,
+        20.7,
+        26.91
+      ],
+      "david_ms": [
+        872.4,
+        608.7,
+        668.8
+      ],
+      "goliath_ms": [
+        1311.9,
+        3608.1,
+        1380.5
       ]
     },
     {
@@ -547,19 +627,29 @@
         "ilb'al uwach kaj"
       ],
       "goliath_outputs": [
-        "k'olwachib'al naj",
-        "ch'awib'al che ri kaj",
+        "ilb'al naj",
+        "ilb'al naj",
         "ilb'al naj"
       ],
       "david_chrf": [
-        82.9,
-        82.9,
-        82.9
+        82.91,
+        82.91,
+        82.91
       ],
       "goliath_chrf": [
-        23.2,
-        22.6,
-        19.2
+        19.25,
+        19.25,
+        19.25
+      ],
+      "david_ms": [
+        726.2,
+        515.1,
+        524.3
+      ],
+      "goliath_ms": [
+        1275.2,
+        1178.1,
+        1207.7
       ]
     },
     {
@@ -581,8 +671,8 @@
       ],
       "goliath_outputs": [
         "wachib'al ib'",
-        "wachib'alib'il",
-        "achb'alil ib'"
+        "wachb'alil ib'",
+        "wachib'al ib'"
       ],
       "david_chrf": [
         100.0,
@@ -590,9 +680,19 @@
         100.0
       ],
       "goliath_chrf": [
-        32.5,
-        36.9,
-        15.7
+        32.46,
+        18.58,
+        32.46
+      ],
+      "david_ms": [
+        767.5,
+        558.3,
+        543.1
+      ],
+      "goliath_ms": [
+        1606.4,
+        1218.4,
+        1140.6
       ]
     },
     {
@@ -613,8 +713,8 @@
         "Upaq'apaxik upaq'ab'aj"
       ],
       "goliath_outputs": [
-        "q'ab'aj kikitik'ik kib'",
-        "q'ab'aj kikitzaq k'i q'ab'aj",
+        "q'ab'aj che tajin kepaq'paq'ik",
+        "Q'ab'aj tajin kepa'q'ik",
         "q'ab'aj ketaq'patik"
       ],
       "david_chrf": [
@@ -623,9 +723,19 @@
         100.0
       ],
       "goliath_chrf": [
-        20.2,
-        24.1,
-        25.9
+        29.08,
+        19.7,
+        25.88
+      ],
+      "david_ms": [
+        835.6,
+        837.6,
+        679.0
+      ],
+      "goliath_ms": [
+        8391.4,
+        1179.4,
+        1246.8
       ]
     },
     {
@@ -642,23 +752,33 @@
       "license": "Unicode-3.0 (Unicode CLDR data)",
       "david_outputs": [
         "Wane'jb'al rech retalq'ij",
-        "ilb'al ramaj rech retalq'ij",
-        "ilb'al ramaj rech retalq'ij"
+        "Wane'jb'al rech retalq'ij",
+        "Wane'jb'al rech retalq'ij"
       ],
       "goliath_outputs": [
-        "k'astab'al kajb'al",
-        "k'astisab'al kajb'al",
-        "k'asuj kajb'al"
+        "k'asb'al k'aslemal ramaj",
+        "k'astab'al ramaj",
+        "k'asb'al kajb'al"
       ],
       "david_chrf": [
         100.0,
-        60.6,
-        60.6
+        100.0,
+        100.0
       ],
       "goliath_chrf": [
-        13.8,
-        13.6,
-        12.0
+        11.88,
+        12.92,
+        12.92
+      ],
+      "david_ms": [
+        803.2,
+        648.5,
+        629.9
+      ],
+      "goliath_ms": [
+        994.4,
+        2097.1,
+        1319.1
       ]
     },
     {
@@ -679,7 +799,7 @@
         "q'ijilb'al"
       ],
       "goliath_outputs": [
-        "ilemab'al rech q'ij",
+        "lemow rech q'ij",
         "lemow rech q'ij",
         "lemow rech q'ij"
       ],
@@ -689,42 +809,19 @@
         100.0
       ],
       "goliath_chrf": [
-        31.6,
-        16.4,
-        16.4
-      ]
-    },
-    {
-      "pair_id": "cldr_quc-59543bd1c92b-es-quc",
-      "direction": "es-quc",
-      "text": "flor de cerezo",
-      "reference": "Ukotz'ijal k'uxk'ab'el",
-      "english": "",
-      "group": "cldr_quc",
-      "source": "Unicode CLDR",
-      "product": "",
-      "product_name": "",
-      "url": "https://github.com/unicode-org/cldr",
-      "license": "Unicode-3.0 (Unicode CLDR data)",
-      "david_outputs": [
-        "ukotz'ijal k'uxk'ab'el",
-        "ukotz'ijal k'uxk'ab'el",
-        "ukotz'ijal k'uxk'ab'el"
+        16.41,
+        16.41,
+        16.41
       ],
-      "goliath_outputs": [
-        "ukotz'i'jal sereso",
-        "u kotz'i'jal seresoché",
-        "Ukotz'i'jal sereso"
+      "david_ms": [
+        732.2,
+        520.3,
+        510.3
       ],
-      "david_chrf": [
-        77.2,
-        77.2,
-        77.2
-      ],
-      "goliath_chrf": [
-        20.0,
-        19.3,
-        23.6
+      "goliath_ms": [
+        1177.3,
+        1469.1,
+        2564.6
       ]
     },
     {
@@ -745,19 +842,29 @@
         "q'ij chi rij nim sutz'"
       ],
       "goliath_outputs": [
+        "Q'ij chirij jun nimalaj sutz'",
         "Q'ij chrij jun nim sutz'",
-        "Q'ij chrij jun nim sutz'",
-        "Q'ij chrij jun nim sutz'"
+        "Q'ij chirij jun nimalaj sutz'"
       ],
       "david_chrf": [
-        97.9,
-        97.9,
-        97.9
+        97.95,
+        97.95,
+        97.95
       ],
       "goliath_chrf": [
-        45.5,
-        45.5,
-        45.5
+        43.53,
+        45.49,
+        43.53
+      ],
+      "david_ms": [
+        855.5,
+        774.3,
+        849.2
+      ],
+      "goliath_ms": [
+        1435.9,
+        1344.9,
+        1065.4
       ]
     }
   ]

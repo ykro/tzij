@@ -445,6 +445,9 @@ con los dos modelos. Quedaron 26: las 11 de antes y 15 nuevas. Mozilla Monitor n
   `best_last`. David no se volvió a desplegar: su imagen ya usaba ese orden.
 - **Límites por IP para una charla:** 120 traducciones y 240 consultas de estado por minuto (eran
   30 y 40), porque todo el público sale por la misma IP del salón.
+- **Ejemplos de la página, revisados otra vez** (`make examples`, 3 veces cada uno con los dos
+  modelos): quedan 20 de 21. «flor de cerezo» sale: en la primera vuelta David tradujo
+  «ukotz'ijal t'ub'» (31.6 contra 23.6 de Goliath), debajo del mínimo de 50.
 - **Costo:** unos 15 minutos de la L4 de David (~$0.26); Gemini, $0 (se usaron las salidas de
   Goliath que ya estaban).
 

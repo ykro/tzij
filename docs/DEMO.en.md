@@ -97,7 +97,7 @@ Spanish (the ⇄ button), but that direction is not shown in the talk.
 
 They only come from use cases David wins as a whole set, not from single sentences: the Firefox
 Focus interface (6 strings, from 144 where David scores 37.4 and Goliath 28.9), everyday words from
-the GATITOS dictionary (8, from 150: 57.5 vs 22.1) and emoji names from Unicode CLDR (7, from 100:
+the GATITOS dictionary (8, from 150: 57.5 vs 22.1) and emoji names from Unicode CLDR (6, from 100:
 60.9 vs 25.7). They live in [`duel/examples.json`](../duel/examples.json), with their correct
 translation, source, license and the measured translations and scores. Each was translated 3 times
 by the cloud David and by Goliath; only the ones where, all 3 times, David stayed close to the
