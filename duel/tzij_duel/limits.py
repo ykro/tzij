@@ -35,8 +35,8 @@ class Limits:
     def __init__(self, *, translate_per_min: int | None = None, checks_per_min: int | None = None,
                  gemini_per_day: int | None = None, wakes_per_day: int | None = None,
                  keepalive_max_min: int | None = None, clock=time.monotonic, today=date.today) -> None:
-        self.translate_per_min = translate_per_min if translate_per_min is not None else _int("LIMIT_TRANSLATE_PER_MIN", 30)
-        self.checks_per_min = checks_per_min if checks_per_min is not None else _int("LIMIT_CHECKS_PER_MIN", 40)
+        self.translate_per_min = translate_per_min if translate_per_min is not None else _int("LIMIT_TRANSLATE_PER_MIN", 120)
+        self.checks_per_min = checks_per_min if checks_per_min is not None else _int("LIMIT_CHECKS_PER_MIN", 240)
         self.gemini_per_day = gemini_per_day if gemini_per_day is not None else _int("LIMIT_GEMINI_PER_DAY", 2000)
         self.wakes_per_day = wakes_per_day if wakes_per_day is not None else _int("LIMIT_DAVID_WAKES_PER_DAY", 12)
         self.keepalive_s = 60 * (keepalive_max_min if keepalive_max_min is not None else _int("KEEPALIVE_MAX_MIN", 45))
