@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import os
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Protocol, Sequence
 
@@ -54,13 +55,18 @@ class CachedEmbedder:
         self.inner = inner
         self.name = inner.name
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._db = sqlite3.connect(path)
+        self._db = sqlite3.connect(path, check_same_thread=False)  # retrieval runs in worker threads
+        self._lock = threading.Lock()
         self._db.execute("CREATE TABLE IF NOT EXISTS cache (key TEXT PRIMARY KEY, vector BLOB)")
 
     def _key(self, text: str) -> str:
         return hashlib.sha1(f"{self.name}\x1f{TASK_PREFIX}\x1f{text}".encode()).hexdigest()
 
     def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        with self._lock:
+            return self._embed(texts)
+
+    def _embed(self, texts: Sequence[str]) -> list[list[float]]:
         import struct
 
         keys = [self._key(t) for t in texts]
@@ -81,6 +87,14 @@ class CachedEmbedder:
                                  (key, struct.pack(f"{len(vector)}f", *vector)))
             self._db.commit()
         return [found[k] for k in keys]
+
+
+def default_embedder() -> Embedder:
+    """The query embedder: EmbeddingGemma on David's Ollama. With EMBEDDING_CACHE=<sqlite> the vectors
+    are read from that cache first (evals of an embedding model whose vectors were computed elsewhere)."""
+    inner = OllamaEmbedder()
+    cache = os.environ.get("EMBEDDING_CACHE")
+    return CachedEmbedder(inner, Path(cache)) if cache else inner
 
 
 def _missing(var: str):

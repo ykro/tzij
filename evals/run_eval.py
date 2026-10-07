@@ -47,10 +47,12 @@ def load_test(dataset: Path, limit: int | None, per_source: int | None = None, s
     """
     if split == "dev_domain":
         return load_dev_domain(dataset, limit, per_source)
-    records = [json.loads(line) for line in (dataset / f"{split}.jsonl").read_text(encoding="utf-8").splitlines()]
+    # tm_new: Pontoon strings in no split of the dataset (evals/tm_new.py), tracked next to this file.
+    path = Path(__file__).with_name("tm_new.jsonl") if split == "tm_new" else dataset / f"{split}.jsonl"
+    records = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     # auto_rejected pairs failed pipeline/validate_test.py; they never count.
     # The niche keeps its short UI terms (kind=lexicon) too: the slice is the whole held-out product.
-    records = [r for r in records if (r["kind"] == "sentence" or split == "test_niche")
+    records = [r for r in records if (r["kind"] == "sentence" or split in ("test_niche", "tm_new"))
                and r["status"] not in ("rejected", "auto_rejected")]
     if per_source:
         groups: dict[tuple[str, str], list[dict]] = defaultdict(list)
@@ -350,7 +352,7 @@ async def main_async(args) -> None:
     results = {}
     for v in variants:
         print(f"variant {v.name}")
-        concurrency = args.cloud_concurrency if v.requires_network else 1
+        concurrency = args.cloud_concurrency if v.requires_network else args.david_concurrency
         out = run_dir / f"{v.name.replace('/', '_').replace(':', '_')}.jsonl"
         results[v.name] = await run_variant(v, records, out, retriever=retrievers.get(v.retrieval), online=online,
                                             concurrency=concurrency, k=v.k)
@@ -377,8 +379,10 @@ def main() -> None:
     parser.add_argument("--only", default="", help="comma-separated variant names")
     parser.add_argument("--run", default="", help="resume an existing run id")
     parser.add_argument("--cloud-concurrency", type=int, default=8)
+    parser.add_argument("--david-concurrency", type=int, default=1,
+                        help="parallel David requests (1 keeps the latency columns comparable; >1 for quality-only runs)")
     parser.add_argument("--out", default="")
-    parser.add_argument("--split", choices=["test", "dev", "dev_domain", "test_niche"], default="test",
+    parser.add_argument("--split", choices=["test", "dev", "dev_domain", "test_niche", "tm_new"], default="test",
                         help="dev = tuning and stop decisions between data rounds; test = final numbers only")
     asyncio.run(main_async(parser.parse_args()))
 

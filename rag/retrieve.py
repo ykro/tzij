@@ -20,7 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from data.normalize import match_key, normalize
-from rag.embedder import Embedder, OllamaEmbedder
+from rag.embedder import Embedder, default_embedder
 from rag.store import connect, serialize
 
 DEFAULT_INDEX = Path(__file__).resolve().parent / "index" / "tzij.sqlite"
@@ -95,7 +95,7 @@ class Retriever:
             raise FileNotFoundError(f"retrieval index not found: {index_path} (run `make index`)")
         self.db = connect(index_path)
         meta = dict(self.db.execute("SELECT key, value FROM meta").fetchall())
-        self.embedder = embedder or OllamaEmbedder()
+        self.embedder = embedder or default_embedder()
         if meta.get("embedding_model") != self.embedder.name:
             raise RuntimeError(
                 f"index built with {meta.get('embedding_model')!r} but queries use {self.embedder.name!r}; "
