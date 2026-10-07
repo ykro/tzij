@@ -39,6 +39,8 @@ const WHO: Record<ContenderName, { name: string; what: string; busy: string }> =
 // the page is visible, which also keeps him awake during the talk.
 const WAKE_POLL_MS = 3000;
 const AWAKE_POLL_MS = 60000;
+// Examples shown before "más frases": two rows on a projector, so the two columns stay in view.
+const FIRST_EXAMPLES = 12;
 
 type Sides = Record<ContenderName, SideState>;
 const IDLE: Sides = { david: { phase: "idle" }, goliath: { phase: "idle" } };
@@ -63,6 +65,7 @@ export default function Translator() {
   const [evidence, setEvidence] = useState<Evidence | null>(null);
   const [david, setDavid] = useState<DavidState>({ ready: false, since: Date.now() });
   const [models, setModels] = useState<Record<ContenderName, string>>({ david: "", goliath: "" });
+  const [allExamples, setAllExamples] = useState(false);
   const request = useRef(0);
   const box = useRef<HTMLTextAreaElement>(null);
 
@@ -204,13 +207,20 @@ export default function Translator() {
           <div className="tx__examples" key={source}>
             <p className="tx__examples-label" id={`ex-label-${i}`}>Frases de {source.replace(/^Mozilla Pontoon \((.+)\)$/, "$1")}, con su traducción correcta:</p>
             <ul className="tx__chips" aria-labelledby={`ex-label-${i}`}>
-              {items.map((ex) => (
+              {(allExamples ? items : items.slice(0, FIRST_EXAMPLES)).map((ex) => (
                 <li key={ex.pair_id}>
                   <button type="button" className="tx__chip" aria-pressed={asked?.example?.pair_id === ex.pair_id} disabled={locked} onClick={() => pick(ex)}>
                     {ex.text}
                   </button>
                 </li>
               ))}
+              {items.length > FIRST_EXAMPLES && (
+                <li>
+                  <button type="button" className="tx__chip tx__chip--more" aria-expanded={allExamples} onClick={() => setAllExamples(!allExamples)}>
+                    {allExamples ? "Menos frases" : `${items.length - FIRST_EXAMPLES} frases más`}
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
         ))}

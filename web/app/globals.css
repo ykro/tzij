@@ -327,6 +327,12 @@ input {
   color: var(--surface);
 }
 
+.tx__chip--more {
+  border-style: dashed;
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .tx__chip:disabled:not([aria-pressed="true"]) {
   opacity: 0.55;
   cursor: default;
