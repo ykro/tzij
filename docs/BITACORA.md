@@ -413,6 +413,15 @@ con los dos modelos. Quedaron 26: las 11 de antes y 15 nuevas. Mozilla Monitor n
 - **La página en el teléfono:** una columna, los ejemplos se deslizan de lado; 12 ejemplos a la
   vista y un botón con el resto.
 - **`make david-proxy` usa el puerto 11435,** para no chocar con un Ollama instalado en la laptop.
+- **Otros casos de uso, medidos como conjunto** (`evals/usecases.py`): palabras cotidianas del
+  diccionario GATITOS (150: David 57.5, Goliath 22.1) y nombres de emoji de Unicode CLDR (100:
+  60.9 contra 25.7) los gana David, porque están en el diccionario que consulta. Con el mismo
+  glosario, Gemini saca más (88.6 y 94.4): es ventaja de datos. En las frases generales no hubo
+  ningún corte (fuente, dirección, largo) que David gane. La página muestra ahora 6 frases de
+  Firefox Focus, 8 palabras y 7 emoji, cada grupo con su resultado en el conjunto.
+- **Protección de costo en la página pública:** límites por IP, topes diarios de llamadas a
+  Gemini (2,000) y de veces que David se enciende (12), y una página olvidada deja de mantener
+  despierto a David 45 minutos después de su última traducción. Una charla usa una fracción.
 
 ## Dónde gana David hoy y dónde pierde
 

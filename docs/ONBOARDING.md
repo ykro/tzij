@@ -228,6 +228,8 @@ La página (`make page-url`) tiene:
 
 Las traducciones no se guardan en ningún lado.
 
+**Límites de costo** (`duel/tzij_duel/limits.py`): por IP, 30 traducciones y 40 consultas de estado por minuto (si se pasan, la página lo dice: «espera un momento»); por día, 2,000 llamadas a Gemini y 12 encendidas de David (después, la columna dice que se acabaron por hoy); y una pestaña abierta deja de mantener despierto a David 45 minutos después de su última traducción: la página dice «David descansa» y la siguiente traducción lo despierta. Se cambian con `LIMIT_TRANSLATE_PER_MIN`, `LIMIT_CHECKS_PER_MIN`, `LIMIT_GEMINI_PER_DAY`, `LIMIT_DAVID_WAKES_PER_DAY` y `KEEPALIVE_MAX_MIN` en el servicio `tzij`.
+
 **Despertar a David.** `tzij-david` tiene mínimo 0 instancias: la GPU se apaga sola unos 15 minutos después de la última petición, y entonces no cobra. Al abrir la página, el navegador pregunta `GET /api/david` cada 3 s; la página llama a `/health` de David con su token, y esa llamada lo despierta. Mientras arranca (unos 40 s (39 s medido con la GPU apagada; antes, 3 min 24 s) desde la página: la instancia, el modelo de 5.3 GB a la GPU, EmbeddingGemma, el índice y una traducción de prueba; los kernels de GPU ya vienen compilados en la imagen), la página dice «Preparando a David…» y no deja traducir. Cuando David contesta `ready`, dice «David listo». Después pregunta una vez por minuto mientras la pestaña está visible: eso lo mantiene despierto. Si pasan 6 minutos sin que despierte, dice «David no responde: recarga la página».
 
 **Costo.** Mientras está despierto, `tzij-david` cobra $0.0002907 por segundo (L4 + 4 vCPU + 16 GiB), $1.05 por hora, traduzca o no. Cerrar la página deja que se apague solo. La página cobra lo mínimo de Cloud Run y Gemini sus tokens.

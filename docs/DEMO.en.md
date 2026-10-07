@@ -32,8 +32,8 @@ there.
 
 ![The page, ready](demo/pagina-1-lista.png)
 
-- **What you see:** the text box, the Firefox Focus example sentences (12 in view and a button with
-  14 more) and the two columns: David, a small model, and Goliath, a frontier model.
+- **What you see:** the text box, the examples in three groups (Firefox Focus interface, words from a
+  dictionary and emoji names), each with its result on the whole set and the two columns: David, a small model, and Goliath, a frontier model.
 - **What to say:** "A la izquierda, David: un modelo pequeño, ajustado con datos Kʼicheʼ con
   licencia. A la derecha, Goliath: Gemini. Los dos van a traducir lo mismo, del español al
   Kʼicheʼ, el idioma maya más hablado de Guatemala."
@@ -45,15 +45,14 @@ there.
 ![A translated example](demo/pagina-3-ejemplo.png)
 
 - **What to do:** tap **Conexión segura**. Each column fills when its model answers. Then tap
-  **Información de licencia**.
+  **gafas de sol**, from the emoji names.
 - **What you see:** at the top, the correct translation. In each column, the translation, how close
   it is to the correct one, how long it took and what it cost. For «Conexión segura», David 100 %
-  and Goliath between 8 and 26 %; for «Información de licencia», David around 70 % and Goliath
-  between 16 and 19 %. David usually answers in under a second; Goliath, in one or two.
+  and Goliath between 8 and 26 %; for «gafas de sol», David 100 % and Goliath between 16 and 32 %. David usually answers in under a second; Goliath, in one or two.
 - **What to say:** "Son frases de Firefox Focus, el navegador de Mozilla. La traducción correcta la
   hicieron personas, y ninguno de los dos la vio. David tiene la memoria de traducción de los demás
   productos de Mozilla: las palabras que esa comunidad ya decidió. Por eso se acerca más, y además
-  responde antes."
+  responde antes. Lo mismo con un diccionario: David consulta el suyo."
 - **If someone asks what «se parece a la correcta» is:** "Compara cada traducción con la de las
   personas en pedacitos de letras y palabras: 100 % es idéntica. Se llama chrF++." (The page's
   footer explains it with an example.)
@@ -96,12 +95,15 @@ Spanish (the ⇄ button), but that direction is not shown in the talk.
 
 ## The example sentences
 
-They live in [`duel/examples.json`](../duel/examples.json), with their correct translation, source
-(Mozilla Pontoon, Firefox Focus), license (MPL-2.0) and the measured translations and scores. Each
-was translated 3 times by the cloud David and by Goliath, as the page does; only the ones where,
-all 3 times, David stayed close to the correct one (chrF++ 50 or more) and at least 15 points closer
-than Goliath were kept. There are 26. To re-check them, for example after changing models:
-`make examples`.
+They only come from use cases David wins as a whole set, not from single sentences: the Firefox
+Focus interface (6 strings, from 144 where David scores 37.4 and Goliath 28.9), everyday words from
+the GATITOS dictionary (8, from 150: 57.5 vs 22.1) and emoji names from Unicode CLDR (7, from 100:
+60.9 vs 25.7). They live in [`duel/examples.json`](../duel/examples.json), with their correct
+translation, source, license and the measured translations and scores. Each was translated 3 times
+by the cloud David and by Goliath; only the ones where, all 3 times, David stayed close to the
+correct one (chrF++ 50 or more) and at least 15 points closer than Goliath were kept. To re-check
+them: `make examples`.
+
 
 ## On a phone
 

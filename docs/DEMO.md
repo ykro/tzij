@@ -32,8 +32,8 @@ dirección funciona ahí.
 
 ![La página lista](demo/pagina-1-lista.png)
 
-- **Qué se ve:** el cuadro para escribir, las frases de ejemplo de Firefox Focus (12 a la vista y
-  un botón con 14 más) y las dos columnas: David, un modelo pequeño, y Goliath, un modelo frontera.
+- **Qué se ve:** el cuadro para escribir, los ejemplos en tres grupos (interfaz de Firefox Focus,
+  palabras de un diccionario y nombres de emoji), cada uno con su resultado en todo el conjunto y las dos columnas: David, un modelo pequeño, y Goliath, un modelo frontera.
 - **Qué decir:** "A la izquierda, David: un modelo pequeño, ajustado con datos Kʼicheʼ con
   licencia. A la derecha, Goliath: Gemini. Los dos van a traducir lo mismo, del español al
   Kʼicheʼ, el idioma maya más hablado de Guatemala."
@@ -45,15 +45,15 @@ dirección funciona ahí.
 ![Un ejemplo traducido](demo/pagina-3-ejemplo.png)
 
 - **Qué hacer:** toca **Conexión segura**. Cada columna se llena cuando su modelo responde. Después
-  toca **Información de licencia**.
+  toca **gafas de sol**, de los nombres de emoji.
 - **Qué se ve:** arriba, la traducción correcta. En cada columna, la traducción, qué tanto se
   parece a la correcta, cuánto tardó y cuánto costó. En «Conexión segura», David 100 % y Goliath
-  entre 8 y 26 %; en «Información de licencia», David alrededor de 70 % y Goliath entre 16 y 19 %.
+  entre 8 y 26 %; en «gafas de sol», David 100 % y Goliath entre 16 y 32 %.
   David suele responder en menos de un segundo; Goliath, en uno o dos.
 - **Qué decir:** "Son frases de Firefox Focus, el navegador de Mozilla. La traducción correcta la
   hicieron personas, y ninguno de los dos la vio. David tiene la memoria de traducción de los demás
   productos de Mozilla: las palabras que esa comunidad ya decidió. Por eso se acerca más, y además
-  responde antes."
+  responde antes. Lo mismo con un diccionario: David consulta el suyo."
 - **Si preguntan qué es «se parece a la correcta»:** "Compara cada traducción con la de las
   personas en pedacitos de letras y palabras: 100 % es idéntica. Se llama chrF++." (El pie de la
   página lo explica con un ejemplo.)
@@ -96,12 +96,15 @@ del Kʼicheʼ al español (con el botón ⇄), pero esa dirección no se muestra
 
 ## Las frases de ejemplo
 
-Están en [`duel/examples.json`](../duel/examples.json), con su traducción correcta, su fuente
-(Mozilla Pontoon, Firefox Focus), su licencia (MPL-2.0) y las traducciones y puntajes medidos. Cada
-una se tradujo 3 veces con el David de la nube y con Goliath, como lo hace la página; quedaron solo
-las que, las 3 veces, David tradujo cerca de la correcta (chrF++ de 50 o más) y por lo menos 15
-puntos más cerca que Goliath. Son 26. Para volver a revisarlas, por ejemplo después de cambiar de
-modelo: `make examples`.
+Salen solo de casos de uso que David gana como conjunto completo, no de frases sueltas: la interfaz
+de Firefox Focus (6 frases, de 144 donde David saca 37.4 y Goliath 28.9), palabras cotidianas del
+diccionario GATITOS (8, de 150: 57.5 contra 22.1) y nombres de emoji de Unicode CLDR (7, de 100:
+60.9 contra 25.7). Están en [`duel/examples.json`](../duel/examples.json), con su traducción
+correcta, su fuente, su licencia y las traducciones y puntajes medidos. Cada una se tradujo 3 veces
+con el David de la nube y con Goliath; quedaron solo las que, las 3 veces, David tradujo cerca de la
+correcta (chrF++ de 50 o más) y por lo menos 15 puntos más cerca que Goliath. Para volver a
+revisarlas: `make examples`.
+
 
 ## En el teléfono
 

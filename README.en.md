@@ -26,7 +26,7 @@ The Spanish [README.md](README.md) is the primary document; this is a faithful E
 | What it is | Fine-tuned Gemma 4 E4B (`tzij-2026-10-mix-s7`) + hybrid retrieval + MBR-4 | Gemini 3.8 Flash, no extra data |
 | Where it runs | Cloud Run with 1× NVIDIA L4 (`tzij-david`, private) | Vertex AI |
 
-- **Examples:** 26 Firefox Focus sentences in Spanish, with their correct K'iche' translation (Mozilla Pontoon, MPL-2.0 license). Each was translated 3 times by the cloud David and by Goliath, as the page does, and only the ones where David always stayed close to the correct translation (chrF++ 50 or more) and at least 15 points closer than Goliath were kept. They live in [`duel/examples.json`](duel/examples.json), with the measured outputs and scores; `make examples` re-checks them.
+- **Examples, by use case:** only from use cases David wins as a whole measured set ([use cases](#use-cases-where-david-wins)): 6 Firefox Focus interface strings (Mozilla Pontoon, MPL-2.0), 8 everyday words from the GATITOS dictionary (Google Research, CC BY 4.0) and 7 emoji names from Unicode CLDR (Unicode License V3), each with its correct translation. Each group says how both did on its full set. Each was translated 3 times by the cloud David and by Goliath, as the page does, and only the ones where David always stayed close to the correct translation (chrF++ 50 or more) and at least 15 points closer than Goliath were kept. They live in [`duel/examples.json`](duel/examples.json), with the measured outputs and scores; `make examples` re-checks them.
 - **"Se parece a la correcta"** (how close to the correct one): compares each translation with the one people made, in small pieces of letters and words, and says how much they share: 100 % is identical, 0 % shares nothing. If the correct one is «Chajital tʼiqonem», «Chajital tʼiqoj» scores 66 % and «Jikilik tʼiqoj» 16 %. It's chrF++, the usual measure for comparing machine translators; [details below](#what-chrf-is).
 - **A typed sentence:** if it's in the licensed data (the test sets, David's translation memory or the dictionary), the page recognizes it, shows its correct translation and measures both sides like an example. If not, there's nothing to measure against and the page says so; to help judge, it shows the 3 closest sentences in the translation memory, translated by people, and marks in each column the words those translations also use (the memory's terminology). It is not a score. A word-by-word dictionary check was discarded: on the examples, Goliath's wrong translations had more dictionary words than David's right ones, so it would have misled.
 - **Time and cost:** each column shows how long that translation took and what it cost. David runs on his own GPU, billed per second while it's up: his cost is the seconds he worked × the instance's price per second (L4 + 4 vCPU + 16 GiB in `europe-west4`: $0.0002907/s, $1.05 per hour). Goliath bills per token, at Gemini's list price of the day ($0.75 / $3.75 per million; from January 1, 2027, $1.50 / $7.50). Who wins when: [Projections](#projections-cost-and-time).
@@ -58,6 +58,20 @@ On the specialty David wins by **+8.5** [95% CI: +4.7, +12.7] on a product it ne
 | General: the same 600 test sentences | 25.8 | **36.9** | −11.1 |
 
 In the cloud David scores the same on the general test (25.8 vs 25.7) and answers faster (median 1.77 s vs 4.14 s on the laptop). On the 144 Firefox Focus sentences it scores 35.3 instead of 37.4: MBR picks among 4 sampled translations, so two runs don't give the same number; the lead over Goliath holds in both (+6.4 and +8.5, and the interval excludes zero). The 105 new Firefox Focus sentences confirm it with sentences that were in no earlier run ([experiment 13](#what-each-experiment-told-us)).
+
+### Use cases where David wins
+
+Besides the translation memory, other use cases were measured as sets, with fixed seeded samples never picked by result ([`evals/usecases.py`](evals/usecases.py), [`evals/usecases_results.md`](evals/usecases_results.md), against the cloud David):
+
+| Use case | n | David | Goliath | David − Goliath [95 % CI] | Exact translation: David | Goliath | Goliath with the same glossary |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Firefox Focus interface (translation memory, unseen sentences) | 144 | **37.4** | 28.9 | +8.5 [+4.7, +12.7] | — | — | — |
+| Everyday words from the GATITOS dictionary (Google Research) | 150 | **57.5** | 22.1 | +35.4 [+28.0, +42.6] | 37 % | 9 % | 85 % |
+| Emoji names from Unicode CLDR | 100 | **60.9** | 25.7 | +35.2 [+28.1, +42.5] | 42 % | 1 % | 91 % |
+| General sentences (Bloom, BOUQuET), any length or source | 600 | 25.8 | **36.9** | −11.1 | — | — | — |
+
+- **The dictionaries are a data advantage, not a model one.** Those words are in the dictionary David consults; Goliath, used as anyone uses it, doesn't have it. With the same glossary in the prompt, Gemini gets more right than David (88.6 and 94.4 chrF++): the fine-tuned model with MBR doesn't always copy the glossary entry exactly. The use case is real (an organization with its own glossary), but what wins is having the data.
+- **No other use case was won by David.** By source, direction and length (1 to 3 words, 4 to 6, 7 to 10 and more) on the 600 test sentences, Goliath wins all of them except 4–6-word Spanish → K'iche' sentences, a tie (30.1 vs 29.7). Mozilla Monitor, another Mozilla interface, is also lost ([experiment 13](#what-each-experiment-told-us)).
 
 ### What chrF++ is
 
@@ -330,7 +344,7 @@ The page shows a single David: `tzij-2026-10-mix-s7` + hybrid retrieval + MBR-4.
 - **It's the only one that can play the specialty cleanly.** The earlier fine-tunes (`tzij-2026-09`, `raft-s0`, `raft-bt-s0` … `s3`) trained on Firefox Focus before it was held out; with them the examples would measure memory, not translation.
 - **MBR-4 is worth it.** Without MBR, `mix-s7` scores 25.1 (35.9 on the specialty); with MBR-4, 25.7 (37.4). On the laptop it took 4.14 s; on the Cloud Run L4 the page gets it in 0.9 s (median). Experiment 8's multi-prompt MBR scored higher on dev but took 7.1 s on the laptop.
 - **The demo shows the case David wins.** On the translation memory, David translates better than Goliath; that is what the page compares. In general translation Goliath stays ahead (36.9 vs 25.7), most clearly in K'iche' → Spanish (−16.4). Those numbers are above and in the [logbook](docs/BITACORA.md), but the talk doesn't show that direction or those sentences.
-- **A per-sentence comparison has to be fair to both.** The examples were chosen among sentences neither model saw: 26 Firefox Focus sentences, 11 of the 144 held out and 15 of the 105 newer ones ([experiment 13](#what-each-experiment-told-us)). Each was translated 3 times live by both models, and stays only if all 3 times David scores 50 or more and beats Goliath by 15 or more. 37 were tried and 26 stayed. The measured outputs, scores and times are in [`duel/examples.json`](duel/examples.json).
+- **A per-sentence comparison has to be fair to both.** Buttons only come from use cases David wins as a set, never from single wins inside a losing use case. Each was translated 3 times live by both models, and stays only if all 3 times David scores 50 or more and beats Goliath by 15 or more. Of Firefox Focus, 37 were tried and 26 passed; the page shows 6, the easiest for anyone to understand. Of the dictionaries, 27 words were tried and 15 passed. The measured outputs and scores are in [`duel/examples.json`](duel/examples.json).
 - **Retrieval stays with EmbeddingGemma 1.** EmbeddingGemma 2 was tried to update to the new version; version 1 works better (dev 39.9 vs 38.8, general 25.8 vs 23.9), so version 1 is used ([experiment 12](#what-each-experiment-told-us)).
 
 ## Quickstart
@@ -343,6 +357,10 @@ make deploy                                # project, jobs, David on his GPU and
 open "$(make -s page-url)"                 # David and Goliath side by side
 make test                                  # tests with mock models (MOCK_AI=1): no GPU, no cloud
 ```
+
+**Reproducing it in your project.** Models, datasets and the index live in this project's private buckets (`gs://ai-experiments-487722-tzij-*`): they're not published, because some sources only allow private redistribution (BOUQuET) and the models derive from all of them. Everything rebuilds from the licensed sources: in `.env`, set `GOOGLE_CLOUD_PROJECT`, `DATA_BUCKET_URI`, `MODELS_BUCKET` and `STAGING_BUCKET` to your project and buckets, create the `hf-token` secret with a Hugging Face token that accepted Gemma's terms (and BOUQuET's, for the full test set) and run `make deploy`: it builds the datasets (`make data-cloud`), the index, training on Cloud Run Jobs (`make train`, `make train-finish`), David and the page. You need Cloud Run L4 GPU quota in `DEMO_REGION`. Reference costs in [Cost of training David](#cost-of-training-david). Step by step in [docs/ONBOARDING.md](docs/ONBOARDING.md) (Spanish).
+
+**Licenses.** The code is Apache 2.0 ([`LICENSE`](LICENSE)); data and models keep their licenses, listed in [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 No model is downloaded to the laptop. To measure against the cloud David (`make eval`, `make index`), `make david-proxy` ([details](docs/COMANDOS.en.md)).
 

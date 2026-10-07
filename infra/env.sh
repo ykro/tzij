@@ -7,7 +7,16 @@ INFRA_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck disable=SC1091
 [ -f "$INFRA_DIR/app.env" ] && source "$INFRA_DIR/app.env"
 
-export PROJECT_ID="${PROJECT_ID:-ai-experiments-487722}"
+# A key missing from an older .env comes from .env.example.
+dotenv() {
+  local root value; root="$(cd "$INFRA_DIR/.." && pwd)"
+  [ -f "$root/.env" ] && value="$(sed -n -E "s/^$1=(.*)$/\1/p" "$root/.env" | tail -1)"
+  [ -n "${value:-}" ] || value="$(sed -n -E "s/^$1=(.*)$/\1/p" "$root/.env.example" | tail -1)"
+  printf '%s\n' "$value"
+}
+
+# The project comes from .env (GOOGLE_CLOUD_PROJECT): to reproduce in your own project, change it there.
+export PROJECT_ID="${PROJECT_ID:-$(dotenv GOOGLE_CLOUD_PROJECT)}"
 export REGION="${REGION:-us-central1}"
 export TRAIN_REGION="${TRAIN_REGION:-europe-west4}"
 export CLOUDSDK_CORE_PROJECT="$PROJECT_ID"   # scope gcloud without touching the global config
@@ -39,10 +48,3 @@ export DAVID_SERVICE="${DAVID_SERVICE:-${APP}-david}"
 export PAGE_SERVICE="${PAGE_SERVICE:-${APP}}"
 
 # dotenv <KEY>: a value from .env (or .env.example), for the few settings the deploy scripts need.
-# A key missing from an older .env comes from .env.example.
-dotenv() {
-  local root value; root="$(cd "$INFRA_DIR/.." && pwd)"
-  [ -f "$root/.env" ] && value="$(sed -n -E "s/^$1=(.*)$/\1/p" "$root/.env" | tail -1)"
-  [ -n "${value:-}" ] || value="$(sed -n -E "s/^$1=(.*)$/\1/p" "$root/.env.example" | tail -1)"
-  printf '%s\n' "$value"
-}
