@@ -29,6 +29,7 @@ de `evals/runs/`.*
 | 10 | 4 oct | Por qué pierde David: split `dev_domain` y Gemini Pro | Pro 40.5 vs Flash 40.6 en dev_domain | −0.1 | $1.85 | **La brecha es Kʼicheʼ general; un Goliath más grande no la cierra** |
 | 11 | 4–5 oct | Ronda de datos: Bloom retrotraducido en las dos direcciones + destilación (`tzij-2026-10-mix-s7`) | **25.7** | +4.1 | $13.94 + $8.52 | **El David de la demo. Especialidad: 37.4 vs 28.9, David gana (+8.5)** |
 | 12 | 6 oct | Todo en la nube: David en una GPU L4 de Cloud Run, la página en Cloud Run, el merge de E4B en Cloud Batch | (sin cambio) | — | ~$0.1 de Batch | **La demo es una página en la nube; los ejemplos, revisados contra el David de la nube** |
+| 13 | 7 oct | La evaluación repetida en la nube, EmbeddingGemma 2 y frases nuevas de Pontoon | 25.8 (nube) | +0.1 | $0.03 de Gemini | **Igual en la nube; EmbeddingGemma 2 fuera; 105 frases nuevas de Firefox Focus: David gana (+6.1)** |
 
 \* La iteración 2 se midió sobre el dataset del 30 de septiembre (las mismas fuentes de prueba,
 referencias aún sin validar). Ahí la base con recuperación sacaba 18.4.
@@ -328,6 +329,63 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
   estado sin internet y los comandos de la laptop (`make up`, `warmup`, `preflight`,
   `pull-model`, `train-local`).
 
+## 13. La evaluación en la nube, EmbeddingGemma 2 y más frases (7 de octubre)
+
+**Qué:** tres cosas con el David de la nube (`tzij-david`, la misma imagen de la página),
+llamado desde la laptop con `make david-proxy`; la recuperación corre igual que en el servicio.
+
+**1. La evaluación repetida.** El mismo modelo, el mismo índice y las mismas frases, ahora en la
+L4:
+
+| Split | Laptop (2 y 5 oct) | Nube (7 oct) | Goliath |
+| --- | ---: | ---: | ---: |
+| Prueba general, 600 frases | 25.7 (p50 4.14 s) | **25.8** (p50 1.77 s, p95 3.99 s) | 36.9 |
+| Especialidad, Firefox Focus, 144 frases | 37.4 | 35.3 | 28.9 |
+| dev, 230 frases | — | 39.9 | — |
+
+La prueba general sale igual. En la especialidad, 2.1 puntos menos: MBR elige entre 4
+traducciones muestreadas y dos ejecuciones no coinciden. La ventaja sobre Goliath se sostiene
+(+6.4 [+2.5, +10.5]). Ejecuciones `cloud-20261007`, `niche-cloud` y `dev-cloud` en
+`evals/runs/` (sin subir a git, como las demás).
+
+**2. EmbeddingGemma 2.** Google acababa de publicar el sucesor de EmbeddingGemma (270M de
+parámetros de texto, 768 dimensiones, 8K de contexto, 100+ idiomas). En Ollama solo existe para
+el runtime MLX (`this model requires MLX support`), que no está ni en Linux ni en la L4, así que
+los vectores se calcularon con `sentence-transformers` en un job de Cloud Run de CPU (6 tareas,
+unos 6 minutos cada una), con el mismo prefijo de similitud de frases que usa el índice. Con el
+índice nuevo y todo lo demás igual:
+
+| Split | EmbeddingGemma | EmbeddingGemma 2 |
+| --- | ---: | ---: |
+| dev | **39.9** | 38.8 |
+| Prueba general | **25.8** | 23.9 |
+| Especialidad | 35.3 | 37.0 |
+
+Baja en dev (−1.1) y en la prueba (−1.9). La subida en la especialidad (+1.7) es del tamaño de
+lo que varía MBR entre ejecuciones. **Fuera:** la demo se queda con EmbeddingGemma. No se volvió a
+ajustar la recuperación (k, orden, dimensiones Matryoshka) para el modelo nuevo.
+
+**3. Frases nuevas de Pontoon.** La memoria de traducción pública de Pontoon (TMX por proyecto)
+tiene cadenas más nuevas que la copia de Hugging Face que usa el dataset. `evals/tm_new.py` une
+la de Kʼicheʼ con la de español (es-MX) por la cadena en inglés, quita las que tienen marcas de
+software y las que están en cualquier split o en el índice (por los dos lados), y deja 167 pares:
+105 de Firefox Focus, 57 de Mozilla Monitor, 3 de Mozilla accounts y 2 de Firefox Send.
+Resultados (`evals/tm_new_results.md`, bootstrap pareado):
+
+| Producto | Frases | David | Goliath | David − Goliath [IC 95 %] |
+| --- | ---: | ---: | ---: | ---: |
+| Firefox Focus | 105 | **36.5** | 30.4 | **+6.1** [+3.0, +9.2] |
+| Mozilla Monitor | 57 | 22.0 | **32.6** | −10.7 [−20.2, −0.5] |
+| Todas | 167 | 32.0 | 31.2 | +0.8 [−3.6, +4.9] |
+
+No estaba pre-registrado. En Firefox Focus confirma el resultado del nicho con frases nuevas. En
+Mozilla Monitor David pierde aunque tiene sus cadenas viejas en el índice: son textos largos de
+una página de marketing, no cadenas cortas de interfaz.
+
+**La página:** con estas frases se probaron 37 candidatas a ejemplo (las 11 que ya estaban y 26
+nuevas de Firefox Focus que David ganó en la evaluación) con `make examples`, 3 veces cada una
+con los dos modelos. Quedaron 26: las 11 de antes y 15 nuevas. Mozilla Monitor no entra.
+
 ## Dónde gana David hoy y dónde pierde
 
 - **Gana en la especialidad.** Con la memoria de traducción de los demás productos de
@@ -336,7 +394,10 @@ Goliath ganaba igual. Así que el nicho se redefinió en dev antes de tocar la p
   cero); la base con el mismo índice llega al 78 %, pero empata en chrF++.
 - **En la nube no es más barato:** unos $0.0004 por traducción en la L4 contra unos $0.0001 de
   Gemini, y la GPU cobra mientras está encendida.
+- **Gana también con frases nuevas de Firefox Focus** (105 que no estaban en ninguna ejecución):
+  36.5 contra 30.4, +6.1 [+3.0, +9.2].
 - **Pierde:**
+  - en las cadenas nuevas de Mozilla Monitor, una página de marketing: 22.0 contra 32.6;
   - en general, por 11.2 puntos en la prueba (25.7 contra 36.9; eran 15.4);
   - en todas las fuentes, dominios y longitudes: la brecha es Kʼicheʼ general, no un corte;
   - sobre todo en Kʼicheʼ → español (−16.4), donde Goliath escribe en un idioma que domina.

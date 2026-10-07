@@ -50,6 +50,10 @@ What the numbers say, for the talk:
   +8.5 [+4.7, +12.7]. On terminology they tie (61% vs 46%, +15 [−2, +32]); the base model with the
   same index uses the right term 78% of the time but ties on chrF++ (30.2). Results:
   `evals/niche_results.md`.
+  Re-run on October 7 with David on the cloud L4: 35.3 vs 28.9 (+6.4 [+2.5, +10.5]; MBR sampling
+  moves a run by about 2 points), and 36.5 vs 30.4 (+6.1 [+3.0, +9.2]) on 105 newer Firefox Focus
+  strings that are in no split (`evals/tm_new_results.md`). On Mozilla Monitor's newer strings, a
+  marketing website, Goliath wins (32.6 vs 22.0).
 - **In general, Goliath is better at translating.** David trails by 11.2 chrF++ points (15.4 with
   the previous David) and in every slice (length, direction, source, domain): the gap is general
   K'iche' competence. It beats Goliath on 130 of 599 sentences (22%) and is within 5 points on

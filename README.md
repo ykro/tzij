@@ -46,6 +46,16 @@ Medido con `make eval` (ejecución `final-20261002`, dataset `20261002-173447`) 
 
 En la especialidad David gana por **+8.5** [IC 95 %: +4.7, +12.7] en un producto que nunca vio. En traducción general Goliath va arriba por 11.2 puntos; la brecha es K'iche' general, no un tipo de frase ([experimento 10](#lo-que-dijo-cada-experimento)).
 
+**Repetido con David en la nube** (7 de octubre, el mismo modelo y el mismo índice, en la L4 de Cloud Run; ejecuciones `cloud-20261007`, `niche-cloud` y `tm-new`):
+
+| | David | Goliath | David − Goliath [IC 95 %] |
+| --- | ---: | ---: | ---: |
+| Especialidad: las 144 frases de Firefox Focus | **35.3** | 28.9 | **+6.4** [+2.5, +10.5] |
+| Especialidad: 105 frases más de Firefox Focus, más nuevas que el dataset ([`evals/tm_new_results.md`](evals/tm_new_results.md)) | **36.5** | 30.4 | **+6.1** [+3.0, +9.2] |
+| General: las mismas 600 frases de prueba | 25.8 | **36.9** | −11.1 |
+
+En la nube David saca lo mismo en la prueba general (25.8 contra 25.7) y responde más rápido (mediana 1.77 s contra 4.14 s en la laptop). En las 144 frases de Firefox Focus saca 35.3 en vez de 37.4: MBR elige entre 4 traducciones muestreadas, así que dos ejecuciones no dan lo mismo; la ventaja sobre Goliath se sostiene en las dos (+6.4 y +8.5, y el intervalo no incluye el cero). Las 105 frases nuevas de Firefox Focus lo confirman con frases que no estaban en ninguna ejecución anterior ([experimento 13](#lo-que-dijo-cada-experimento)).
+
 ## Experimentos
 
 Todos los números salen de [`evals/`](evals/), [`train/runs/`](train/runs/) y la [bitácora](docs/BITACORA.md), donde está la historia completa, con fechas. Reglas: las 600 frases de prueba (150 por fuente y dirección, de Bloom y BOUQuET) nunca están en el índice ni en el entrenamiento; las decisiones se toman con un split de desarrollo (dev, y desde el experimento 10, `dev_domain`); la prueba se usa para el número final. chrF++ va de 0 a 100: más es mejor.
@@ -68,6 +78,8 @@ Los experimentos se corrieron con David en la laptop (Apple Silicon, Ollama), an
 | 9 | Más épocas y más español → K'iche' | `tzij-2026-10-tm-a-e2-s4` | — | dev 37.5 vs 36.6 | 4.5 s | $6.16 L4 | Empate |
 | 10 | Por qué pierde David; Gemini Pro | `gemini-3.1-pro-preview` | — | `dev_domain` 40.5 vs 40.6 | — | $1.85 | La brecha es K'iche' general |
 | 11 | Bloom retrotraducido + destilación | `tzij-2026-10-mix-s7+hybrid+mbr4` | **25.7** | especialidad **37.4** vs 28.9 | 4.14 s | $8.52 L4 + $13.94 Gemini | **El David de la demo** |
+| 12 | EmbeddingGemma 2 en la recuperación (en la nube) | `mix-s7` + índice con `embeddinggemma-2` | 23.9 (vs 25.8) | dev 38.8 vs 39.9; especialidad 37.0 vs 35.3 | — | $0 | Fuera: no mejora |
+| 13 | Frases nuevas de Pontoon (en la nube) | `tzij-2026-10-mix-s7+hybrid+mbr4` | — | Firefox Focus 36.5 vs 30.4; Mozilla Monitor 22.0 vs 32.6 | — | $0.03 Gemini | Firefox Focus a la página; Mozilla Monitor no |
 
 \* Medido sobre el dataset del 30 de septiembre (las mismas fuentes de prueba). Ahí la base con recuperación sacaba 18.4.
 
@@ -120,6 +132,15 @@ Una memoria de traducción es el caso real donde un modelo pequeño puede ganar:
 | **`mix-s7` + híbrida + MBR-4** | **37.4** | 28.9 | **+8.5** [+4.7, +12.7] | 57 % | 61 % | 46 % |
 
 Con el David final, la diferencia en chrF++ ya no incluye el cero. En terminología, +15 puntos, pero ese intervalo sí incluye el cero ([−2, +32]).
+
+**Más frases del mismo caso** ([experimento 13](#lo-que-dijo-cada-experimento), no pre-registrado). La memoria de traducción pública de Pontoon tiene cadenas más nuevas que el dataset. Las que no están en ningún split ni en el índice ([`evals/tm_new.py`](evals/tm_new.py)), medidas con David en la nube ([`evals/tm_new_results.md`](evals/tm_new_results.md)):
+
+| Producto | Frases | chrF++ David | chrF++ Goliath | David − Goliath [IC 95 %] | Frases que gana David |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Firefox Focus (el producto apartado) | 105 | **36.5** | 30.4 | **+6.1** [+3.0, +9.2] | 64 % |
+| Mozilla Monitor (David tiene sus cadenas viejas en el índice) | 57 | 22.0 | **32.6** | −10.7 [−20.2, −0.5] | 30 % |
+
+En Firefox Focus, David vuelve a ganar con frases que nunca se habían medido. En las cadenas nuevas de Mozilla Monitor pierde: son textos de una página web de marketing, largos y con poco vocabulario repetido de la memoria. Por eso la página solo usa frases de Firefox Focus.
 
 ### Lo que dijo cada experimento
 
@@ -185,6 +206,18 @@ Dos épocas contra una: +0.9 [−1.0, +2.9] sin MBR y +0.5 [−1.2, +2.4] con MB
 
 En la prueba, 25.7: +4.1 [+3.6, +4.7] sobre el David anterior, y la brecha con Goliath baja de 15.4 a 11.2. En la especialidad, 37.4 contra 28.9. *Aprendimos:* los dos efectos se suman. Goliath sirve de maestro una vez, por $13.94, y después David traduce sin él. Una segunda tanda de destilación (1,877 pares, $6.98) se generó, pero no entró en `mix-s7`.
 
+**12. EmbeddingGemma 2 en la recuperación.** El 7 de octubre se probó EmbeddingGemma 2, el sucesor que Google acababa de publicar (270M de parámetros de texto, 768 dimensiones, 8K de contexto). Se reconstruyó el índice con sus vectores (calculados con `sentence-transformers` en un job de Cloud Run, con el mismo prefijo de similitud de frases) y se midió David en la nube con todo lo demás igual:
+
+| Split | EmbeddingGemma (el de la demo) | EmbeddingGemma 2 |
+| --- | ---: | ---: |
+| dev (230 frases) | **39.9** | 38.8 |
+| prueba general (600) | **25.8** | 23.9 |
+| especialidad, Firefox Focus (144) | 35.3 | 37.0 |
+
+Pierde en dev y en la prueba; en la especialidad sube 1.7, dentro de lo que varía MBR entre ejecuciones (35.3 y 37.4 con el mismo índice). Además, Ollama todavía no lo sirve en Linux (sus versiones en Ollama piden el runtime MLX, que no hay en la L4). *Aprendimos:* un modelo de embeddings más nuevo no mejora la recuperación de K'iche' por sí solo; la demo se queda con EmbeddingGemma.
+
+**13. Frases nuevas de Pontoon.** La memoria de traducción pública de Pontoon (TMX por proyecto, MPL-2.0) tiene cadenas más nuevas que la copia de Hugging Face del dataset. Unidas con la de español por la cadena en inglés, y quitando las que están en cualquier split o en el índice, quedan 167 pares: 105 de Firefox Focus, 57 de Mozilla Monitor, 3 de Mozilla accounts y 2 de Firefox Send ([`evals/tm_new.py`](evals/tm_new.py)). En Firefox Focus David gana +6.1 [+3.0, +9.2]; en Mozilla Monitor pierde −10.7 [−20.2, −0.5]. *Aprendimos:* la memoria de traducción ayuda cuando el producto nuevo se parece a lo que ya se tradujo (textos cortos de interfaz); una página web de marketing no. De estas frases salieron 15 de los 26 ejemplos de la página.
+
 ### David en la GPU de Cloud Run
 
 La página corre en Cloud Run y David en otro servicio de Cloud Run con una NVIDIA L4 (`europe-west4`), con el modelo, EmbeddingGemma y el índice dentro de la imagen. Medido desde la página con los 11 ejemplos, 3 veces cada uno (`duel/examples.json`):
@@ -218,7 +251,8 @@ La página muestra un solo David: `tzij-2026-10-mix-s7` + recuperación híbrida
 - **Es el único que puede jugar la especialidad limpiamente.** Los fine-tunes anteriores (`tzij-2026-09`, `raft-s0`, `raft-bt-s0` … `s3`) entrenaron con Firefox Focus antes de que se apartara; con ellos los ejemplos medirían memoria, no traducción.
 - **MBR-4 vale la pena.** Sin MBR, `mix-s7` saca 25.1 (35.9 en la especialidad); con MBR-4, 25.7 (37.4). En la laptop tardaba 4.14 s; en la L4 de Cloud Run, la página lo recibe en 0.9 s (mediana). El MBR multi-prompt del experimento 8 sacaba más en dev, pero tardaba 7.1 s en la laptop.
 - **La demo enseña el caso que David gana.** En la memoria de traducción, David traduce mejor que Goliath; eso es lo que la página compara. En traducción general Goliath sigue arriba (36.9 contra 25.7), y es más claro en K'iche' → español (−16.4). Esos números están arriba y en la [bitácora](docs/BITACORA.md), pero la charla no muestra esa dirección ni esas frases.
-- **Una comparación por frase tiene que ser justa con los dos.** Los ejemplos se eligieron entre frases que ninguno de los dos vio, y se verificaron en vivo con los dos modelos. Las salidas, los puntajes y los tiempos medidos están en [`duel/examples.json`](duel/examples.json).
+- **Una comparación por frase tiene que ser justa con los dos.** Los ejemplos se eligieron entre frases que ninguno de los dos vio: 26 frases de Firefox Focus, 11 de las 144 apartadas y 15 de las 105 más nuevas ([experimento 13](#lo-que-dijo-cada-experimento)). Cada una se tradujo 3 veces con los dos modelos en vivo, y queda solo si las 3 veces David saca 50 o más y le gana a Goliath por 15 o más. Se probaron 37 y quedaron 26. Las salidas, los puntajes y los tiempos medidos están en [`duel/examples.json`](duel/examples.json).
+- **La recuperación sigue con EmbeddingGemma.** EmbeddingGemma 2 sacó menos en dev y en la prueba ([experimento 12](#lo-que-dijo-cada-experimento)).
 
 ## Arranque rápido
 
