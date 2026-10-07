@@ -16,3 +16,21 @@ It is within 0.2 points of the top score (k8, 32.7) — inside the noise of 222 
 25% shorter prompts, which matters twice: latency on stage, and how much retrieval-augmented
 fine-tuning fits in a 1 h Cloud Run GPU task. Putting the closest example last (right before the
 sentence to translate) is the single biggest change (+1.7 over the same config best-first).
+
+## Order re-checked with the final David (2026-10-07)
+
+The order was tuned with the base model. With the demo's David (`tzij-2026-10-mix-s7` + hybrid + MBR-4,
+the cloud David through `make david-proxy`, the index of `20261002-173447`) it was measured again on the three
+use cases of the page, with the same items and the same Goliath outputs; only `RAG_ORDER` changes.
+Paired bootstrap of best last − best first (2,000 resamples, seed 2027):
+
+| use case | n | best last | best first | best last − best first [95% CI] | Goliath |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Firefox Focus (test_niche) | 144 | 36.2 | 36.7 | −0.5 [−2.2, +1.2] | 28.9 |
+| GATITOS words | 150 | 55.6 | 57.2 | −1.6 [−6.5, +3.5] | 22.1 |
+| CLDR emoji names | 100 | 62.5 | 60.1 | +2.4 [−2.2, +7.7] | 25.7 |
+
+No difference: every interval includes zero, and two runs with the same order differ as much (MBR samples):
+Firefox Focus 35.3 (`niche-cloud`) and 36.2, GATITOS 57.5 (`evals/usecases.py`) and 55.6, CLDR 60.9 and 62.5.
+`best_last` stays: it is what David was trained and evaluated with. Runs `niche-order-best_first`, `niche-order-best_last` and
+`usecases-order` in `evals/runs/`.

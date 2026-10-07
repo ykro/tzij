@@ -52,8 +52,9 @@ class Settings:
     rag_index: Path = field(default_factory=lambda: REPO_ROOT / _env("RAG_INDEX", "rag/index/tzij.sqlite"))
     rag_k: int = field(default_factory=lambda: int(_env("RAG_K", "6")))
     # Retrieval for David (and the "+hybrid" eval variants): tuned on the dev split (evals/tuning.md).
+    # The defaults match .env.example, which David's image carries as its .env.
     rag_mode: str = field(default_factory=lambda: _env("RAG_MODE", "hybrid"))
-    rag_order: str = field(default_factory=lambda: _env("RAG_ORDER", "best_first"))
+    rag_order: str = field(default_factory=lambda: _env("RAG_ORDER", "best_last"))
     rag_fuzzy: bool = field(default_factory=lambda: _env("RAG_FUZZY", "1") == "1")
     # Extra retrieval options, off until dev says otherwise: trigram list (RRF) and n-gram coverage selection.
     rag_trigram: bool = field(default_factory=lambda: _env("RAG_TRIGRAM", "0") == "1")

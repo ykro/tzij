@@ -423,6 +423,31 @@ con los dos modelos. Quedaron 26: las 11 de antes y 15 nuevas. Mozilla Monitor n
   Gemini (2,000) y de veces que David se enciende (12), y una página olvidada deja de mantener
   despierto a David 45 minutos después de su última traducción. Una charla usa una fracción.
 
+## 15. El orden del contexto en la nube (7 de octubre)
+
+- **Qué se revisó:** en el código, `RAG_ORDER` valía `best_first` por defecto y `infra/20-david.sh`
+  no lo pone, mientras David se entrenó y se evaluó con `best_last` (el ejemplo más parecido al
+  final, +1.7 en dev). El David de la nube usó siempre `best_last`: su imagen lleva `.env.example`
+  como su `.env`, que dice `RAG_ORDER=best_last` (revisado en el código de la compilación de la
+  revisión desplegada, `tzij-david-00005`). Los números publicados son con ese orden. El valor por
+  defecto del código pasa a `best_last`, para que no dependa de ese archivo.
+- **Medido con los dos órdenes,** con el David final a través de `make david-proxy`, las mismas
+  frases y las mismas salidas de Goliath ([evals/tuning.md](../evals/tuning.md)):
+
+  | Caso de uso | n | Al final (`best_last`) | Primero (`best_first`) | Diferencia [IC 95 %] | Goliath |
+  | --- | ---: | ---: | ---: | ---: | ---: |
+  | Firefox Focus | 144 | 36.2 | 36.7 | −0.5 [−2.2, +1.2] | 28.9 |
+  | Palabras de GATITOS | 150 | 55.6 | 57.2 | −1.6 [−6.5, +3.5] | 22.1 |
+  | Nombres de emoji de CLDR | 100 | 62.5 | 60.1 | +2.4 [−2.2, +7.7] | 25.7 |
+
+  Sin diferencia: los tres intervalos incluyen el cero, y dos ejecuciones con el mismo orden varían
+  lo mismo por MBR (Firefox Focus 35.3 y 36.2, GATITOS 57.5 y 55.6, CLDR 60.9 y 62.5). Se queda
+  `best_last`. David no se volvió a desplegar: su imagen ya usaba ese orden.
+- **Límites por IP para una charla:** 120 traducciones y 240 consultas de estado por minuto (eran
+  30 y 40), porque todo el público sale por la misma IP del salón.
+- **Costo:** unos 15 minutos de la L4 de David (~$0.26); Gemini, $0 (se usaron las salidas de
+  Goliath que ya estaban).
+
 ## Dónde gana David hoy y dónde pierde
 
 - **Gana en la especialidad.** Con la memoria de traducción de los demás productos de

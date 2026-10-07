@@ -72,6 +72,7 @@ Además de la memoria de traducción, se midieron otros casos de uso como conjun
 
 - **Los diccionarios son ventaja de datos, no de modelo.** Esas palabras están en el diccionario que David consulta; Goliath, como lo usa cualquiera, no lo tiene. Con el mismo glosario en el prompt, Gemini acierta más que David (88.6 y 94.4 de chrF++): el modelo ajustado con MBR no siempre copia la entrada exacta del glosario. El caso de uso es real (una organización con su propio glosario), pero lo que gana es tener los datos.
 - **No hubo otro caso que David gane.** Por fuente, dirección y largo (de 1 a 3 palabras, de 4 a 6, de 7 a 10 y más) en las 600 frases de prueba, Goliath gana en todos menos en frases de 4 a 6 palabras español → Kʼicheʼ, que empatan (30.1 contra 29.7). Mozilla Monitor, otra interfaz de Mozilla, también lo pierde ([experimento 13](#lo-que-dijo-cada-experimento)).
+- **El orden del contexto no cambia estos números.** David recibe el ejemplo más parecido al final, junto a la frase (`RAG_ORDER=best_last`, como se entrenó). Medido otra vez con el David final en la nube, con el ejemplo más parecido primero: Firefox Focus 36.7 contra 36.2, GATITOS 57.2 contra 55.6, CLDR 60.1 contra 62.5; los tres intervalos incluyen el cero, y dos ejecuciones con el mismo orden varían lo mismo por MBR ([evals/tuning.md](evals/tuning.md)).
 
 ### Qué es chrF++
 

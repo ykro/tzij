@@ -72,6 +72,7 @@ Besides the translation memory, other use cases were measured as sets, with fixe
 
 - **The dictionaries are a data advantage, not a model one.** Those words are in the dictionary David consults; Goliath, used as anyone uses it, doesn't have it. With the same glossary in the prompt, Gemini gets more right than David (88.6 and 94.4 chrF++): the fine-tuned model with MBR doesn't always copy the glossary entry exactly. The use case is real (an organization with its own glossary), but what wins is having the data.
 - **No other use case was won by David.** By source, direction and length (1 to 3 words, 4 to 6, 7 to 10 and more) on the 600 test sentences, Goliath wins all of them except 4–6-word Spanish → K'iche' sentences, a tie (30.1 vs 29.7). Mozilla Monitor, another Mozilla interface, is also lost ([experiment 13](#what-each-experiment-told-us)).
+- **The context order doesn't change these numbers.** David gets the closest example last, right next to the sentence (`RAG_ORDER=best_last`, as he was trained). Measured again with the final David in the cloud, with the closest example first: Firefox Focus 36.7 vs 36.2, GATITOS 57.2 vs 55.6, CLDR 60.1 vs 62.5; all three intervals include zero, and two runs with the same order vary as much because of MBR ([evals/tuning.md](evals/tuning.md)).
 
 ### What chrF++ is
 
