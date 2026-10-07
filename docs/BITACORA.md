@@ -348,7 +348,7 @@ traducciones muestreadas y dos ejecuciones no coinciden. La ventaja sobre Goliat
 (+6.4 [+2.5, +10.5]). Ejecuciones `cloud-20261007`, `niche-cloud` y `dev-cloud` en
 `evals/runs/` (sin subir a git, como las demás).
 
-**2. EmbeddingGemma 2.** Google acababa de publicar el sucesor de EmbeddingGemma (270M de
+**2. EmbeddingGemma 2.** Se probó para actualizar a la versión nueva; con la versión 1 funciona mejor (dev 39.9 contra 38.8, general 25.8 contra 23.9), por eso se usa la 1. Google acababa de publicar el sucesor de EmbeddingGemma (270M de
 parámetros de texto, 768 dimensiones, 8K de contexto, 100+ idiomas). En Ollama solo existe para
 el runtime MLX (`this model requires MLX support`), que no está ni en Linux ni en la L4, así que
 los vectores se calcularon con `sentence-transformers` en un job de Cloud Run de CPU (6 tareas,
@@ -386,14 +386,43 @@ una página de marketing, no cadenas cortas de interfaz.
 nuevas de Firefox Focus que David ganó en la evaluación) con `make examples`, 3 veces cada una
 con los dos modelos. Quedaron 26: las 11 de antes y 15 nuevas. Mozilla Monitor no entra.
 
+## 14. Tiempo, costo y un arranque en frío de 35 s (7 de octubre)
+
+- **El arranque en frío era compilación.** De los 3 minutos que tardaba David en despertar, unos
+  2.5 eran CUDA compilando el código de Ollama para la L4: cargar el modelo tomaba 66 s,
+  EmbeddingGemma 35 s y la primera traducción 62 s. Un job lo confirmó: con la caché de CUDA llena,
+  8, 2 y 1 s; con la caché desactivada y todo lo demás igual, otra vez 62, 39 y 60 s. Ahora
+  `infra/20-david.sh` corre la imagen una vez en un Cloud Run Job con una L4 (`david/warm_cache.py`)
+  y la imagen final lleva lo compilado (122 MB). Del arranque de la instancia a «David listo»: de
+  3 min 1 s a 35 s; desde la página, unos 40 s (39 s medido con la GPU apagada; antes, 3 min 24 s). La imagen pasó a Artifact Registry de `europe-west4`,
+  junto al servicio.
+- **4 vCPU y 16 GiB bastan.** Con 8 y 32 David traduce igual de rápido y cuesta 36 % más por hora.
+  Ahora cobra $1.05 por hora encendido ($0.0002907/s).
+- **Tiempo y costo vuelven a la página,** medidos con una copia del servicio que no usaba nadie
+  más (`david/bench.py`, 26 ejemplos × 3): David 0.81 s de mediana contra 1.47 s de Gemini, y
+  respondió primero en 74 de 78; $0.00027 por traducción contra $0.00012 de Gemini (107 tokens,
+  tarifa de 2026).
+- **Proyecciones** (README): una L4 da unas 5,500 traducciones por hora ($0.000189 cada una). Con
+  la tarifa de Gemini de 2026, una sola L4 nunca sale más barata; con la de 2027 ($0.000243),
+  David es más barato desde unas 4,300 traducciones por hora y 22 % más barato a plena carga.
+  En tiempo, David gana con 1 o 2 frases a la vez y pierde con 4 o más.
+- **Frases escritas:** si están en los datos con licencia se miden como un ejemplo; si no, la
+  página muestra las frases más parecidas de la memoria y marca las palabras que cada columna
+  comparte con ellas. Una revisión contra el diccionario se descartó: en los ejemplos, las
+  traducciones equivocadas de Goliath tenían más palabras de diccionario que las correctas de David.
+- **La página en el teléfono:** una columna, los ejemplos se deslizan de lado; 12 ejemplos a la
+  vista y un botón con el resto.
+- **`make david-proxy` usa el puerto 11435,** para no chocar con un Ollama instalado en la laptop.
+
 ## Dónde gana David hoy y dónde pierde
 
 - **Gana en la especialidad.** Con la memoria de traducción de los demás productos de
   Mozilla, en Firefox Focus (144 frases que nunca vio) saca 37.4 chrF++ contra 28.9 de Goliath:
   **+8.5** [+4.7, +12.7]. En terminología empatan (61 % contra 46 %, el intervalo incluye el
   cero); la base con el mismo índice llega al 78 %, pero empata en chrF++.
-- **En la nube no es más barato:** unos $0.0004 por traducción en la L4 contra unos $0.0001 de
-  Gemini, y la GPU cobra mientras está encendida.
+- **En la nube responde antes** (0.81 s contra 1.47 s de mediana, con una persona usándolo) y
+  **es más barato solo con mucho uso:** con una persona, $0.00027 por traducción contra $0.00012 de
+  Gemini; con la tarifa de Gemini de 2027, desde unas 4,300 traducciones por hora.
 - **Gana también con frases nuevas de Firefox Focus** (105 que no estaban en ninguna ejecución):
   36.5 contra 30.4, +6.1 [+3.0, +9.2].
 - **Pierde:**

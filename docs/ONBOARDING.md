@@ -56,7 +56,7 @@ Todo se configura en `.env`; el `Makefile` lo carga y exporta. Las variables má
 | `RAG_INDEX`, `RAG_K` | `rag/index/tzij.sqlite`, `6` | Índice y cuántos ejemplos y entradas de glosario recibe David |
 | `RAG_MODE`, `RAG_ORDER`, `RAG_FUZZY` | `hybrid`, `best_last`, `1` | Búsqueda híbrida BM25 + vectores, ejemplo más cercano al final, glosario difuso. Ajustados con `make tune-retrieval` en dev. |
 | `DAVID_MBR`, `MBR_SAMPLES` | `1`, `4` | Decodificación MBR en el servicio de David (`0` = una sola muestra) |
-| `OLLAMA_URL`, `OLLAMA_NUM_CTX` | `http://127.0.0.1:11434`, `4096` | Dónde está Ollama (dentro del servicio de David; en tu máquina, con `make david-proxy`) y el contexto de Gemma |
+| `OLLAMA_URL`, `OLLAMA_NUM_CTX` | `http://127.0.0.1:11434`, `4096` | Dónde está Ollama dentro del servicio de David. En tu máquina el Makefile lo cambia a `http://127.0.0.1:11435` (`DAVID_PROXY_PORT`), donde `make david-proxy` abre el David de la nube y el contexto de Gemma |
 | `TRAIN_FINISH` | `later` | El job de GPU solo entrena el adapter; el merge de E4B corre con `make train-finish` en Cloud Batch |
 | `MOCK_AI` | `0` | `1` evita la nube y la GPU (pruebas) |
 
@@ -120,7 +120,7 @@ Todos cargan `infra/env.sh` (proyecto, regiones, Artifact Registry, nombres de s
 | `infra/03-train-job.sh` | Crea o actualiza los Cloud Run Jobs `tzij-train` (1× L4, 8 vCPU, 32 GiB, 1 h) y `tzij-finish` (CPU), con el bucket de staging montado en `/mnt/work` (caché de pesos base). | `make deploy`, `make train` |
 | `infra/04-finish-batch.sh <tag>` | Merge + GGUF de un adapter de E4B en una VM de Cloud Batch (`n2-highmem-8`, 64 GB, 200 GB de disco) con la imagen de entrenamiento; publica en el bucket de modelos y la VM se borra al terminar. Habilita la API de Batch y da a `tzij-train` los roles que necesita. | `make train-finish` |
 | `infra/10-data-job.sh` | Crea la cuenta de servicio `tzij-data-job` con acceso solo al bucket de datos (y a `hf-token`), construye la imagen (`pipeline/cloudbuild.yaml`), despliega el job `tzij-data` (2 vCPU, 4 GiB, 1 h) y lo ejecuta (con `DEPLOY_ONLY=1`, solo despliega). | `make data-cloud`, `make deploy` |
-| `infra/20-david.sh` | Crea la cuenta de servicio `tzij-david` (sin acceso a nada), construye con Cloud Build la imagen de David (`david/cloudbuild.yaml`: copia el GGUF y el Modelfile de `LOCAL_MODEL_TAG` desde el bucket de modelos y el índice del dataset de `LATEST` desde el bucket de datos; `ollama create` y `ollama pull embeddinggemma` dentro de la imagen) y despliega `tzij-david`: 1× L4, 8 vCPU, 32 GiB, mínimo 0 y máximo 1 instancia, privado. | `make deploy`, `make deploy-david` |
+| `infra/20-david.sh` | Crea la cuenta de servicio `tzij-david` (sin acceso a nada) y, en tres pasos: (1) construye con Cloud Build la imagen base de David (`david/cloudbuild.yaml`: copia el GGUF y el Modelfile de `LOCAL_MODEL_TAG` del bucket de modelos, y del bucket de datos el índice y los pares de prueba con licencia del dataset de `LATEST`; `ollama create` y `ollama pull embeddinggemma` dentro de la imagen); (2) la corre una vez en el Cloud Run Job `tzij-david-warm` con una L4 (`david/warm_cache.py`), que hace que CUDA compile sus kernels y los sube a `gs://…-train-eu/tzij/david-cache/`; (3) construye la imagen final con esos kernels (`david/cloudbuild-cache.yaml`) y despliega `tzij-david`: 1× L4, 4 vCPU, 16 GiB, mínimo 0 y máximo 1 instancia, privado. Las imágenes van a Artifact Registry de `europe-west4`, junto al servicio. Unos 30 minutos. | `make deploy`, `make deploy-david` |
 | `infra/21-page.sh` | Crea la cuenta de servicio `tzij-page` con `aiplatform.user` y `run.invoker` sobre `tzij-david`, construye la imagen de la página (`page/Dockerfile`: compila `web/` y le pone el servicio de Python) y despliega `tzij`, pública, con `DAVID_URL`. | `make deploy`, `make deploy-page` |
 
 ## 5. Datos, índice, entrenamiento y evaluación
@@ -143,7 +143,7 @@ Dataset actual: `20261002-173447` (derivado de `20261002-022500` con `make niche
 ### 5.2 `make index`
 
 ```bash
-make david-proxy   # en otra terminal: el Ollama del David de la nube en 127.0.0.1:11434
+make david-proxy   # en otra terminal: el Ollama del David de la nube en 127.0.0.1:11435
 make index         # construye rag/index/tzij.sqlite y lo publica en gs://…-tzij-data/index/<dataset>/
 make deploy-david  # la imagen nueva de David lleva el índice nuevo
 ```
@@ -222,13 +222,17 @@ La página (`make page-url`) tiene:
 
 - **El cuadro para escribir** y el botón **Traducir** (o `Enter`). El botón ⇄ cambia la dirección: español → Kʼicheʼ o Kʼicheʼ → español.
 - **Las frases de ejemplo** de Firefox Focus (`duel/examples.json`). Al tocar una, se llena el cuadro, se traduce y arriba aparece la traducción correcta, con su fuente y su licencia.
-- **Dos columnas:** David y Goliath. Cada una pide su traducción por separado (`POST /api/translate` con `side`) y se llena en cuanto su modelo responde. En los ejemplos, cada columna muestra además «Se parece a la correcta»: chrF++ contra la traducción correcta, en porcentaje.
+- **Dos columnas:** David y Goliath. Cada una pide su traducción por separado (`POST /api/translate` con `side`) y se llena en cuanto su modelo responde, con lo que tardó y lo que costó esa traducción (`cost` en la respuesta: los segundos de GPU de David × `DAVID_*_USD_PER_S`, o los tokens de Gemini × el precio del día, `GEMINI_NEXT_PRICE`). En los ejemplos, cada columna muestra además «Se parece a la correcta»: chrF++ contra la traducción correcta, en porcentaje.
+- **Una frase escrita:** el servicio de la página le pregunta a David (`POST /reference`) si la frase está, tal cual, en los pares de prueba con licencia (`rag/index/references.jsonl` en su imagen, sin BOUQuET), en su memoria de traducción o en el diccionario; si está, se mide como un ejemplo. Si no, cuando las dos columnas terminan la página pide `POST /api/evidence` (David, `duel/tzij_duel/evidence.py`): las 3 frases más parecidas de la memoria de traducción y, por columna, qué palabras aparecen también en esas traducciones hechas por personas.
+- **En teléfonos y tabletas:** una sola columna, David arriba; los ejemplos se deslizan de lado. `make screens` toma capturas en 1920×1080, 1280×800, 768×1024, 414×896 y 375×812, y falla si la página se sale de lado de la pantalla.
 
 Las traducciones no se guardan en ningún lado.
 
-**Despertar a David.** `tzij-david` tiene mínimo 0 instancias: la GPU se apaga sola unos 15 minutos después de la última petición, y entonces no cobra. Al abrir la página, el navegador pregunta `GET /api/david` cada 3 s; la página llama a `/health` de David con su token, y esa llamada lo despierta. Mientras arranca (unos 3 minutos: la instancia, el modelo de 5.3 GB a la GPU, EmbeddingGemma, el índice y una traducción de prueba), la página dice «Preparando a David…» y no deja traducir. Cuando David contesta `ready`, dice «David listo». Después pregunta una vez por minuto mientras la pestaña está visible: eso lo mantiene despierto. Si pasan 6 minutos sin que despierte, dice «David no responde: recarga la página».
+**Despertar a David.** `tzij-david` tiene mínimo 0 instancias: la GPU se apaga sola unos 15 minutos después de la última petición, y entonces no cobra. Al abrir la página, el navegador pregunta `GET /api/david` cada 3 s; la página llama a `/health` de David con su token, y esa llamada lo despierta. Mientras arranca (unos 40 s (39 s medido con la GPU apagada; antes, 3 min 24 s) desde la página: la instancia, el modelo de 5.3 GB a la GPU, EmbeddingGemma, el índice y una traducción de prueba; los kernels de GPU ya vienen compilados en la imagen), la página dice «Preparando a David…» y no deja traducir. Cuando David contesta `ready`, dice «David listo». Después pregunta una vez por minuto mientras la pestaña está visible: eso lo mantiene despierto. Si pasan 6 minutos sin que despierte, dice «David no responde: recarga la página».
 
-**Costo.** Mientras está despierto, `tzij-david` cobra unos $0.000395 por segundo (L4 + 8 vCPU + 32 GiB), unos $1.42 por hora. Cerrar la página deja que se apague solo. La página cobra lo mínimo de Cloud Run y Gemini sus tokens.
+**Costo.** Mientras está despierto, `tzij-david` cobra $0.0002907 por segundo (L4 + 4 vCPU + 16 GiB), $1.05 por hora, traduzca o no. Cerrar la página deja que se apague solo. La página cobra lo mínimo de Cloud Run y Gemini sus tokens.
+
+**Medir tiempo, costo y capacidad.** `uv run python david/bench.py` traduce los ejemplos 3 veces con los dos y mide cuántas traducciones por hora da la L4 con 1, 2, 4, 8 y 16 frases a la vez; escribe `david/bench-results.json`, de donde salen las proyecciones del README. Para medir sin que otras peticiones (por ejemplo un `make eval`) frenen a David, despliega una copia con la misma imagen (`gcloud run deploy tzij-david-bench --image <imagen de tzij-david> …`, mismas banderas que `infra/20-david.sh`), usa `--david-service tzij-david-bench` y bórrala al terminar.
 
 ## 7. Las frases de ejemplo
 
@@ -288,12 +292,12 @@ De tocar un ejemplo a las dos columnas llenas:
    `as_prompt_context()` arma el bloque `Glosario:` / `Ejemplos:`.
 6. **Prompt.** `translation_messages` (`duel/tzij_duel/prompts.py`) arma el mensaje de sistema (traductor cuidadoso, ortografía ALMG, apóstrofo para el saltillo, solo la traducción) y el de usuario. Si hay contexto, le antepone el encabezado del material de referencia.
 7. **Modelo.**
-   - David: con `DAVID_MBR=1`, `_mbr` pide 4 traducciones a temperatura 0.7 a Ollama (`duel/duel_core/ollama_client.py`, `POST /api/chat`, `num_ctx` 4096; `OLLAMA_NUM_PARALLEL=4` las corre a la vez en la L4) y se queda con la de mayor chrF++ promedio contra las otras.
+   - David: con `DAVID_MBR=1`, `_mbr` pide 4 traducciones a temperatura 0.7 a Ollama (`duel/duel_core/ollama_client.py`, `POST /api/chat`, `num_ctx` 4096; `OLLAMA_NUM_PARALLEL=16` corre a la vez las 4 de cada frase, para hasta 4 frases, en la L4) y se queda con la de mayor chrF++ promedio contra las otras.
    - Goliath: `GeminiClient.complete` (`gemini_client.py`) llama a Vertex AI con `google-genai`, `thinking_level=low` y 20 s de timeout.
 
    `run_duel` (`duel/duel_core/duel.py`) nunca deja que un modelo que falla tumbe al otro.
 8. **Limpiar y medir.** `clean_translation` (`duel_core/prompts.py`) se queda con la primera línea y quita prefijos tipo "Traducción:" y comillas. `normalize_output` aplica la misma normalización que a las referencias. Con un ejemplo, `chrf_pp` (`duel_core/metrics.py`, sacrebleu `CHRF(word_order=2)`) mide contra la traducción correcta: es el «Se parece a la correcta».
-9. **Mostrar.** Cada respuesta llena su columna (`Column` en `page.tsx`); los helpers (porcentaje, estado de David) están en `web/lib/translator.ts`.
+9. **Mostrar.** Cada respuesta llena su columna (`Column` en `page.tsx`); los helpers (porcentaje, tiempo, costo, estado de David) están en `web/lib/translator.ts`.
 
 `make eval` usa exactamente la misma función `translate` con cada variante (`evals/run_eval.py`), pero puntúa con chrF++ a nivel corpus en vez de por oración.
 
@@ -304,7 +308,7 @@ De tocar un ejemplo a las dos columnas llenas:
 | La página dice «Preparando a David…» más de 5 minutos | La GPU no arrancó (cuota, o un error en la imagen) | `gcloud run services logs read tzij-david --region europe-west4 --project ai-experiments-487722 --limit 50`; busca `David listo` |
 | Una columna dice «No pudo traducir esta frase» | David o Gemini respondieron con error | Logs de `tzij` y de `tzij-david`; para Gemini, permisos de `tzij-page` (`aiplatform.user`) |
 | `make examples` o `make eval` dice `DAVID_URL is not set` o 403 | Tu cuenta no puede llamar a `tzij-david`, o falta el servicio | `gcloud auth login`; `make deploy-david` |
-| `make eval` o `make index` no conectan a `127.0.0.1:11434` | No está corriendo `make david-proxy` | Ábrelo en otra terminal |
+| `make eval` o `make index` no conectan a `127.0.0.1:11435` | No está corriendo `make david-proxy` | Ábrelo en otra terminal |
 | `index built with 'X' but queries use 'Y'` | El índice se construyó con otro `EMBEDDING_MODEL` | `make index` con el modelo de `.env` y `make deploy-david` |
 | `!! Missing gs://…/index/<dataset>/tzij.sqlite` en `infra/20-david.sh` | El dataset de `LATEST` no tiene índice publicado | `make data-pull`, `make david-proxy` y `make index` |
 | `bouquet: skipped (needs HF_TOKEN …)` en el pipeline | No hay token ni acceso al secreto | §3: acepta los términos, crea `hf-token`, vuelve a correr `infra/10-data-job.sh` |

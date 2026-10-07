@@ -11,7 +11,7 @@ What runs where and where each piece lives in the code. Back to the [README](../
 Everything runs on Google Cloud (project `ai-experiments-487722`); the laptop only opens the page.
 
 - **The page** (Cloud Run `tzij`, `europe-west4`, public): the static export of `web/` and its Python service (`duel/tzij_duel/page.py`). For each sentence it asks David and Goliath separately, so each column fills as soon as its model answers, and it times both from the same place.
-- **David** (Cloud Run `tzij-david`, `europe-west4`, private, 1× NVIDIA L4): Ollama with `tzij-2026-10-mix-s7` (a LoRA on Gemma 4 E4B, Q4_K_M) and EmbeddingGemma, the retrieval index (SQLite with `sqlite-vec` and FTS5) and MBR-4 decoding, in one container (`david/Dockerfile`, service `duel/tzij_duel/david_app.py`). Only the page's service account can call it. It scales to zero when nobody uses the page, and the page wakes it when it opens.
+- **David** (Cloud Run `tzij-david`, `europe-west4`, private, 1× NVIDIA L4): Ollama with `tzij-2026-10-mix-s7` (a LoRA on Gemma 4 E4B, Q4_K_M) and EmbeddingGemma, the retrieval index (SQLite with `sqlite-vec` and FTS5) and MBR-4 decoding, in one container (`david/Dockerfile`, service `duel/tzij_duel/david_app.py`), with the GPU kernels CUDA compiled for the L4 (`david/warm_cache.py`, `david/Dockerfile.cache`). For typed sentences it also answers whether they are in the licensed data and which memory sentences look like them (`duel/tzij_duel/evidence.py`). Only the page's service account can call it. It scales to zero when nobody uses the page, and the page wakes it when it opens.
 - **Goliath:** `gemini-3.8-flash` on Vertex AI (`global`), called from the page's service.
 - **Data and training:** a Cloud Run Job builds the datasets in Cloud Storage; the fine-tune runs as a Cloud Run Job with one L4, and E4B's merge + GGUF on a Cloud Batch VM with 64 GB. Models live in the models bucket and David's image carries them inside.
 
@@ -37,7 +37,9 @@ duel/
   tzij_duel/   page.py (the page's service), david_app.py (David's GPU service), remote.py (the page calls David with an
                identity token), variants.py, prompts.py, examples.py, settings.py, dataset.py
   examples.json  the page's example sentences (`make examples`), checked against the cloud David and Goliath
-david/         Dockerfile (Ollama + models + index + service), cloudbuild.yaml, start.sh
+david/         Dockerfile (Ollama + models + index + service), cloudbuild.yaml, start.sh,
+               warm_cache.py + Dockerfile.cache + cloudbuild-cache.yaml (GPU kernels compiled once),
+               bench.py + bench-results.json (measured time, cost and capacity)
 page/          Dockerfile (exported Next.js + the page's service), cloudbuild.yaml
 evals/         run_eval.py → report.md, tune_retrieval.py → tuning.md, niche_report.py → niche_results.md,
                fertility.py → fertility.md, human_eval.md

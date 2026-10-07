@@ -25,7 +25,7 @@ No model is downloaded to the laptop: David's GGUF and EmbeddingGemma travel fro
 `make eval`, `make tune-retrieval`, `make niche` and `make index` talk to Ollama at `OLLAMA_URL`. To point them at the cloud David, first open an authenticated tunnel and leave it running:
 
 ```bash
-make david-proxy          # terminal 1: tzij-david's Ollama at http://127.0.0.1:11434
+make david-proxy          # terminal 1: tzij-david's Ollama at http://127.0.0.1:11435
 make data-pull            # terminal 2: the cloud dataset (data, not models)
 make eval                 # evals/report.md
 ```
@@ -36,12 +36,12 @@ make eval                 # evals/report.md
 | --- | --- |
 | `make help` | Lists the commands. |
 | `make deploy` | Everything in the cloud: project setup (APIs, Artifact Registry, buckets, `hf-token` secret, `infra/00-project.sh`), the data Cloud Run Job, the training job with its image, David's GPU service (`infra/20-david.sh`) and the page (`infra/21-page.sh`). |
-| `make deploy-david` | Rebuilds and deploys David's service: an image with Ollama, `LOCAL_MODEL_TAG` (from the models bucket), EmbeddingGemma, the index of the `LATEST` dataset (from the data bucket) and the code. After a new model or index. `MODEL_TAG=…` deploys another published model. |
+| `make deploy-david` | Rebuilds and deploys David's service: an image with Ollama, `LOCAL_MODEL_TAG` (from the models bucket), EmbeddingGemma, the index of the `LATEST` dataset (from the data bucket) and the code; runs it once in a Cloud Run Job with an L4 so CUDA compiles its kernels, and deploys the image with them (about 30 minutes in all). After a new model or index. `MODEL_TAG=…` deploys another published model. |
 | `make deploy-page` | Rebuilds and deploys the page (`web/` and its service). |
 | `make page-url` | Prints the page's public address. |
-| `make david-proxy` | Opens the cloud David's Ollama at `127.0.0.1:11434` with your `gcloud` account (`gcloud run services proxy`). Used by the measurements and `make index`. |
+| `make david-proxy` | Opens the cloud David's Ollama at `127.0.0.1:11435` (`DAVID_PROXY_PORT`; it doesn't clash with an Ollama installed on the laptop, which uses 11434) with your `gcloud` account (`gcloud run services proxy`). Used by the measurements and `make index`. |
 | `make examples` | Re-checks the page's example sentences (`duel/examples.json`) against the cloud David and Goliath: each one is translated 3 times by both; it stays if every time David scores chrF++ ≥ 50 against the correct translation and at least 15 points above Goliath. `IDS=…` tries other `test_niche` sentences and keeps the ones that pass. |
-| `make screens` | Screenshots of the live page for [DEMO.en.md](DEMO.en.md), at 1920×1080 and 1280×800: David waking up, the page ready, an example and a typed sentence. |
+| `make screens` | Screenshots of the live page for [DEMO.en.md](DEMO.en.md), at 1920×1080 (projector), 1280×800, 768×1024 (tablet), 414×896 and 375×812 (phones): David waking up, the page ready, an example and a typed sentence. Fails if a column doesn't fill or the page is wider than the screen. |
 | `make data` | Runs the data pipeline locally: download, clean, normalize, deduplicate, tag domains, split by source. Writes `data/processed/<version>/` and regenerates `data/DATASHEET.md`. |
 | `make data-cloud` | Runs the same pipeline as a Cloud Run Job (`infra/10-data-job.sh`) and writes a versioned dataset to `gs://…-tzij-data/datasets/`. |
 | `make data-pull` | Downloads the latest dataset the job produced. |

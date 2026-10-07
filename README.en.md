@@ -5,7 +5,7 @@ Demo for the talk **"David vs. Goliath: cómo un modelo pequeño le gana a un mo
 - **David** is Gemma 4 E4B fine-tuned with LoRA (`tzij-2026-10-mix-s7`), with a hybrid retrieval index built only from licensed K'iche' data, and MBR decoding. It runs in Ollama on its own GPU (an NVIDIA L4 on Cloud Run) that turns itself off when nobody uses it.
 - **Goliath** is Gemini 3.8 Flash on Vertex AI, used the way anyone would use it.
 
-The demo is a single public page on Cloud Run (`make page-url`): you type a sentence (or tap an example) and David and Goliath translate it at the same time, side by side. For the examples, sentences from the Firefox Focus interface, the page also shows the correct translation, the one people made, and how close each translation got to it. Nothing to run on talk day: open the page a few minutes before and it wakes David up.
+The demo is a single public page on Cloud Run (`make page-url`): you type a sentence (or tap an example) and David and Goliath translate it at the same time, side by side. For the examples, sentences from the Firefox Focus interface, the page also shows the correct translation, the one people made, and how close each translation got to it; for every sentence, how long each translation took and what it cost. Nothing to run on talk day: open the page a few minutes before and it wakes David up.
 
 The Spanish [README.md](README.md) is the primary document; this is a faithful English version.
 
@@ -26,9 +26,12 @@ The Spanish [README.md](README.md) is the primary document; this is a faithful E
 | What it is | Fine-tuned Gemma 4 E4B (`tzij-2026-10-mix-s7`) + hybrid retrieval + MBR-4 | Gemini 3.8 Flash, no extra data |
 | Where it runs | Cloud Run with 1× NVIDIA L4 (`tzij-david`, private) | Vertex AI |
 
-- **Examples:** 11 Firefox Focus sentences in Spanish, with their correct K'iche' translation (Mozilla Pontoon, MPL-2.0 license). Each was translated 3 times by the cloud David and by Goliath, as the page does, and only the ones where David always stayed close to the correct translation (chrF++ 50 or more) and at least 15 points closer than Goliath were kept. They live in [`duel/examples.json`](duel/examples.json), with the measured outputs and scores; `make examples` re-checks them.
-- **"Se parece a la correcta"** (how close to the correct one): chrF++ against the human translation, as a percentage. It only shows for examples: a typed sentence has no correct translation to compare with, so the page shows the two translations.
-- **David wakes up on his own:** his GPU has a minimum of 0 instances. When the page opens it says «Preparando a David…» for about 3 minutes and then «David listo»; while the page stays open, it keeps him awake.
+- **Examples:** 26 Firefox Focus sentences in Spanish, with their correct K'iche' translation (Mozilla Pontoon, MPL-2.0 license). Each was translated 3 times by the cloud David and by Goliath, as the page does, and only the ones where David always stayed close to the correct translation (chrF++ 50 or more) and at least 15 points closer than Goliath were kept. They live in [`duel/examples.json`](duel/examples.json), with the measured outputs and scores; `make examples` re-checks them.
+- **"Se parece a la correcta"** (how close to the correct one): compares each translation with the one people made, in small pieces of letters and words, and says how much they share: 100 % is identical, 0 % shares nothing. If the correct one is «Chajital tʼiqonem», «Chajital tʼiqoj» scores 66 % and «Jikilik tʼiqoj» 16 %. It's chrF++, the usual measure for comparing machine translators; [details below](#what-chrf-is).
+- **A typed sentence:** if it's in the licensed data (the test sets, David's translation memory or the dictionary), the page recognizes it, shows its correct translation and measures both sides like an example. If not, there's nothing to measure against and the page says so; to help judge, it shows the 3 closest sentences in the translation memory, translated by people, and marks in each column the words those translations also use (the memory's terminology). It is not a score. A word-by-word dictionary check was discarded: on the examples, Goliath's wrong translations had more dictionary words than David's right ones, so it would have misled.
+- **Time and cost:** each column shows how long that translation took and what it cost. David runs on his own GPU, billed per second while it's up: his cost is the seconds he worked × the instance's price per second (L4 + 4 vCPU + 16 GiB in `europe-west4`: $0.0002907/s, $1.05 per hour). Goliath bills per token, at Gemini's list price of the day ($0.75 / $3.75 per million; from January 1, 2027, $1.50 / $7.50). Who wins when: [Projections](#projections-cost-and-time).
+- **David wakes up on his own:** his GPU has a minimum of 0 instances. When the page opens it says «Preparando a David…» for about 40 s (it used to be 3 min 24 s; see [cold start](#cold-start)) and then «David listo»; while the page stays open, it keeps him awake.
+- **On a phone:** the page adapts to phones and tablets: one column, David above Goliath, and the examples scroll sideways.
 - **Direction:** the examples and the demo are Spanish → K'iche', the case David wins. The page also translates K'iche' → Spanish (the ⇄ button), but that direction is not shown in the talk (see [below](#why-the-demo-uses-only-the-final-model)).
 
 The script, with screenshots and timings, is in [docs/DEMO.en.md](docs/DEMO.en.md).
@@ -55,6 +58,10 @@ On the specialty David wins by **+8.5** [95% CI: +4.7, +12.7] on a product it ne
 | General: the same 600 test sentences | 25.8 | **36.9** | −11.1 |
 
 In the cloud David scores the same on the general test (25.8 vs 25.7) and answers faster (median 1.77 s vs 4.14 s on the laptop). On the 144 Firefox Focus sentences it scores 35.3 instead of 37.4: MBR picks among 4 sampled translations, so two runs don't give the same number; the lead over Goliath holds in both (+6.4 and +8.5, and the interval excludes zero). The 105 new Firefox Focus sentences confirm it with sentences that were in no earlier run ([experiment 13](#what-each-experiment-told-us)).
+
+### What chrF++ is
+
+It's the measure each translation is scored with against the one people made, and what the page calls «se parece a la correcta». It splits both translations into pieces of 1 to 6 letters in a row and into single words and word pairs, and counts how many pieces they share: 100 is identical, 0 shares nothing. It gives partial credit to an almost-right word, which matters more in K'iche' (long words with prefixes and suffixes) than in other languages. Example, with the correct «Chajital tʼiqonem»: «Chajital tʼiqoj» scores 66 and «Jikilik tʼiqoj», 16. It doesn't understand meaning: a correct synonym lowers the score. That's also why the specialty was pre-registered and a speaker can validate the test set.
 
 ## Experiments
 
@@ -206,7 +213,7 @@ Two epochs vs one: +0.9 [−1.0, +2.9] without MBR and +0.5 [−1.2, +2.4] with 
 
 On the test set, 25.7: +4.1 [+3.6, +4.7] over the previous David, and the gap with Goliath shrinks from 15.4 to 11.2. On the specialty, 37.4 vs 28.9. *We learned:* the two effects add up. Goliath acts as a teacher once, for $13.94, and afterwards David translates without it. A second distillation batch (1,877 pairs, $6.98) was generated but didn't go into `mix-s7`.
 
-**12. EmbeddingGemma 2 in retrieval.** On October 7 we tried EmbeddingGemma 2, the successor Google had just published (270M text parameters, 768 dimensions, 8K context). We rebuilt the index with its vectors (computed with `sentence-transformers` in a Cloud Run job, with the same sentence-similarity prefix) and measured David in the cloud with everything else unchanged:
+**12. EmbeddingGemma 2 in retrieval.** It was tried to update to the new version; version 1 works better (dev 39.9 vs 38.8, general 25.8 vs 23.9), so version 1 is used. On October 7 we tried EmbeddingGemma 2, the successor Google had just published (270M text parameters, 768 dimensions, 8K context). We rebuilt the index with its vectors (computed with `sentence-transformers` in a Cloud Run job, with the same sentence-similarity prefix) and measured David in the cloud with everything else unchanged:
 
 | Split | EmbeddingGemma (the demo's) | EmbeddingGemma 2 |
 | --- | ---: | ---: |
@@ -220,16 +227,37 @@ It loses on dev and on the test set; on the specialty it gains 1.7, within how m
 
 ### David on the Cloud Run GPU
 
-The page runs on Cloud Run and David on another Cloud Run service with an NVIDIA L4 (`europe-west4`), with the model, EmbeddingGemma and the index inside the image. Measured from the page with the 11 examples, 3 times each (`duel/examples.json`):
+The page runs on Cloud Run and David on another Cloud Run service with an NVIDIA L4 (`europe-west4`, 4 vCPU, 16 GiB), with the model, EmbeddingGemma, the index and its already-compiled GPU kernels inside the image. Measured on October 7 with [`david/bench.py`](david/bench.py) ([results](david/bench-results.json)): the 26 examples, 3 times each, against a copy of David's service nobody else was using, so no other measurement slowed it down; Goliath through the page.
 
-| | David (L4, `tzij-david`) | Goliath (Vertex AI) |
+| | David (L4) | Goliath (Vertex AI) |
 | --- | ---: | ---: |
-| Time, median of 33 translations | 0.9 s | 2.0 s |
-| Translations where David answered first | 26 of 33 | — |
-| Start from zero (GPU off) | about 3 min | — |
-| Cost of one translation | about $0.0004 (L4 + 8 vCPU + 32 GiB at $0.000395 per second while the instance is up) | about $0.0001 (tokens) |
+| Time, median of 78 translations | **0.81 s** | 1.47 s |
+| Time, p95 | **1.43 s** | 3.09 s |
+| Translations where David answered first | **74 of 78** | — |
+| Cost of one translation, as the page shows it | $0.00027 (0.9 s of GPU × $0.0002907/s) | **$0.00012** (107 tokens, 2026 price) |
+| Start from zero (GPU off) | **39 s** (was 3 min 24 s) | — |
 
-David usually answers first, but not always; and in the cloud he costs more per translation than Gemini, and the GPU bills while it's up (about $1.42 per hour; it turns itself off about 15 minutes after the last request). That's why the page shows neither time nor cost: it only compares the translations. With the page closed, David costs nothing.
+One person using the page: David almost always answers first, and each translation costs him more than Gemini at the 2026 price. At the 2027 price (double), Gemini would charge $0.00024 for the same sentence and David would stay at $0.00027. Where the math flips: [Projections](#projections-cost-and-time).
+
+#### Cold start
+
+David turns himself off about 15 minutes after the last request (minimum 0 instances: with the page closed he costs nothing). When waking up, most of the time went into something other than loading the model: Ollama's CUDA libraries compile part of their code for the L4 the first time they run ("JIT" compilation), and on a new instance that happened every time. Measured in Cloud Run's logs, from the instance starting to «David listo»:
+
+| Phase | Before | After |
+| --- | ---: | ---: |
+| Start the container | 4 s | 5 s |
+| Ollama finds the GPU | 15 s | 14 s |
+| Load the model on the GPU | 66 s | 12 s |
+| Load EmbeddingGemma | 26 s | 2 s |
+| First full translation (retrieval + MBR-4) | 69 s | 2 s |
+| **Total** | **3 min 1 s** | **35 s** |
+
+What changed (in [`infra/20-david.sh`](infra/20-david.sh)):
+
+- **The kernels are compiled once.** After building the image, a Cloud Run Job with an L4 runs it ([`david/warm_cache.py`](david/warm_cache.py)): it loads both models and translates short and long sentences in both directions, the page's examples and batches of 2, 4 and 8 at once. CUDA keeps what it compiles (122 MB) and the final image carries it ([`david/Dockerfile.cache`](david/Dockerfile.cache)). Tested in a job: with the cache, loading the model went from 66 s to 8 s, EmbeddingGemma from 35 s to 2 s and the first translation from 62 s to 1 s; with the cache disabled and everything else the same, back to 62, 39 and 60 s. If Cloud Run changes its GPU driver version, CUDA ignores the cache and compiles again: slower, never wrong; `make deploy-david` regenerates it.
+- **The image lives next to the service.** It was in Artifact Registry in `us-central1` while the service runs in `europe-west4`; now both demo images are in `europe-west4`.
+- **The first long sentences used to be slow too** (4 to 10 s) because they compiled kernels of other sizes. With the cache, the first minute after waking up has a p95 of 1.2 s.
+- **What didn't help:** turning off Ollama's search for Vulkan GPUs (finding the GPU still took about 14 s; it stays off because David only uses CUDA) and 8 vCPU and 32 GiB instead of 4 and 16 (same time per translation, 36 % more per hour).
 
 ### Cost of training David
 
@@ -243,6 +271,57 @@ David usually answers first, but not always; and in the cloud he costs more per 
 
 Gemini as teacher: $0.12 (first back-translation) + $2.09 (synthetic, discarded) + $13.94 (data round) + $1.85 (Gemini Pro measurement). Every run is in [`train/runs/`](train/runs/), with machine, duration and cost per stage.
 
+## Projections: cost and time
+
+With the numbers measured above ([`david/bench-results.json`](david/bench-results.json)), what happens with more use. Cloud Run prices in `europe-west4` (Cloud Billing catalog, October 7, 2026): L4 without zonal redundancy $0.0001867/s, vCPU $0.000018/s, GiB $0.000002/s. Gemini 3.8 Flash: $0.75 / $3.75 per million input / output tokens until December 31, 2026, and $1.50 / $7.50 from January 1, 2027.
+
+**The formulas.**
+
+- David's hour = $0.0001867 + 4 × $0.000018 + 16 × $0.000002 = $0.0002907 per second = **$1.0465 per hour** while up, translating or not.
+- Goliath's translation = input tokens × input price + output tokens × output price: **$0.000122** in 2026 and **$0.000243** in 2027 (average over the 26 examples: 107 tokens).
+- David's translation = $1.0465 ÷ translations per hour. How many one L4 can do was measured by sending it several sentences at once:
+
+| Sentences at once | Translations per hour | Median | p95 |
+| ---: | ---: | ---: | ---: |
+| 1 | 3,970 | 0.87 s | 1.17 s |
+| 2 | 4,951 | 1.34 s | 2.08 s |
+| 4 | **5,548** | 2.29 s | 4.14 s |
+| 8 | 5,338 | 4.87 s | 6.36 s |
+
+  With 4 at once the L4 reaches its maximum: about **5,500 translations per hour**, at **$0.000189** each. With a single person using it, $0.00027.
+
+**Cost: who wins where.** David costs the same per hour with 1 or 5,500 translations; Goliath, the same per translation. The break-even point is $1.0465 ÷ the cost of one Goliath translation:
+
+| | Gemini 2026 price | Gemini 2027 price |
+| --- | ---: | ---: |
+| Break-even, translations per hour | 8,600 (more than one L4 can do) | **4,300** |
+| David cheaper | never, with one L4 on Cloud Run | **above 4,300 translations per hour** |
+| At full load (5,500 per hour) | David $0.000189, Goliath **$0.000122** | **David $0.000189**, Goliath $0.000243 (David 22 % cheaper) |
+
+Per month, with David always on (730 hours, $764):
+
+| Translations per month | Goliath 2026 | Goliath 2027 | David (1 L4) |
+| ---: | ---: | ---: | ---: |
+| 100,000 | **$12** | **$24** | $764 |
+| 1,000,000 | **$122** | **$243** | $764 |
+| 3,140,000 (2027 break-even) | **$382** | $764 | $764 |
+| 4,050,000 (one L4 at full load) | **$493** | $986 | **$764** |
+
+And for a talk: the page open for an hour plus the 15 minutes David takes to turn off cost $1.31 of GPU; 200 Gemini translations, $0.02.
+
+**What this says.**
+
+- **With little use, Goliath is cheaper,** by far: you pay only for what you translate. A GPU on for one person is expensive.
+- **With heavy use and the 2027 price, David is cheaper:** from about 4,300 translations per hour (3.1 million per month with the GPU always on), and 22 % cheaper at full load. At the 2026 price, a single L4 on Cloud Run doesn't get there.
+- **Outside this math:** on owned hardware (the laptop where the experiments ran, or a GPU already paid for) each David translation costs $0 extra; and a dedicated L4 machine or a committed-use discount costs less per hour than Cloud Run, which lowers the break-even. Not measured here.
+
+**Time: who wins where.**
+
+- **One person at a time (the demo): David,** 0.81 s against 1.47 s median and 1.43 s against 3.09 s at p95; he answered first in 74 of 78.
+- **Up to 2 sentences at once:** David barely ahead on the median (1.34 s against 1.47 s) and better at p95 (2.08 s against 3.09 s).
+- **4 or more at once:** Goliath wins. One L4 splits its capacity and David goes up to 2.3 s median with 4 and 4.9 s with 8; Gemini scales on its own. For more traffic, more David instances (`--max-instances`), each with its cost per hour.
+- **Waking up:** if David was off, the first sentence waits for the cold start (35 s from the instance starting); Gemini doesn't have that cost.
+
 ## Why the demo uses only the final model
 
 The page shows a single David: `tzij-2026-10-mix-s7` + hybrid retrieval + MBR-4. The other variants are measured above but don't appear in the demo, for these reasons:
@@ -252,7 +331,7 @@ The page shows a single David: `tzij-2026-10-mix-s7` + hybrid retrieval + MBR-4.
 - **MBR-4 is worth it.** Without MBR, `mix-s7` scores 25.1 (35.9 on the specialty); with MBR-4, 25.7 (37.4). On the laptop it took 4.14 s; on the Cloud Run L4 the page gets it in 0.9 s (median). Experiment 8's multi-prompt MBR scored higher on dev but took 7.1 s on the laptop.
 - **The demo shows the case David wins.** On the translation memory, David translates better than Goliath; that is what the page compares. In general translation Goliath stays ahead (36.9 vs 25.7), most clearly in K'iche' → Spanish (−16.4). Those numbers are above and in the [logbook](docs/BITACORA.md), but the talk doesn't show that direction or those sentences.
 - **A per-sentence comparison has to be fair to both.** The examples were chosen among sentences neither model saw: 26 Firefox Focus sentences, 11 of the 144 held out and 15 of the 105 newer ones ([experiment 13](#what-each-experiment-told-us)). Each was translated 3 times live by both models, and stays only if all 3 times David scores 50 or more and beats Goliath by 15 or more. 37 were tried and 26 stayed. The measured outputs, scores and times are in [`duel/examples.json`](duel/examples.json).
-- **Retrieval stays with EmbeddingGemma.** EmbeddingGemma 2 scored lower on dev and on the test set ([experiment 12](#what-each-experiment-told-us)).
+- **Retrieval stays with EmbeddingGemma 1.** EmbeddingGemma 2 was tried to update to the new version; version 1 works better (dev 39.9 vs 38.8, general 25.8 vs 23.9), so version 1 is used ([experiment 12](#what-each-experiment-told-us)).
 
 ## Quickstart
 

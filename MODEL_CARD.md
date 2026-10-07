@@ -13,7 +13,8 @@ use it, on one public page.
 | Extra knowledge | Hybrid retrieval index: 8,453 dictionary entries and example pairs per direction (BM25 over SQLite FTS5 + EmbeddingGemma in sqlite-vec, fused with RRF; exact and fuzzy glossary) | None |
 | Decoding | MBR: 4 samples at temperature 0.7, keep the one with the highest mean chrF++ against the others (`DAVID_MBR=1`) | One answer, temperature 0.2 |
 | Runs on | Cloud Run `tzij-david` (`europe-west4`): 1× NVIDIA L4, Ollama, private, scales to zero | Vertex AI (`global`) |
-| Cost per translation | About $0.0004 on the L4 ($0.000395/s while the instance is up) | About $0.0001 (tokens × list price) |
+| Cost per translation | $0.00027 with one person using it (0.9 s × $0.0002907/s: L4 + 4 vCPU + 16 GiB while the instance is up); $0.000189 at full load (about 5,500 per hour) | $0.00012 (107 tokens × the 2026 list price); $0.00024 from January 1, 2027 |
+| Time per translation (26 examples × 3) | Median 0.81 s, p95 1.43 s | Median 1.47 s, p95 3.09 s |
 
 **In the demo now:** `tzij-2026-10-mix-s7` + hybrid retrieval + MBR (4 samples), the best David
 variant in `evals/report.md`. It never saw Firefox Focus, so
@@ -73,9 +74,10 @@ What the numbers say, for the talk:
   back-translation $0.12 and fine-tune $3.09 (5 L4 Cloud Run jobs); the data round behind the
   current David about $24.3 (L4 $8.52; Gemini back-translation, distillation and a Gemini Pro
   measurement; `docs/BITACORA.md`, sections 10–11).
-- **Served in the cloud, David is not cheaper.** On the L4 a translation costs about $0.0004
-  against about $0.0001 for Gemini, and the GPU bills about $1.42 per hour while it's up. The
-  demo compares translation quality, where David wins.
+- **Served in the cloud, David is faster for one person and cheaper only with heavy use.** He
+  answers first in 74 of 78 translations. The GPU bills $1.05 per hour while it's up, so with
+  little use Gemini is cheaper; at Gemini's 2027 price David is cheaper above about 4,300
+  translations per hour (README, Proyecciones).
 
 Variants compared in `make eval` (results in `evals/report.md`): each Gemma in
 `BASE_MODEL_TAGS` and each fine-tuned tag in `FINETUNED_MODEL_TAGS`, plain, with vector

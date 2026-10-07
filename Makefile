@@ -14,6 +14,11 @@ TRAIN_DATA ?= data/train/chat-raft-bt-both-dst2409-new30.jsonl
 REVIEW_CSV ?=
 # The demo runs in Google Cloud: David's GPU service and the page (infra/20-david.sh, infra/21-page.sh).
 DEMO_REGION ?= europe-west4
+# No model runs on the laptop: measurements (eval, index, tune-retrieval, niche) talk to the cloud
+# David's Ollama through `make david-proxy`, on its own port so an Ollama installed on the laptop
+# (port 11434) doesn't get in the way.
+DAVID_PROXY_PORT ?= 11435
+OLLAMA_URL := http://127.0.0.1:$(DAVID_PROXY_PORT)
 
 .PHONY: help data deploy deploy-david deploy-page page-url david-proxy data-cloud data-pull index niche-data review-test apply-review fertility datasheet tune-retrieval niche eval human-eval-sheet train-data train-data-raft train-data-raft-bt distill monolingual back-translate train train-finish test examples screens
 
@@ -40,8 +45,8 @@ deploy-page: ## Rebuild and redeploy the demo page (web/ and its service)
 page-url: ## Print the demo page's public URL
 	@gcloud run services describe tzij --region $(DEMO_REGION) --project $(GOOGLE_CLOUD_PROJECT) --format='value(status.url)'
 
-david-proxy: ## Open David's Ollama in the cloud at localhost:11434 for make eval / index / tune-retrieval (leave it running)
-	gcloud run services proxy tzij-david --region $(DEMO_REGION) --project $(GOOGLE_CLOUD_PROJECT) --port 11434
+david-proxy: ## Open David's Ollama in the cloud at 127.0.0.1:$(DAVID_PROXY_PORT) for make eval / index / tune-retrieval (leave it running)
+	gcloud run services proxy tzij-david --region $(DEMO_REGION) --project $(GOOGLE_CLOUD_PROJECT) --port $(DAVID_PROXY_PORT)
 
 data-cloud: ## Run the pipeline as a Cloud Run Job, writing a versioned dataset to the tzij-data bucket
 	bash infra/10-data-job.sh
