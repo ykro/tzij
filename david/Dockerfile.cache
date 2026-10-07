@@ -1,0 +1,6 @@
+# David's final image: the image built by david/Dockerfile plus the GPU kernels CUDA compiled for the
+# L4 on its first run (david/warm_cache.py, run by infra/20-david.sh as a Cloud Run Job). Without them
+# a cold start spent about 2.5 minutes compiling; with them it loads in seconds.
+ARG BASE
+FROM ${BASE}
+COPY cuda-cache/ /cuda-cache/

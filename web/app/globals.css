@@ -549,16 +549,130 @@ input {
   transition: transform 700ms var(--ease-out);
 }
 
-.tx__meter[data-empty] .tx__meter-row,
+.tx__meter[data-empty] .tx__meter-row b {
+  visibility: hidden;
+}
 
+/* Time and cost of this translation. */
 
+.tx__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px clamp(20px, 2vw, 40px);
+  margin: 0;
+  padding-top: clamp(10px, 1vw, 14px);
+  border-top: 1px solid var(--hairline-soft);
+}
 
+.tx__facts[data-empty] dd {
+  color: var(--muted);
+}
 
+.tx__facts dt {
+  color: var(--muted);
+  font-size: clamp(13px, 0.9vw, 17px);
+}
+
+.tx__facts dd {
+  margin: 2px 0 0;
+  font-size: clamp(20px, 1.5vw, 30px);
+  font-weight: 700;
+}
+
+.tx__facts dd.tx__fact-note {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: clamp(13px, 0.85vw, 16px);
+  font-weight: 500;
+}
+
+/* A typed phrase: the closest human translations in the memory, and the words they share. */
+
+.tx__ref--typed {
+  background: var(--surface);
+  border-color: var(--hairline);
+}
+
+.tx__ref-line--none {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tx__ref-line--none p {
+  margin: 0;
+}
+
+.tx__memory {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink);
+  font-size: clamp(15px, 1.05vw, 20px);
+}
+
+.tx__memory li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+}
+
+.tx__memory .kiche {
+  font-weight: 600;
+}
+
+.tx__memory small {
+  color: var(--muted);
+  font-size: 0.8em;
+}
+
+.tx__arrow {
+  color: var(--muted);
+}
+
+.tx__hit {
+  background: color-mix(in oklab, var(--correct) 16%, var(--surface));
+  box-shadow: 0 0.08em 0 color-mix(in oklab, var(--correct) 55%, var(--surface));
+  border-radius: 3px;
+}
+
+.tx__shared {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(15px, 1vw, 19px);
+}
+
+.tx__shared b {
+  color: var(--correct);
+}
 
 .tx__foot {
   color: var(--muted);
   font-size: clamp(13px, 0.85vw, 16px);
   max-width: 120ch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tx__foot p {
+  margin: 0;
+}
+
+.tx__foot b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.tx__out,
+.tx__ref-text,
+.tx__ref-source,
+.tx__memory {
+  overflow-wrap: anywhere;
 }
 
 @media (pointer: coarse) {
@@ -567,18 +681,20 @@ input {
   }
 }
 
+/* Tablet and phone: everything in one column, David above Goliath. */
 @media (max-width: 900px) {
   .tx__compose {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr auto;
   }
 
   .tx__dir {
+    grid-column: 1 / -1;
     justify-content: center;
-    padding: 10px;
+    padding: 8px;
   }
 
   .tx__go {
-    padding: 14px;
+    padding: 0 22px;
   }
 
   .tx__ref,
@@ -588,6 +704,90 @@ input {
 
   .tx__title {
     display: none;
+  }
+
+  .tx__bar {
+    justify-content: space-between;
+  }
+}
+
+/* Phone. */
+@media (max-width: 600px) {
+  .tx {
+    gap: 14px;
+  }
+
+  .wordmark--regular {
+    font-size: 30px;
+  }
+
+  .tx__net {
+    padding: 6px 12px;
+    font-size: 14px;
+  }
+
+  .tx__compose {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .tx__go {
+    min-height: 52px;
+  }
+
+  .tx__field textarea {
+    min-height: 88px;
+    font-size: 20px;
+  }
+
+  .tx__examples {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  /* The examples scroll sideways instead of filling the screen. */
+  .tx__chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    margin: 0 calc(-1 * var(--tx-pad));
+    padding: 2px var(--tx-pad) 6px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+
+  .tx__chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tx__chips li {
+    flex: none;
+    scroll-snap-align: start;
+  }
+
+  .tx__chip {
+    white-space: nowrap;
+  }
+
+  .tx__ref {
+    gap: 10px;
+  }
+
+  .tx__col-head {
+    gap: 4px 12px;
+  }
+
+  .tx__body {
+    min-height: 56px;
+  }
+
+  .tx__out {
+    font-size: 26px;
+  }
+
+  .tx__facts {
+    grid-template-columns: 1fr;
+    gap: 10px;
   }
 }
 

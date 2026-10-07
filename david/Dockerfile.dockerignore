@@ -11,4 +11,5 @@
 !duel/examples.json
 !duel/mock_data/**
 !david/start.sh
+!david/warm_cache.py
 !build/david/**

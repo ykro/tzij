@@ -48,12 +48,21 @@ class RemoteDavid:
         except (httpx.HTTPError, ValueError):
             return False
 
-    async def translate(self, text: str, direction: str) -> dict[str, Any]:
+    async def _post(self, path: str, body: dict[str, Any], timeout_s: float | None = None) -> dict[str, Any]:
         try:
-            res = await self._http.post("/translate", json={"text": text, "direction": direction},
-                                        headers=await self._headers())
+            res = await self._http.post(path, json=body, headers=await self._headers(),
+                                        **({"timeout": timeout_s} if timeout_s else {}))
         except httpx.HTTPError as exc:
             raise DavidUnavailable(str(exc)) from exc
         if res.status_code != 200:
             raise DavidUnavailable(f"David {res.status_code}: {res.text[:200]}")
         return res.json()
+
+    async def translate(self, text: str, direction: str) -> dict[str, Any]:
+        return await self._post("/translate", {"text": text, "direction": direction})
+
+    async def reference(self, text: str, direction: str) -> dict[str, Any] | None:
+        return (await self._post("/reference", {"text": text, "direction": direction}, timeout_s=20))["reference"]
+
+    async def evidence(self, text: str, direction: str, outputs: dict[str, str]) -> dict[str, Any]:
+        return await self._post("/evidence", {"text": text, "direction": direction, "outputs": outputs}, timeout_s=30)

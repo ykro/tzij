@@ -5,7 +5,11 @@
   /api/info       model names for the two columns
   /api/david      {"ready": bool}: also wakes David's GPU service when it was asleep
   /api/translate  one side's translation; the page asks for each side on its own so each column
-                  fills as soon as its model answers
+                  fills as soon as its model answers. Each side says how long it took and what it cost:
+                  David, the seconds he worked × his GPU instance's price per second; Goliath, his
+                  tokens × Gemini's list price of the day.
+  /api/evidence   for a typed phrase without a correct translation: the closest human translations in
+                  the translation memory and the words of each side that also appear in them
 
 David runs on his own GPU service (david_app.py, private); Goliath is Gemini on Vertex AI, called
 from here. Both times are measured here, as the person in front of the page waits them.
@@ -14,6 +18,7 @@ from here. Both times are measured here, as the person in front of the page wait
 from __future__ import annotations
 
 import time
+from datetime import date
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException
@@ -27,7 +32,7 @@ from .david_app import David
 from .david_app import Translation as DavidRequest
 from .examples import load_examples, public
 from .remote import DavidUnavailable, RemoteDavid
-from .settings import Settings, get_settings
+from .settings import Settings, david_usd_per_s, gemini_price_on, get_settings
 from .variants import Variant, goliath_variant, translate
 
 MAX_PHRASE_CHARS = 280
@@ -43,6 +48,12 @@ class Translation(BaseModel):
     side: Side | None = None
 
 
+class EvidenceRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=MAX_PHRASE_CHARS)
+    direction: Literal["es-quc", "quc-es"] = "es-quc"
+    outputs: dict[str, str] = Field(default_factory=dict)
+
+
 class InProcessDavid:
     """Tests and MOCK_AI=1: David runs in this process instead of on the GPU service."""
 
@@ -55,12 +66,31 @@ class InProcessDavid:
     async def translate(self, text: str, direction: str) -> dict[str, Any]:
         return await self.david.translate(DavidRequest(text=text, direction=direction))
 
+    async def reference(self, text: str, direction: str) -> dict[str, Any] | None:
+        return self.david.evidence.reference(text, direction)
+
+    async def evidence(self, text: str, direction: str, outputs: dict[str, str]) -> dict[str, Any]:
+        return self.david.evidence.evidence(text, direction, outputs)
+
 
 class Page:
     def __init__(self, settings: Settings, *, david: Any = None, goliath: Variant | None = None) -> None:
         self.settings = settings
         self.david = david or (RemoteDavid(settings.david_url) if settings.david_url else InProcessDavid(settings))
         self.goliath = goliath or goliath_variant(settings)
+        self._references: dict[tuple[str, str], dict | None] = {}
+
+    async def reference_for(self, text: str, direction: str) -> dict[str, Any] | None:
+        """The licensed correct translation of a typed phrase, when it exists (asked once per phrase)."""
+        key = (direction, text)
+        if key not in self._references:
+            try:
+                self._references[key] = await self.david.reference(text, direction)
+            except DavidUnavailable:
+                return None
+            if len(self._references) > 2000:
+                self._references.pop(next(iter(self._references)))
+        return self._references[key]
 
     async def side(self, name: Side, text: str, direction: str, reference: str | None) -> dict[str, Any]:
         t0 = time.perf_counter()
@@ -70,14 +100,21 @@ class Page:
             except DavidUnavailable as exc:
                 r = {"status": "error", "text": "", "error": str(exc)[:200]}
             status, out, error, model = r["status"], r.get("text", ""), r.get("error"), r.get("model", self.settings.david_model)
+            # David's GPU instance bills by the second while it's up: the seconds he worked on this one.
+            gpu_s = round((r.get("latency_ms") or 0) / 1000, 2)
+            cost = {"usd": round(gpu_s * david_usd_per_s(self.settings), 7), "gpu_seconds": gpu_s,
+                    "usd_per_hour": round(david_usd_per_s(self.settings) * 3600, 2)}
         else:
             g = await translate(self.goliath, text, direction, retriever=None, online=True)
             status, out, error, model = g.status, g.text, g.error, g.model
+            inp, outp = gemini_price_on(self.settings, date.today())
+            cost = {"usd": round((g.input_tokens * inp + g.output_tokens * outp) / 1_000_000, 7),
+                    "tokens": g.input_tokens + g.output_tokens}
         latency_ms = round((time.perf_counter() - t0) * 1000, 1)
         closeness = round(chrf_pp(out, reference), 2) if status == "ok" and reference is not None else None
         return {"status": "ok" if status == "ok" else "error", "text": out if status == "ok" else "",
                 "latency_ms": latency_ms if status == "ok" else None, "closeness": closeness,
-                "error": error, "model": model}
+                "cost": cost if status == "ok" else None, "error": error, "model": model}
 
     async def translate_text(self, body: Translation) -> dict[str, Any]:
         import asyncio
@@ -88,13 +125,15 @@ class Page:
         example = next((e for e in load_examples() if e["pair_id"] == body.example), None) if body.example else None
         if example is not None and (example["text"] != text or example["direction"] != body.direction):
             example = None  # the box was edited after picking the example: it's typed text now
-        reference = example["reference"] if example else None
+        if example:
+            found: dict | None = {"text": example["reference"], "source": example["source"],
+                                  "license": example["license"], "url": example["url"], "where": "ejemplo"}
+        else:  # typed: measured only if the phrase itself is in the licensed data
+            found = await self.reference_for(text, body.direction)
+        reference = found["text"] if found else None
         names: list[Side] = [body.side] if body.side else ["david", "goliath"]
         results = await asyncio.gather(*(self.side(n, text, body.direction, reference) for n in names))
-        return {"direction": body.direction, "source_text": text,
-                "reference": ({"text": reference, "source": example["source"], "license": example["license"],
-                               "url": example["url"]} if example else None),
-                **dict(zip(names, results))}
+        return {"direction": body.direction, "source_text": text, "reference": found, **dict(zip(names, results))}
 
 
 def create_app(settings: Settings | None = None, page: Page | None = None) -> FastAPI:
@@ -109,7 +148,10 @@ def create_app(settings: Settings | None = None, page: Page | None = None) -> Fa
 
     @app.get("/api/info")
     async def info() -> dict[str, Any]:
-        return {"david": settings.david_model, "goliath": settings.gemini_model}
+        inp, outp = gemini_price_on(settings, date.today())
+        return {"david": settings.david_model, "goliath": settings.gemini_model,
+                "david_usd_per_hour": round(david_usd_per_s(settings) * 3600, 2),
+                "gemini_usd_per_m": {"input": inp, "output": outp}}
 
     @app.get("/api/david")
     async def david_ready() -> dict[str, Any]:
@@ -122,6 +164,13 @@ def create_app(settings: Settings | None = None, page: Page | None = None) -> Fa
     @app.post("/api/translate")
     async def translate_text(body: Translation) -> dict[str, Any]:
         return await svc.translate_text(body)
+
+    @app.post("/api/evidence")
+    async def evidence(body: EvidenceRequest) -> dict[str, Any]:
+        try:
+            return await svc.david.evidence(body.text.strip(), body.direction, body.outputs)
+        except DavidUnavailable as exc:
+            raise HTTPException(503, "David no responde; intenta de nuevo.") from exc
 
     web = settings.web_dir
     if web.exists():

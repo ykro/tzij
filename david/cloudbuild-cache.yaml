@@ -1,0 +1,14 @@
+# David's final image: the base image (david/cloudbuild.yaml) + the CUDA kernel cache that
+# david/warm_cache.py compiled on an L4 (see david/Dockerfile.cache). Source: the david/ directory.
+steps:
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args: ["-c", "set -euo pipefail; gcloud storage cp \"${_CACHE_URI}\" /workspace/cuda-cache.tgz && tar -xzf /workspace/cuda-cache.tgz -C /workspace && du -sh /workspace/cuda-cache"]
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "Dockerfile.cache", "--build-arg", "BASE=${_BASE}", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]
+timeout: 1800s
+substitutions:
+  _BASE: ""
+  _IMAGE: ""
+  _CACHE_URI: ""

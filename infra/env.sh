@@ -33,6 +33,8 @@ deploy_run() {
 # The demo: David's GPU service and the page, both next to the L4 quota (Cloud Run GPUs without
 # zonal redundancy are available to this project in europe-west4).
 export DEMO_REGION="${DEMO_REGION:-europe-west4}"
+# Images of the demo live next to it: a cold start reads David's ~6 GB image from the same region.
+export DEMO_AR="${DEMO_REGION}-docker.pkg.dev/${PROJECT_ID}/${AR_REPO}"
 export DAVID_SERVICE="${DAVID_SERVICE:-${APP}-david}"
 export PAGE_SERVICE="${PAGE_SERVICE:-${APP}}"
 

@@ -9,6 +9,10 @@ steps:
         mkdir -p build/david/model build/david/index
         gcloud storage cp "${_MODELS_BUCKET}/${_MODEL_TAG}/Modelfile" "${_MODELS_BUCKET}/${_MODEL_TAG}/*.gguf" build/david/model/
         gcloud storage cp "${_DATA_BUCKET}/index/${_DATASET}/tzij.sqlite" build/david/index/tzij.sqlite
+        # Licensed test pairs, so a typed phrase that is in them gets its correct translation on the
+        # page (BOUQuET is for evaluation only and never leaves the evals).
+        gcloud storage cat "${_DATA_BUCKET}/datasets/${_DATASET}/test.jsonl" "${_DATA_BUCKET}/datasets/${_DATASET}/test_niche.jsonl" \
+          | grep -v '"source_name": "bouquet"' > build/david/index/references.jsonl
         ls -la build/david/model build/david/index
   - name: gcr.io/cloud-builders/docker
     env: ["DOCKER_BUILDKIT=1"]

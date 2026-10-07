@@ -3,7 +3,8 @@
 # retrieval index and the Python service (duel/tzij_duel/david_app.py) that does retrieval + MBR.
 # Built by Cloud Build (david/cloudbuild.yaml), which first copies the GGUF, its Modelfile and the
 # index from Cloud Storage into build/david/. Nothing is downloaded at start: a cold start only
-# loads files that are already in the image.
+# loads files that are already in the image. infra/20-david.sh then runs david/warm_cache.py on an L4
+# with this image and adds the compiled GPU kernels on top (david/Dockerfile.cache).
 ARG OLLAMA_IMAGE=ollama/ollama:0.35.0
 
 FROM ${OLLAMA_IMAGE} AS models
@@ -21,7 +22,10 @@ ENV OLLAMA_MODELS=/models \
     OLLAMA_HOST=127.0.0.1:11434 \
     OLLAMA_KEEP_ALIVE=-1 \
     OLLAMA_MAX_LOADED_MODELS=2 \
-    OLLAMA_NUM_PARALLEL=4 \
+    OLLAMA_NUM_PARALLEL=16 \
+    OLLAMA_VULKAN=0 \
+    CUDA_CACHE_PATH=/cuda-cache \
+    CUDA_CACHE_MAXSIZE=4294967296 \
     UV_PYTHON_INSTALL_DIR=/opt/python \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PYTHONPATH=/app:/app/duel \
@@ -35,5 +39,7 @@ COPY rag/ rag/
 COPY duel/ duel/
 COPY .env.example .env
 COPY build/david/index/tzij.sqlite rag/index/tzij.sqlite
+COPY build/david/index/references.jsonl rag/index/references.jsonl
+COPY david/warm_cache.py /warm_cache.py
 COPY david/start.sh /start.sh
 ENTRYPOINT ["/bin/sh", "/start.sh"]

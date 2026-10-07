@@ -37,6 +37,9 @@ class Settings:
     gemini_thinking_level: str = field(default_factory=lambda: _env("GEMINI_THINKING_LEVEL", "low"))
     gemini_input_usd_per_m: float = field(default_factory=lambda: _float("GEMINI_INPUT_USD_PER_M", 0.0))
     gemini_output_usd_per_m: float = field(default_factory=lambda: _float("GEMINI_OUTPUT_USD_PER_M", 0.0))
+    # "YYYY-MM-DD:input/output": Gemini's announced list price from that day on (the page uses the
+    # price of the day of each translation).
+    gemini_next_price: str = field(default_factory=lambda: _env("GEMINI_NEXT_PRICE"))
     # David: the Gemma variant the page shows (fine-tuned), always with retrieval.
     david_model: str = field(default_factory=lambda: _env("LOCAL_MODEL_TAG"))
     # Extra Ollama models compared in `make eval` (base E2B vs E4B, fine-tuned tags later).
@@ -61,8 +64,30 @@ class Settings:
     # The page's backend calls David's GPU service here (Cloud Run, private). Empty: David runs in
     # the same process (tests, MOCK_AI=1).
     david_url: str = field(default_factory=lambda: _env("DAVID_URL"))
+    # What David's GPU instance costs per second while it's up (Cloud Run instance-based billing:
+    # L4 + vCPU + memory, europe-west4). The page multiplies it by the seconds David worked.
+    david_gpu_usd_per_s: float = field(default_factory=lambda: _float("DAVID_GPU_USD_PER_S", 0.0001867))
+    david_vcpu_usd_per_s: float = field(default_factory=lambda: _float("DAVID_VCPU_USD_PER_S", 0.000018))
+    david_gib_usd_per_s: float = field(default_factory=lambda: _float("DAVID_GIB_USD_PER_S", 0.000002))
+    david_cpu: int = field(default_factory=lambda: int(_env("DAVID_CPU", "4")))
+    david_memory_gib: int = field(default_factory=lambda: int(_env("DAVID_MEMORY_GIB", "16")))
     processed_dir: Path = field(default_factory=lambda: REPO_ROOT / "data" / "processed")
     web_dir: Path = field(default_factory=lambda: REPO_ROOT / "web" / "out")
+
+
+def david_usd_per_s(s: Settings) -> float:
+    """David's GPU instance, per second while it's up: L4 + vCPUs + GiB of memory."""
+    return s.david_gpu_usd_per_s + s.david_cpu * s.david_vcpu_usd_per_s + s.david_memory_gib * s.david_gib_usd_per_s
+
+
+def gemini_price_on(s: Settings, day) -> tuple[float, float]:
+    """Gemini's list price (input, output USD per 1M tokens) on that day."""
+    if s.gemini_next_price:
+        start, _, prices = s.gemini_next_price.partition(":")
+        if day.isoformat() >= start.strip():
+            inp, _, out = prices.partition("/")
+            return float(inp), float(out)
+    return s.gemini_input_usd_per_m, s.gemini_output_usd_per_m
 
 
 def get_settings() -> Settings:

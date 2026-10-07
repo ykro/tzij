@@ -5,6 +5,8 @@ Runs in the same container as Ollama (david/Dockerfile). Private: only the page'
 
   GET  /health      {"ready": bool}: true once the model, the embedding model and the index are loaded
   POST /translate   {"text", "direction"} -> David's translation (retrieval + MBR-4), timed here
+  POST /reference   {"text", "direction"} -> the licensed correct translation of exactly that phrase, if any
+  POST /evidence    {"text", "direction", "outputs"} -> what helps judge a typed phrase (evidence.py)
   *    /api/...     Ollama's API, for `make eval` / `make tune-retrieval` through `make david-proxy`
 """
 
@@ -21,16 +23,23 @@ from pydantic import BaseModel, Field
 
 from rag.retrieve import Retriever
 
+from .evidence import Evidence
 from .settings import REPO_ROOT, Settings, get_settings
 from .variants import Variant, david_variant, load_retriever, translate
 
 MAX_PHRASE_CHARS = 280
 MOCK_DATA = REPO_ROOT / "duel" / "mock_data"
+# Licensed test pairs (test + test_niche, never BOUQuET), copied next to the index by david/cloudbuild.yaml.
+REFERENCES = REPO_ROOT / "rag" / "index" / "references.jsonl"
 
 
 class Translation(BaseModel):
     text: str = Field(min_length=1, max_length=MAX_PHRASE_CHARS)
     direction: Literal["es-quc", "quc-es"] = "es-quc"
+
+
+class EvidenceRequest(Translation):
+    outputs: dict[str, str] = Field(default_factory=dict)
 
 
 def mock_retriever(settings: Settings) -> Retriever:
@@ -54,6 +63,7 @@ class David:
         self.variant = variant or david_variant(settings)
         self.retriever = retriever if retriever is not None else (
             mock_retriever(settings) if settings.mock_ai else load_retriever(settings))
+        self.evidence = Evidence(self.retriever, REFERENCES)
         self.ready = settings.mock_ai
         self._warm = asyncio.Event()
         if self.ready:
@@ -121,6 +131,16 @@ def create_app(settings: Settings | None = None, david: David | None = None) -> 
     async def translate_text(body: Translation) -> dict[str, Any]:
         await svc.wait_ready()
         return await svc.translate(body)
+
+    @app.post("/reference")
+    async def reference(body: Translation) -> dict[str, Any]:
+        return {"reference": svc.evidence.reference(body.text, body.direction)}
+
+    @app.post("/evidence")
+    async def evidence(body: EvidenceRequest) -> dict[str, Any]:
+        await svc.wait_ready()
+        return await asyncio.to_thread(svc.evidence.evidence, body.text, body.direction,
+                                       {k: v[:MAX_PHRASE_CHARS * 2] for k, v in body.outputs.items()})
 
     @app.api_route("/api/{path:path}", methods=["GET", "POST", "DELETE"], include_in_schema=False)
     async def ollama_api(path: str, request: Request) -> Response:

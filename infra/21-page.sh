@@ -6,7 +6,7 @@ source "$(dirname "$0")/env.sh"
 SA="${APP}-page"
 SA_EMAIL="${SA}@${PROJECT_ID}.iam.gserviceaccount.com"
 ROOT="$(cd "$INFRA_DIR/.." && pwd)"
-IMAGE="${AR}/${PAGE_SERVICE}:$(date +%Y%m%d-%H%M%S)"
+IMAGE="${DEMO_AR}/${PAGE_SERVICE}:$(date +%Y%m%d-%H%M%S)"
 DAVID_URL="$(gcloud run services describe "$DAVID_SERVICE" --region "$DEMO_REGION" --format='value(status.url)')"
 [ -n "$DAVID_URL" ] || { echo "!! ${DAVID_SERVICE} is not deployed: run infra/20-david.sh first"; exit 1; }
 
@@ -27,4 +27,5 @@ gcloud run deploy "$PAGE_SERVICE" --image "$IMAGE" --region "$DEMO_REGION" --ser
   --cpu 1 --memory 1Gi --min-instances 0 --max-instances 3 --timeout 300 \
   --allow-unauthenticated --quiet \
   --set-env-vars "DAVID_URL=${DAVID_URL},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
+# The page reads David's shape and prices, and Gemini's, from .env.example (baked into its image).
 gcloud run services describe "$PAGE_SERVICE" --region "$DEMO_REGION" --format='value(status.url)'
