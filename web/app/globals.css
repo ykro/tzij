@@ -742,6 +742,7 @@ input {
 
   .tx__examples {
     flex-direction: column;
+    flex-wrap: nowrap; /* a wrapping column sizes its lines to the content: the chips would widen the page */
     align-items: stretch;
     gap: 8px;
   }
