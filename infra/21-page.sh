@@ -24,8 +24,9 @@ gcloud builds submit "$ROOT" --config "$ROOT/page/cloudbuild.yaml" --region "$DE
 
 say "Deploying ${PAGE_SERVICE} (${DEMO_REGION}, public)"
 gcloud run deploy "$PAGE_SERVICE" --image "$IMAGE" --region "$DEMO_REGION" --service-account "$SA_EMAIL" \
-  --cpu 1 --memory 1Gi --min-instances 0 --max-instances 3 --timeout 300 \
+  --cpu 1 --memory 1Gi --min-instances 0 --max-instances 1 --timeout 300 \
   --allow-unauthenticated --quiet \
   --set-env-vars "DAVID_URL=${DAVID_URL},GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
+# One instance: the cost limits (duel/tzij_duel/limits.py) count in its memory.
 # The page reads David's shape and prices, and Gemini's, from .env.example (baked into its image).
 gcloud run services describe "$PAGE_SERVICE" --region "$DEMO_REGION" --format='value(status.url)'

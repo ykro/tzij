@@ -1,11 +1,11 @@
 {
-  "about": "Example buttons of the demo page: licensed español → Kʼicheʼ pairs from Mozilla Pontoon that David never saw (Firefox Focus from test_niche, newer strings from evals/tm_new.jsonl), translated {ROUNDS} times by David (GPU service in the cloud) and Goliath; every time David had chrF++ >= 50 against the reference and beat Goliath by >= 15. Built by `make examples`.",
+  "about": "Example buttons of the demo page, by use case (only use cases David wins as a measured set): licensed español → Kʼicheʼ pairs from the Firefox Focus translation memory David never saw, and words of the dictionaries he consults (GATITOS, Unicode CLDR emoji names; evals/usecases_results.md). Each was translated 3 times by David (GPU service in the cloud) and Goliath; every time David had chrF++ >= 50 against the reference and beat Goliath by >= 15. Built by `make examples`.",
   "dataset": "20261002-173447",
   "david": "tzij-2026-10-mix-s7",
   "goliath": "gemini-3.8-flash",
   "min_chrf": 50.0,
   "min_margin": 15.0,
-  "checked": "2026-10-06",
+  "checked": "2026-10-07",
   "examples": [
     {
       "pair_id": "pontoon_mozilla-2a49f590beb2",
@@ -47,259 +47,8 @@
         1923.4,
         1135.7,
         987.2
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-3ea516e9b71a",
-      "direction": "es-quc",
-      "text": "Tu lista de autocompletado:",
-      "reference": "Ucholajil utz'aqatisaxik pa utukelam:",
-      "english": "Your autocomplete list:",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Le acholajil utz'aqatisaxik pa utukelam:",
-        "Le acholajil utz'aqatisaxik pa utukelam:",
-        "Le acholajil utz'aqatisaxik pa utukelam:"
       ],
-      "goliath_outputs": [
-        "Ri acholb'al rech tz'aqatisab'al ib':",
-        "Ri acholb'al rech tz'aqatisab'al:",
-        "Ri acholb'al rech tz'aqatisab'al:"
-      ],
-      "david_chrf": [
-        90.29,
-        90.29,
-        90.29
-      ],
-      "goliath_chrf": [
-        27.36,
-        27.55,
-        27.55
-      ],
-      "david_ms": [
-        1223.1,
-        869.9,
-        868.8
-      ],
-      "goliath_ms": [
-        2586.5,
-        1097.3,
-        1036.3
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-571842f850b0",
-      "direction": "es-quc",
-      "text": "Eliminar las URL personalizadas",
-      "reference": "Chawelesaj winaqirisam URLs",
-      "english": "Remove custom URLs",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chupik utz'ib'axik winaqirisam URLs",
-        "Chupik utz'ib'axik winaqirisam URLs",
-        "Chupik utz'ib'axik winaqirisam URLs"
-      ],
-      "goliath_outputs": [
-        "Kexupupixik ri kemwiqkemib'al kemtz'ib'",
-        "Kachup taq ri kemk'olib'al wuj rech winaq",
-        "Keyesax ri wujib'al rech k'olib'al rech achikem"
-      ],
-      "david_chrf": [
-        54.47,
-        54.47,
-        54.47
-      ],
-      "goliath_chrf": [
-        6.01,
-        13.82,
-        9.41
-      ],
-      "david_ms": [
-        1143.6,
-        776.0,
-        741.0
-      ],
-      "goliath_ms": [
-        1425.9,
-        3366.2,
-        2177.5
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-863046c5adf6",
-      "direction": "es-quc",
-      "text": "Agregar y gestionar el autocompletado de URL personalizadas.",
-      "reference": "Chaya' chi'l chawilawachij winaqirisam utz'aqatisaxik pa utukelam URLs.",
-      "english": "Add and manage custom autocomplete URLs.",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chatz'ib'aj xuquje' chachajij ri utz'aqatisaxik pa utukelam re winaqirisam URLs.",
-        "Chatz'ib'aj xuquje' chawachib'aj le utz'aqatisaxik pa utukelam le winaqirisam URLs.",
-        "Chatz'ib'aj xuquje' chawachilaj utz'aqatisaxik pa utukelam rech winaqirisam URLs."
-      ],
-      "goliath_outputs": [
-        "Uya'ik xuquje' uchajixik ri utz'aqatisaxik pa urik'il rech ri kemik'olib'al b'i'aj rech winaq.",
-        "Uya'ik xuquje' uchajixik ri utz'aqatisaxik pa urik'il URL echb'aninaq.",
-        "Uya'ik xuquje' uchajixik ri utz'aqatisaxik pa urayil taq URL rech winaq."
-      ],
-      "david_chrf": [
-        58.24,
-        60.93,
-        62.3
-      ],
-      "goliath_chrf": [
-        32.93,
-        33.35,
-        34.77
-      ],
-      "david_ms": [
-        1580.0,
-        1278.7,
-        1249.8
-      ],
-      "goliath_ms": [
-        1954.1,
-        1673.8,
-        1810.8
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-9345f5da0a1b",
-      "direction": "es-quc",
-      "text": "Bloquear cookies entre sitios",
-      "reference": "Chaq'atej cookies pa taq uk'olib'al web'",
-      "english": "Block cross-site cookies",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chawolaj yayet chi taq uk'olib'al web'",
-        "Chaq'atej yayet pa taq uk'olib'al web'",
-        "Chaq'atej taq yayet pa taq uk'olib'al web'"
-      ],
-      "goliath_outputs": [
-        "Uq'atexik cookies chupam taq k'olb'al",
-        "Uq'atexik ri cookies chkixo'l k'olb'al",
-        "Uq'atexik le cookies chi kixo'l le k'olb'al"
-      ],
-      "david_chrf": [
-        52.26,
-        72.88,
-        71.35
-      ],
-      "goliath_chrf": [
-        31.64,
-        26.28,
-        26.07
-      ],
-      "david_ms": [
-        1248.1,
-        804.0,
-        937.2
-      ],
-      "goliath_ms": [
-        1322.0,
-        1348.2,
-        818.0
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-9c66279dcf8d",
-      "direction": "es-quc",
-      "text": "Autocompletar URL",
-      "reference": "Utz'aqatisaxik pa utukelam URL",
-      "english": "URL Autocomplete",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Utz'aqatisaxik pa utukelam URL",
-        "Utz'aqatisaxik pa utukelam URL",
-        "Utz'aqatisaxik pa utukelam URL"
-      ],
-      "goliath_outputs": [
-        "Utz'aqatisaxik URL pa utukelam",
-        "Utz'aqatisaxik URL pa utukelam",
-        "Utz'aqatisaxik URL pa utukelam"
-      ],
-      "david_chrf": [
-        100.0,
-        100.0,
-        100.0
-      ],
-      "goliath_chrf": [
-        77.23,
-        77.23,
-        77.23
-      ],
-      "david_ms": [
-        1062.2,
-        716.7,
-        651.1
-      ],
-      "goliath_ms": [
-        1061.7,
-        1100.0,
-        1446.8
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-a5f8c301bee1",
-      "direction": "es-quc",
-      "text": "Enviar datos de uso",
-      "reference": "Utaqik taq juq'attzij rech ukojik",
-      "english": "Send usage data",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chataqa' taq juq'attzij rech uterkexik",
-        "Chataqa' juq'attzij rech uterkexik ukojik",
-        "Chataqa' taq juq'attzij rech uterkexik ukojik"
-      ],
-      "goliath_outputs": [
-        "Utaqik reta'mab'al k'ojlib'alil",
-        "Utaqik le retamab'alil ukojik",
-        "Utaqik retalil upatanexik"
-      ],
-      "david_chrf": [
-        59.55,
-        56.66,
-        67.52
-      ],
-      "goliath_chrf": [
-        18.97,
-        29.37,
-        19.18
-      ],
-      "david_ms": [
-        1100.3,
-        866.5,
-        959.5
-      ],
-      "goliath_ms": [
-        1418.2,
-        9433.3,
-        1505.5
-      ]
+      "group": "focus"
     },
     {
       "pair_id": "pontoon_mozilla-ab7694d1bd24",
@@ -341,469 +90,8 @@
         2725.0,
         1484.6,
         3178.1
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-d13c27da806d",
-      "direction": "es-quc",
-      "text": "Conexión insegura",
-      "reference": "Man chajital ta t'iqonem",
-      "english": "Insecure Connection",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Man chajital ta t'iqonem",
-        "Man chajital ta t'iqonem",
-        "Man chajital taj le t'iqonem"
       ],
-      "goliath_outputs": [
-        "Itzel t'iqonik",
-        "Man jikom taj ri t'iqonem",
-        "Man jiklik taj le tunkem"
-      ],
-      "david_chrf": [
-        100.0,
-        100.0,
-        74.98
-      ],
-      "goliath_chrf": [
-        18.18,
-        36.41,
-        15.27
-      ],
-      "david_ms": [
-        1035.6,
-        678.5,
-        697.7
-      ],
-      "goliath_ms": [
-        5477.8,
-        1531.1,
-        959.3
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-d9e4a2fc46ce",
-      "direction": "es-quc",
-      "text": "Cookies y datos del sitio",
-      "reference": "Cookies chi'l taq juq'attzij rech wokk'olib'al web'",
-      "english": "Cookies and Site Data",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Taq k'olweb' xuquje' taq juq'attzij rech uk'olib'al web'",
-        "K'olweb' xuquje' taq juq'attzij rech uk'olib'al web'",
-        "Taq k'olweb' xuquje' taq juq'attzij rech uk'olib'al web'"
-      ],
-      "goliath_outputs": [
-        "Cookies xuquje' reta'mab'al k'olb'al rech k'at rech wuj",
-        "Kukis xuquje' retaqanik k'olb'al rech k'at'atz'am",
-        "Kukis xuquje' reta'mab'alil ri k'olb'al rech k'atz'ib'"
-      ],
-      "david_chrf": [
-        57.08,
-        57.71,
-        57.08
-      ],
-      "goliath_chrf": [
-        28.78,
-        21.12,
-        20.59
-      ],
-      "david_ms": [
-        1301.2,
-        921.7,
-        1162.9
-      ],
-      "goliath_ms": [
-        2362.4,
-        10803.8,
-        1634.3
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-f80461e7056f",
-      "direction": "es-quc",
-      "text": "+ Agregar otro motor de búsqueda",
-      "reference": "+ Chaya' jun chi ch'ich' rech tzukub'al",
-      "english": "+ Add another search engine",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "+ Chaya' jun chi yab'al uchuq'ab' rech utzukunem",
-        "+ Chaya' jun chi yab'al uchuq'ab' rech utzukunem",
-        "+ Chaya' jun chi yab'al uchuq'ab' rech utzujixik"
-      ],
-      "goliath_outputs": [
-        "+ Utz'aqatisaxik jun chik tzukunel kemchakub'al",
-        "+ Uya'ik jun chik tzukunel",
-        "+ Utz'aqatisaxik jun chik tzukunel"
-      ],
-      "david_chrf": [
-        58.02,
-        58.02,
-        55.67
-      ],
-      "goliath_chrf": [
-        27.2,
-        23.0,
-        21.23
-      ],
-      "david_ms": [
-        1216.1,
-        930.5,
-        870.0
-      ],
-      "goliath_ms": [
-        2431.6,
-        1570.0,
-        13858.9
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-afe88c520778",
-      "direction": "es-quc",
-      "text": "+ Agregar URL personalizada",
-      "reference": "+ Uya'ik winaqirisam URL",
-      "english": "+ Add custom URL",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "+ Chaya' winaqirisam URL",
-        "+ Chaya' winaqirisam URL",
-        "+ Chaya' winaqirisam URL"
-      ],
-      "goliath_outputs": [
-        "+ Uya'ik k'ak' kemwib' kemb'i'aj",
-        "+ Utz'aqatisaxik jun URL jikib'am rech awech",
-        "+ Utz'aqatisaxik kemk'ojolil rech ri winaq"
-      ],
-      "david_chrf": [
-        63.6,
-        63.6,
-        63.6
-      ],
-      "goliath_chrf": [
-        29.49,
-        21.07,
-        20.54
-      ],
-      "david_ms": [
-        1197.0,
-        615.9,
-        616.6
-      ],
-      "goliath_ms": [
-        4998.9,
-        2155.4,
-        11793.5
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-6db0d7aee66d",
-      "direction": "es-quc",
-      "text": "Predeterminado",
-      "reference": "Ya'om chi uloq",
-      "english": "Default",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Ya'om chi uloq",
-        "Ya'om chi uloq",
-        "Ya'om chi uloq"
-      ],
-      "goliath_outputs": [
-        "Chomanik chi jumul",
-        "Chomanik kanok",
-        "K'olib'am chik"
-      ],
-      "david_chrf": [
-        100.0,
-        100.0,
-        100.0
-      ],
-      "goliath_chrf": [
-        17.43,
-        7.26,
-        16.47
-      ],
-      "david_ms": [
-        811.3,
-        502.7,
-        531.3
-      ],
-      "goliath_ms": [
-        1719.4,
-        1599.1,
-        4326.2
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-51ddca8e2623",
-      "direction": "es-quc",
-      "text": "Buscar en Focus",
-      "reference": "Chatzukuj pa Focus",
-      "english": "Search in Focus",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Utzukuj pa Focus",
-        "Chutzukuj pa Focus",
-        "Chutzukuj pa Focus"
-      ],
-      "goliath_outputs": [
-        "Tzukub'ik pa Focus",
-        "Utzukuxik pa Focus",
-        "Tzukuxik pa Focus"
-      ],
-      "david_chrf": [
-        74.49,
-        75.04,
-        75.04
-      ],
-      "goliath_chrf": [
-        47.13,
-        51.64,
-        47.61
-      ],
-      "david_ms": [
-        1011.7,
-        570.6,
-        571.0
-      ],
-      "goliath_ms": [
-        1622.2,
-        1492.6,
-        3077.6
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-2a2fc8acbe36",
-      "direction": "es-quc",
-      "text": "Compartir vía",
-      "reference": "Ukomone'xik pa",
-      "english": "Share via",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Ukomone'xik b'e",
-        "Ukomone'xik b'e",
-        "Ukomone'xik b'e"
-      ],
-      "goliath_outputs": [
-        "Komonisaxik ruk'",
-        "Komoni'x rumal",
-        "Ukomonxik rumal"
-      ],
-      "david_chrf": [
-        65.43,
-        65.43,
-        65.43
-      ],
-      "goliath_chrf": [
-        18.86,
-        15.38,
-        30.14
-      ],
-      "david_ms": [
-        966.7,
-        700.5,
-        673.8
-      ],
-      "goliath_ms": [
-        1598.8,
-        1685.4,
-        1625.4
-      ]
-    },
-    {
-      "pair_id": "pontoon_mozilla-f9fa9311fd3e",
-      "direction": "es-quc",
-      "text": "Seguridad del sitio",
-      "reference": "Chajital wokk'olib'al web'",
-      "english": "Site Security",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://huggingface.co/datasets/ayymen/Pontoon-Translations",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chajinem rech uk'olib'al web'",
-        "Chajinem rech uk'olib'al web'",
-        "Chajib'al rech uk'olib'al web'"
-      ],
-      "goliath_outputs": [
-        "Uchajixik ri k'olib'al",
-        "Uchajixik ri k'olib'al",
-        "Ujilik rech ri k'olib'al"
-      ],
-      "david_chrf": [
-        53.77,
-        53.77,
-        54.91
-      ],
-      "goliath_chrf": [
-        29.38,
-        29.38,
-        26.74
-      ],
-      "david_ms": [
-        934.1,
-        699.6,
-        717.9
-      ],
-      "goliath_ms": [
-        1837.6,
-        2860.4,
-        1917.4
-      ]
-    },
-    {
-      "pair_id": "pontoon_tmx-63b91668b406",
-      "direction": "es-quc",
-      "text": "Agregar nueva pestaña",
-      "reference": "Chaya' jun k'ak' k'utjaqb'al",
-      "english": "Add new tab",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chaya' jun k'ak' k'utjaqb'al",
-        "Chaya' jun k'ak' k'utjaqb'al",
-        "Chaya' k'ak' k'utjaqb'al"
-      ],
-      "goliath_outputs": [
-        "Uya'ik k'ak' uxaq wuj",
-        "Uya'ik k'ak' uxaq wuj",
-        "Uya'ik k'ak' uxaq wuj"
-      ],
-      "david_chrf": [
-        100.0,
-        100.0,
-        76.25
-      ],
-      "goliath_chrf": [
-        23.51,
-        23.51,
-        23.51
-      ],
-      "david_ms": [
-        1123.9,
-        736.3,
-        731.2
-      ],
-      "goliath_ms": [
-        3645.8,
-        2364.0,
-        1292.5
-      ]
-    },
-    {
-      "pair_id": "pontoon_tmx-e0d5e914ccd7",
-      "direction": "es-quc",
-      "text": "Cambiar a un enlace en una nueva pestaña inmediatamente",
-      "reference": "Aninaqil chak'exa' pa kemwiqb'al pa jun k'ak' k'utjaqb'al",
-      "english": "Switch to link in new tab immediately",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Uk'exik pa jun kemwiqb'al pa jun k'ak' k'utjaqb'al chanim",
-        "Uk'exik pa jun kemwiqb'al pa jun k'ak' utajaqb'al'apit",
-        "Uk'exik pa jun kemwiqb'al pa jun k'ak' uq'ateb'el'al chi im"
-      ],
-      "goliath_outputs": [
-        "Jalwachij pa jun k'ak' uxaq rech jun t'ikb'al chanim",
-        "K'exik che jun kemk'am pa jun k'ak' uxaq aninaq",
-        "K'exik che jun nuk'wuj pa jun k'ak' xaq chanin"
-      ],
-      "david_chrf": [
-        67.74,
-        55.31,
-        50.49
-      ],
-      "goliath_chrf": [
-        32.67,
-        33.79,
-        29.85
-      ],
-      "david_ms": [
-        1324.3,
-        1007.2,
-        1038.7
-      ],
-      "goliath_ms": [
-        2317.7,
-        1118.6,
-        3250.6
-      ]
-    },
-    {
-      "pair_id": "pontoon_tmx-8e3cd7e720ba",
-      "direction": "es-quc",
-      "text": "Cerrar pestaña",
-      "reference": "Utz'apixik k'utjaqb'al",
-      "english": "Close tab",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chatz'apixik k'utjaqb'al",
-        "Chatz'apixik k'utjaqb'al",
-        "Chatz'apixik k'utjaqb'al"
-      ],
-      "goliath_outputs": [
-        "Utz'apixik ri uwi' wuj",
-        "Utz'apixik ri uwi' wuj",
-        "Utz'apixik ri uwi' wuj"
-      ],
-      "david_chrf": [
-        75.66,
-        75.66,
-        75.66
-      ],
-      "goliath_chrf": [
-        38.07,
-        38.07,
-        38.07
-      ],
-      "david_ms": [
-        1021.0,
-        673.2,
-        690.5
-      ],
-      "goliath_ms": [
-        1976.6,
-        2544.3,
-        2070.7
-      ]
+      "group": "focus"
     },
     {
       "pair_id": "pontoon_tmx-f5597a164995",
@@ -845,217 +133,8 @@
         1968.8,
         1995.4,
         953.8
-      ]
-    },
-    {
-      "pair_id": "pontoon_tmx-a08f4f395d6b",
-      "direction": "es-quc",
-      "text": "Desactivar los consejos en la pantalla de inicio",
-      "reference": "Chachupu' taq no'jib'al pa le umajib'al kemwach",
-      "english": "Turn off tips on the start screen",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chak'atab'asaj taq no'jib'al pa le q'axwachib'al rech majib'al",
-        "Chak'atab'asilaj taq no'jib'al pa le umajib'al q'axwachib'al",
-        "Chak'atab'asaj taq no'jib'al pa le umajib'al q'axwachib'al"
       ],
-      "goliath_outputs": [
-        "Uchupik ri pixab' pa ri nab'e wachb'al",
-        "Uchupik ri pixab' pa ri nab'e uwo wuj",
-        "Chupik ri pixab' pa ri nab'e wachb'al"
-      ],
-      "david_chrf": [
-        52.45,
-        62.01,
-        62.39
-      ],
-      "goliath_chrf": [
-        17.45,
-        13.54,
-        16.85
-      ],
-      "david_ms": [
-        1467.6,
-        1115.7,
-        1158.9
-      ],
-      "goliath_ms": [
-        4445.3,
-        2551.8,
-        2461.0
-      ]
-    },
-    {
-      "pair_id": "pontoon_tmx-61263b6911f2",
-      "direction": "es-quc",
-      "text": "Eliminar todos los sitios",
-      "reference": "Che'awelesaj ronojel taq uk'olib'al web'",
-      "english": "Remove all websites",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Chajach'ij ronojel taq uk'olib'al web'",
-        "Chusach ronojel taq uk'olib'al",
-        "Chasuku'maj ronojel taq uk'olib'al"
-      ],
-      "goliath_outputs": [
-        "Kachup ronojel ri taq k'olib'al",
-        "Kachup ronojel ri taq k'olib'al",
-        "Kachup ronojel ri taq k'olib'al"
-      ],
-      "david_chrf": [
-        73.82,
-        55.68,
-        59.32
-      ],
-      "goliath_chrf": [
-        33.32,
-        33.32,
-        33.32
-      ],
-      "david_ms": [
-        1116.9,
-        768.0,
-        735.3
-      ],
-      "goliath_ms": [
-        2211.5,
-        1560.6,
-        953.9
-      ]
-    },
-    {
-      "pair_id": "pontoon_tmx-f9f99c710aa9",
-      "direction": "es-quc",
-      "text": "Este sitio no es compatible con HTTPS",
-      "reference": "We uk'olib'al web' man kutoq'aj ta HTTPS",
-      "english": "This site doesn’t support HTTPS",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "We uk'olib'al web' man toq'am ta ruk' HTTPS",
-        "We uk'olib'al web' man toq'am ta ruk' HTTPS",
-        "We uk'olib'al web' man toq'am ta ruk' HTTPS"
-      ],
-      "goliath_outputs": [
-        "We k'olb'al ri' man kakowin ta ruk' HTTPS",
-        "We k'olb'al ri' man kuto' taj ri HTTPS",
-        "We k'olb'al ri' man kuya' taj kukem rib' ruk' HTTPS"
-      ],
-      "david_chrf": [
-        69.11,
-        69.11,
-        69.11
-      ],
-      "goliath_chrf": [
-        33.47,
-        38.26,
-        34.33
-      ],
-      "david_ms": [
-        1083.8,
-        797.3,
-        762.4
-      ],
-      "goliath_ms": [
-        1937.2,
-        1227.5,
-        2259.3
-      ]
-    },
-    {
-      "pair_id": "pontoon_tmx-4d37b7a27e01",
-      "direction": "es-quc",
-      "text": "Nueva pestaña abierta",
-      "reference": "Jaqatal K'ak' k'utjaqb'al",
-      "english": "New tab opened",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "K'ak' k'utjaqb'al xjaqom",
-        "K'ak' k'utjaqb'al xjaqom",
-        "K'ak' k'utjaqb'al xjaqom"
-      ],
-      "goliath_outputs": [
-        "K'ak' jaqatalik uxaq wuj",
-        "K'ak' jaqinaq uxaq wuj",
-        "K'ak' jaqatalik uxaq wuj"
-      ],
-      "david_chrf": [
-        69.08,
-        69.08,
-        69.08
-      ],
-      "goliath_chrf": [
-        35.98,
-        25.4,
-        35.98
-      ],
-      "david_ms": [
-        1057.2,
-        724.4,
-        735.6
-      ],
-      "goliath_ms": [
-        1276.5,
-        1895.6,
-        2085.4
-      ]
-    },
-    {
-      "pair_id": "pontoon_tmx-260d3d1aaaa9",
-      "direction": "es-quc",
-      "text": "Para permitirlo:",
-      "reference": "Chech uya'ik b'e:",
-      "english": "To allow it:",
-      "source": "Mozilla Pontoon (Firefox Focus)",
-      "product": "focus-for-android",
-      "product_name": "Firefox Focus",
-      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
-      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
-      "david_outputs": [
-        "Che uya'ik b'e:",
-        "Che uya'ik b'e:",
-        "Che uya'ik b'e:"
-      ],
-      "goliath_outputs": [
-        "Rech kaya' b'e che:",
-        "Rech kya' b'e che:",
-        "Rech uya'ik luwar:"
-      ],
-      "david_chrf": [
-        69.07,
-        69.07,
-        69.07
-      ],
-      "goliath_chrf": [
-        25.52,
-        25.83,
-        44.78
-      ],
-      "david_ms": [
-        870.7,
-        655.4,
-        617.5
-      ],
-      "goliath_ms": [
-        1865.7,
-        1356.0,
-        2113.2
-      ]
+      "group": "focus"
     },
     {
       "pair_id": "pontoon_tmx-08b0d1fdd173",
@@ -1097,6 +176,588 @@
         813.7,
         1839.9,
         1066.1
+      ],
+      "group": "focus"
+    },
+    {
+      "pair_id": "pontoon_tmx-8e3cd7e720ba",
+      "direction": "es-quc",
+      "text": "Cerrar pestaña",
+      "reference": "Utz'apixik k'utjaqb'al",
+      "english": "Close tab",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "product_name": "Firefox Focus",
+      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "Chatz'apixik k'utjaqb'al",
+        "Chatz'apixik k'utjaqb'al",
+        "Chatz'apixik k'utjaqb'al"
+      ],
+      "goliath_outputs": [
+        "Utz'apixik ri uwi' wuj",
+        "Utz'apixik ri uwi' wuj",
+        "Utz'apixik ri uwi' wuj"
+      ],
+      "david_chrf": [
+        75.66,
+        75.66,
+        75.66
+      ],
+      "goliath_chrf": [
+        38.07,
+        38.07,
+        38.07
+      ],
+      "david_ms": [
+        1021.0,
+        673.2,
+        690.5
+      ],
+      "goliath_ms": [
+        1976.6,
+        2544.3,
+        2070.7
+      ],
+      "group": "focus"
+    },
+    {
+      "pair_id": "pontoon_tmx-4d37b7a27e01",
+      "direction": "es-quc",
+      "text": "Nueva pestaña abierta",
+      "reference": "Jaqatal K'ak' k'utjaqb'al",
+      "english": "New tab opened",
+      "source": "Mozilla Pontoon (Firefox Focus)",
+      "product": "focus-for-android",
+      "product_name": "Firefox Focus",
+      "url": "https://pontoon.mozilla.org/translation-memory/quc.all-projects.tmx",
+      "license": "MPL-2.0 (Mozilla Pontoon localizations)",
+      "david_outputs": [
+        "K'ak' k'utjaqb'al xjaqom",
+        "K'ak' k'utjaqb'al xjaqom",
+        "K'ak' k'utjaqb'al xjaqom"
+      ],
+      "goliath_outputs": [
+        "K'ak' jaqatalik uxaq wuj",
+        "K'ak' jaqinaq uxaq wuj",
+        "K'ak' jaqatalik uxaq wuj"
+      ],
+      "david_chrf": [
+        69.08,
+        69.08,
+        69.08
+      ],
+      "goliath_chrf": [
+        35.98,
+        25.4,
+        35.98
+      ],
+      "david_ms": [
+        1057.2,
+        724.4,
+        735.6
+      ],
+      "goliath_ms": [
+        1276.5,
+        1895.6,
+        2085.4
+      ],
+      "group": "focus"
+    },
+    {
+      "pair_id": "gatitos-e641a8bc6040-es-quc",
+      "direction": "es-quc",
+      "text": "oficina",
+      "reference": "ja chakub'al",
+      "english": "",
+      "group": "gatitos",
+      "source": "GATITOS (Google Research)",
+      "product": "",
+      "product_name": "",
+      "url": "https://huggingface.co/datasets/google/smol",
+      "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
+      "david_outputs": [
+        "ja chakub'al",
+        "ja chakub'al",
+        "ja chakub'al"
+      ],
+      "goliath_outputs": [
+        "chakpatal",
+        "chakib'al",
+        "chakb'al"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        20.6,
+        30.1,
+        30.8
+      ]
+    },
+    {
+      "pair_id": "gatitos-3859ba863971-es-quc",
+      "direction": "es-quc",
+      "text": "ingeniero",
+      "reference": "ajpuqno'jib'al",
+      "english": "",
+      "group": "gatitos",
+      "source": "GATITOS (Google Research)",
+      "product": "",
+      "product_name": "",
+      "url": "https://huggingface.co/datasets/google/smol",
+      "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
+      "david_outputs": [
+        "ajpuqno'jib'al",
+        "ajpuqno'jib'al",
+        "ajpuqno'jib'al"
+      ],
+      "goliath_outputs": [
+        "ajno'jib'",
+        "ajno'j",
+        "ajyakonel"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        38.8,
+        16.2,
+        7.8
+      ]
+    },
+    {
+      "pair_id": "gatitos-cf27ab578c6a-es-quc",
+      "direction": "es-quc",
+      "text": "sábado",
+      "reference": "uwaq q'ij",
+      "english": "",
+      "group": "gatitos",
+      "source": "GATITOS (Google Research)",
+      "product": "",
+      "product_name": "",
+      "url": "https://huggingface.co/datasets/google/smol",
+      "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
+      "david_outputs": [
+        "uwaq q'ij",
+        "uwaq q'ij",
+        "uwaq q'ij"
+      ],
+      "goliath_outputs": [
+        "Waqq'ij",
+        "Waqaq'ij",
+        "Waqxaq'ij"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        52.9,
+        26.5,
+        25.7
+      ]
+    },
+    {
+      "pair_id": "gatitos-6be5cd258946-es-quc",
+      "direction": "es-quc",
+      "text": "fantasma",
+      "reference": "xib'inel",
+      "english": "",
+      "group": "gatitos",
+      "source": "GATITOS (Google Research)",
+      "product": "",
+      "product_name": "",
+      "url": "https://huggingface.co/datasets/google/smol",
+      "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
+      "david_outputs": [
+        "xib'inel",
+        "xib'inel",
+        "xib'inel"
+      ],
+      "goliath_outputs": [
+        "xib'alb'ay",
+        "xib'alb'ay",
+        "xib'alb'ay"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        21.4,
+        21.4,
+        21.4
+      ]
+    },
+    {
+      "pair_id": "gatitos-3ecf9d37d153-es-quc",
+      "direction": "es-quc",
+      "text": "centro comercial",
+      "reference": "uk'u'x k'ayib'al",
+      "english": "",
+      "group": "gatitos",
+      "source": "GATITOS (Google Research)",
+      "product": "",
+      "product_name": "",
+      "url": "https://huggingface.co/datasets/google/smol",
+      "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
+      "david_outputs": [
+        "uk'u'x k'ayib'al",
+        "uk'u'x k'ayib'al",
+        "uk'u'x k'ayib'al"
+      ],
+      "goliath_outputs": [
+        "k'olb'al k'ayij",
+        "k'ayib'al nim ja",
+        "k'ayib'al nimja"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        25.8,
+        44.8,
+        45.2
+      ]
+    },
+    {
+      "pair_id": "gatitos-7f982cf958ac-es-quc",
+      "direction": "es-quc",
+      "text": "ladrillo",
+      "reference": "porom xan",
+      "english": "",
+      "group": "gatitos",
+      "source": "GATITOS (Google Research)",
+      "product": "",
+      "product_name": "",
+      "url": "https://huggingface.co/datasets/google/smol",
+      "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
+      "david_outputs": [
+        "porom xan",
+        "porom xan",
+        "porom xan"
+      ],
+      "goliath_outputs": [
+        "xan",
+        "xotab'aj",
+        "xotab'aj"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        38.3,
+        5.4,
+        5.4
+      ]
+    },
+    {
+      "pair_id": "gatitos-4bbc645e086e-es-quc",
+      "direction": "es-quc",
+      "text": "sediento",
+      "reference": "kchaqij uchi'",
+      "english": "",
+      "group": "gatitos",
+      "source": "GATITOS (Google Research)",
+      "product": "",
+      "product_name": "",
+      "url": "https://huggingface.co/datasets/google/smol",
+      "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
+      "david_outputs": [
+        "kchaqij uchi'",
+        "kchaqij uchi'",
+        "kchaqij uchi'"
+      ],
+      "goliath_outputs": [
+        "chaq'ijchi'",
+        "chaq'ijchi'",
+        "kacha'kik'"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        31.2,
+        31.2,
+        14.6
+      ]
+    },
+    {
+      "pair_id": "gatitos-6a87e31f2147-es-quc",
+      "direction": "es-quc",
+      "text": "pronóstico",
+      "reference": "uya'ik ub'ixik apanoq",
+      "english": "",
+      "group": "gatitos",
+      "source": "GATITOS (Google Research)",
+      "product": "",
+      "product_name": "",
+      "url": "https://huggingface.co/datasets/google/smol",
+      "license": "CC-BY-4.0 (Google SMOL/GATITOS)",
+      "david_outputs": [
+        "uya'ik ub'ixik apanoq",
+        "uya'ik ub'ixik apanoq",
+        "uya'ik ub'ixik apanoq"
+      ],
+      "goliath_outputs": [
+        "retab'alil ri k'ulmatajem",
+        "b'i'tzij na'talik",
+        "k'utb'al chiwach"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        7.6,
+        10.4,
+        6.2
+      ]
+    },
+    {
+      "pair_id": "cldr_quc-32e35d274605-es-quc",
+      "direction": "es-quc",
+      "text": "telescopio",
+      "reference": "Ilb'al uwach kaj",
+      "english": "",
+      "group": "cldr_quc",
+      "source": "Unicode CLDR",
+      "product": "",
+      "product_name": "",
+      "url": "https://github.com/unicode-org/cldr",
+      "license": "Unicode-3.0 (Unicode CLDR data)",
+      "david_outputs": [
+        "ilb'al uwach kaj",
+        "ilb'al uwach kaj",
+        "ilb'al uwach kaj"
+      ],
+      "goliath_outputs": [
+        "k'olwachib'al naj",
+        "ch'awib'al che ri kaj",
+        "ilb'al naj"
+      ],
+      "david_chrf": [
+        82.9,
+        82.9,
+        82.9
+      ],
+      "goliath_chrf": [
+        23.2,
+        22.6,
+        19.2
+      ]
+    },
+    {
+      "pair_id": "cldr_quc-c6880159a8d0-es-quc",
+      "direction": "es-quc",
+      "text": "selfi",
+      "reference": "Relesaxik uwachib'al",
+      "english": "",
+      "group": "cldr_quc",
+      "source": "Unicode CLDR",
+      "product": "",
+      "product_name": "",
+      "url": "https://github.com/unicode-org/cldr",
+      "license": "Unicode-3.0 (Unicode CLDR data)",
+      "david_outputs": [
+        "Relesaxik uwachib'al",
+        "Relesaxik uwachib'al",
+        "Relesaxik uwachib'al"
+      ],
+      "goliath_outputs": [
+        "wachib'al ib'",
+        "wachib'alib'il",
+        "achb'alil ib'"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        32.5,
+        36.9,
+        15.7
+      ]
+    },
+    {
+      "pair_id": "cldr_quc-719450e5e945-es-quc",
+      "direction": "es-quc",
+      "text": "manos aplaudiendo",
+      "reference": "Upaq'apaxik upaq'ab'aj",
+      "english": "",
+      "group": "cldr_quc",
+      "source": "Unicode CLDR",
+      "product": "",
+      "product_name": "",
+      "url": "https://github.com/unicode-org/cldr",
+      "license": "Unicode-3.0 (Unicode CLDR data)",
+      "david_outputs": [
+        "Upaq'apaxik upaq'ab'aj",
+        "Upaq'apaxik upaq'ab'aj",
+        "Upaq'apaxik upaq'ab'aj"
+      ],
+      "goliath_outputs": [
+        "q'ab'aj kikitik'ik kib'",
+        "q'ab'aj kikitzaq k'i q'ab'aj",
+        "q'ab'aj ketaq'patik"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        20.2,
+        24.1,
+        25.9
+      ]
+    },
+    {
+      "pair_id": "cldr_quc-0c42115b27b5-es-quc",
+      "direction": "es-quc",
+      "text": "reloj despertador",
+      "reference": "Wane'jb'al rech retalq'ij",
+      "english": "",
+      "group": "cldr_quc",
+      "source": "Unicode CLDR",
+      "product": "",
+      "product_name": "",
+      "url": "https://github.com/unicode-org/cldr",
+      "license": "Unicode-3.0 (Unicode CLDR data)",
+      "david_outputs": [
+        "Wane'jb'al rech retalq'ij",
+        "ilb'al ramaj rech retalq'ij",
+        "ilb'al ramaj rech retalq'ij"
+      ],
+      "goliath_outputs": [
+        "k'astab'al kajb'al",
+        "k'astisab'al kajb'al",
+        "k'asuj kajb'al"
+      ],
+      "david_chrf": [
+        100.0,
+        60.6,
+        60.6
+      ],
+      "goliath_chrf": [
+        13.8,
+        13.6,
+        12.0
+      ]
+    },
+    {
+      "pair_id": "cldr_quc-46fb8f9f868c-es-quc",
+      "direction": "es-quc",
+      "text": "gafas de sol",
+      "reference": "q'ijilb'al",
+      "english": "",
+      "group": "cldr_quc",
+      "source": "Unicode CLDR",
+      "product": "",
+      "product_name": "",
+      "url": "https://github.com/unicode-org/cldr",
+      "license": "Unicode-3.0 (Unicode CLDR data)",
+      "david_outputs": [
+        "q'ijilb'al",
+        "q'ijilb'al",
+        "q'ijilb'al"
+      ],
+      "goliath_outputs": [
+        "ilemab'al rech q'ij",
+        "lemow rech q'ij",
+        "lemow rech q'ij"
+      ],
+      "david_chrf": [
+        100.0,
+        100.0,
+        100.0
+      ],
+      "goliath_chrf": [
+        31.6,
+        16.4,
+        16.4
+      ]
+    },
+    {
+      "pair_id": "cldr_quc-59543bd1c92b-es-quc",
+      "direction": "es-quc",
+      "text": "flor de cerezo",
+      "reference": "Ukotz'ijal k'uxk'ab'el",
+      "english": "",
+      "group": "cldr_quc",
+      "source": "Unicode CLDR",
+      "product": "",
+      "product_name": "",
+      "url": "https://github.com/unicode-org/cldr",
+      "license": "Unicode-3.0 (Unicode CLDR data)",
+      "david_outputs": [
+        "ukotz'ijal k'uxk'ab'el",
+        "ukotz'ijal k'uxk'ab'el",
+        "ukotz'ijal k'uxk'ab'el"
+      ],
+      "goliath_outputs": [
+        "ukotz'i'jal sereso",
+        "u kotz'i'jal seresoché",
+        "Ukotz'i'jal sereso"
+      ],
+      "david_chrf": [
+        77.2,
+        77.2,
+        77.2
+      ],
+      "goliath_chrf": [
+        20.0,
+        19.3,
+        23.6
+      ]
+    },
+    {
+      "pair_id": "cldr_quc-b1882a9761eb-es-quc",
+      "direction": "es-quc",
+      "text": "sol detrás de una nube grande",
+      "reference": "q'ij chi rij nim sutz",
+      "english": "",
+      "group": "cldr_quc",
+      "source": "Unicode CLDR",
+      "product": "",
+      "product_name": "",
+      "url": "https://github.com/unicode-org/cldr",
+      "license": "Unicode-3.0 (Unicode CLDR data)",
+      "david_outputs": [
+        "q'ij chi rij nim sutz'",
+        "q'ij chi rij nim sutz'",
+        "q'ij chi rij nim sutz'"
+      ],
+      "goliath_outputs": [
+        "Q'ij chrij jun nim sutz'",
+        "Q'ij chrij jun nim sutz'",
+        "Q'ij chrij jun nim sutz'"
+      ],
+      "david_chrf": [
+        97.9,
+        97.9,
+        97.9
+      ],
+      "goliath_chrf": [
+        45.5,
+        45.5,
+        45.5
       ]
     }
   ]

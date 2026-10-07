@@ -135,7 +135,8 @@ async def test_examples_endpoint_serves_the_tracked_examples(page, tmp_path, mon
         res = await client.get("/api/examples")
     assert res.json() == [{"pair_id": "n1", "direction": "es-quc", "text": "Conexión segura", "reference": "Chajital t'iqonem",
                            "source": "Mozilla Pontoon (Firefox Focus)", "url": "https://example.test/", "license": "MPL-2.0",
-                           "product": "Firefox Focus"}]
+                           "product": "Firefox Focus", "group": ex.GROUPS["focus"]["label"],
+                           "group_note": ex.GROUPS["focus"]["note"]}]
 
 
 def test_passes_requires_david_close_and_clearly_ahead_every_time():
@@ -150,10 +151,13 @@ def test_tracked_examples_are_licensed_winning_case_phrases():
     data = json.loads(ex.EXAMPLES.read_text(encoding="utf-8"))
     examples = data["examples"]
     assert len(examples) >= 6
+    licenses = {"focus": "MPL-2.0", "gatitos": "CC-BY-4.0", "cldr_quc": "Unicode-3.0"}
     for e in examples:
-        # The use case David wins: a translation memory (Mozilla Pontoon products), Spanish -> K'iche'.
-        assert e["direction"] == "es-quc" and e["product"] in ex.PRODUCT_NAME
-        assert e["license"].startswith("MPL-2.0") and e["url"].startswith("https://")
+        # Only use cases David wins as a measured set (evals/niche_results.md, evals/usecases_results.md).
+        group = e.get("group", "focus")
+        assert e["direction"] == "es-quc" and group in ex.GROUPS
+        assert group != "focus" or e["product"] in ex.PRODUCT_NAME
+        assert e["license"].startswith(licenses[group]) and e["url"].startswith("https://")
         assert e["reference"] and e["text"]
         runs = list(zip(e["david_chrf"], e["goliath_chrf"]))
         assert ex.passes(runs, len(runs), data["min_chrf"], data["min_margin"]) and len(runs) >= 3

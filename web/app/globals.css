@@ -284,9 +284,8 @@ input {
 
 .tx__examples {
   display: flex;
-  align-items: baseline;
-  gap: 14px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .tx__examples-label {
@@ -294,6 +293,10 @@ input {
   color: var(--muted);
   font-size: clamp(14px, 0.95vw, 18px);
   font-weight: 600;
+}
+
+.tx__examples-note {
+  font-weight: 400;
 }
 
 .tx__chips {

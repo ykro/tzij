@@ -15,6 +15,8 @@ export interface Example {
   source: string;
   url: string;
   license: string;
+  group?: string; // the use case it belongs to
+  group_note?: string; // how David and Goliath did on that use case's whole measured set
 }
 
 /** What one translation cost: David, the seconds his GPU instance worked on it; Goliath, his tokens. */
@@ -160,12 +162,16 @@ export async function postJSON<T = unknown>(url: string, body: unknown): Promise
 export interface DavidState {
   ready: boolean;
   since: number; // ms epoch of the last change
+  resting?: boolean; // the page was left open: it stopped keeping David awake (a translation wakes him)
+  capped?: boolean; // the day's wake-ups for this page are used up
 }
 
 export const WAKE_GIVE_UP_MS = 6 * 60 * 1000;
 
 export function davidStatus(state: DavidState, now: number = Date.now()): string {
   if (state.ready) return "David listo";
+  if (state.capped) return "David no se enciende más por hoy";
+  if (state.resting) return "David descansa: traduce una frase para despertarlo";
   if (now - state.since > WAKE_GIVE_UP_MS) return "David no responde: recarga la página";
   return "Preparando a David…";
 }

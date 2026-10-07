@@ -31,6 +31,17 @@ MIN_CHRF = 50.0  # chrF++ against the licensed reference; above this the output 
 MIN_MARGIN = 15.0  # David − Goliath, chrF++ points: clearly better, not a coin flip
 ROUNDS = 3
 TM_NEW = REPO_ROOT / "evals" / "tm_new.jsonl"
+# The page groups the examples by use case; each group says how David and Goliath did on the whole
+# measured set (evals/niche_results.md, evals/usecases_results.md), so a button is never a lone win.
+GROUPS = {
+    "focus": {"label": "Interfaz de Firefox Focus, con la memoria de traducción de Mozilla",
+              "note": "En las 144 frases de Firefox Focus: David 37.4, Goliath 28.9 (chrF++)"},
+    "gatitos": {"label": "Palabras de un diccionario que David consulta (GATITOS, de Google)",
+                "note": "En 150 palabras del diccionario: David 57.5, Goliath 22.1 (chrF++)"},
+    "cldr_quc": {"label": "Nombres de emoji (Unicode CLDR)",
+                 "note": "En 100 nombres de emoji: David 60.9, Goliath 25.7 (chrF++)"},
+}
+SOURCE_NAME = {"gatitos": "GATITOS (Google Research)", "cldr_quc": "Unicode CLDR"}
 PRODUCT_NAME = {"focus-for-android": "Firefox Focus", "focus-for-android-po": "Firefox Focus",
                 "mozilla-monitor-website": "Mozilla Monitor", "test-pilot-firefox-send": "Firefox Send",
                 "mozilla-accounts": "Mozilla accounts"}
@@ -46,7 +57,22 @@ def public(example: dict) -> dict:
     """What the page needs: the phrase, its correct translation, its direction and where it comes from."""
     out = {key: example[key] for key in ("pair_id", "direction", "text", "reference", "source", "url", "license")}
     out["product"] = example.get("product_name") or PRODUCT_NAME.get(example.get("product", ""), "Firefox Focus")
+    group = GROUPS[example.get("group", "focus")]
+    out["group"], out["group_note"] = group["label"], group["note"]
     return out
+
+
+def glossary_pairs(index: Path) -> dict[str, dict]:
+    """Dictionary use cases (evals/usecases.py): GATITOS words and CLDR emoji names, español → Kʼicheʼ."""
+    import sqlite3
+
+    if not index.exists():
+        return {}
+    db = sqlite3.connect(index)
+    rows = db.execute("SELECT record_id, source_text, target_text, source_name, license, url FROM entries "
+                      "WHERE direction = 'es-quc' AND source_name IN ('gatitos', 'cldr_quc')").fetchall()
+    return {rid: {"pair_id": rid, "source_text": src, "target_text": tgt, "source_name": name,
+                  "license": lic, "url": url, "direction": "es-quc"} for rid, src, tgt, name, lic, url in rows}
 
 
 def niche_pairs(processed: Path, tm_new: Path = TM_NEW) -> dict[str, dict]:
@@ -79,7 +105,7 @@ async def verify(pair_ids: list[str], rounds: int = ROUNDS) -> list[dict]:
         raise SystemExit("DAVID_URL is not set: the examples are checked against David's service in the cloud "
                          "(gcloud run services describe tzij-david --region europe-west4 --format='value(status.url)')")
     page = Page(s)
-    pairs = niche_pairs(s.processed_dir)
+    pairs = niche_pairs(s.processed_dir) | glossary_pairs(s.rag_index)
     kept = []
     for pid in pair_ids:
         pair = pairs.get(pid)
@@ -104,10 +130,14 @@ async def verify(pair_ids: list[str], rounds: int = ROUNDS) -> list[dict]:
         print(f"  {'ok   ' if ok else 'fuera'} {pair['source_text']!r:44} David «{outputs[-1][0]}» · Goliath «{outputs[-1][1]}»"
               f"  chrF++ David/Goliath {shown}", flush=True)
         if ok:
+            glossary = pair.get("source_name") in SOURCE_NAME
             kept.append({"pair_id": pid, "direction": "es-quc", "text": pair["source_text"],
                          "reference": pair["target_text"], "english": pair.get("ref", ""),
-                         "source": f"Mozilla Pontoon ({PRODUCT_NAME.get(pair['product'], pair['product'])})",
-                         "product": pair["product"], "product_name": PRODUCT_NAME.get(pair["product"], pair["product"]),
+                         "group": pair["source_name"] if glossary else "focus",
+                         "source": SOURCE_NAME[pair["source_name"]] if glossary
+                         else f"Mozilla Pontoon ({PRODUCT_NAME.get(pair['product'], pair['product'])})",
+                         "product": "" if glossary else pair["product"],
+                         "product_name": "" if glossary else PRODUCT_NAME.get(pair["product"], pair["product"]),
                          "url": pair["url"], "license": pair["license"],
                          "david_outputs": [o[0] for o in outputs], "goliath_outputs": [o[1] for o in outputs],
                          "david_chrf": [d for d, _ in runs], "goliath_chrf": [g for _, g in runs],
@@ -127,8 +157,10 @@ def main() -> int:
     dataset = latest_dataset(s.processed_dir)
     kept = asyncio.run(verify(ids))
     EXAMPLES.write_text(json.dumps({
-        "about": "Example buttons of the demo page: licensed español → Kʼicheʼ pairs from Mozilla Pontoon that David "
-                 "never saw (Firefox Focus from test_niche, newer strings from evals/tm_new.jsonl), translated {ROUNDS} times by David (GPU service in the cloud) and Goliath; every time David "
+        "about": "Example buttons of the demo page, by use case (only use cases David wins as a measured set): "
+                 "licensed español → Kʼicheʼ pairs from the Firefox Focus translation memory David never saw, and words "
+                 "of the dictionaries he consults (GATITOS, Unicode CLDR emoji names; evals/usecases_results.md). Each was "
+                 f"translated {ROUNDS} times by David (GPU service in the cloud) and Goliath; every time David "
                  f"had chrF++ >= {MIN_CHRF:g} against the reference and beat Goliath by >= {MIN_MARGIN:g}. Built by `make examples`.",
         "dataset": dataset.name if dataset else None, "david": s.david_model, "goliath": s.gemini_model,
         "min_chrf": MIN_CHRF, "min_margin": MIN_MARGIN,

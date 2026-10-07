@@ -83,10 +83,12 @@ export default function Translator() {
         timer = window.setTimeout(check, AWAKE_POLL_MS);
         return;
       }
-      fetch("/api/david").then((r) => r.json()).then((d) => Boolean(d.ready)).catch(() => false).then((ready) => {
+      fetch("/api/david").then((r) => r.json()).catch(() => ({ ready: false })).then((d) => {
         if (stopped) return;
-        setDavid((prev) => (prev.ready === ready ? prev : { ready, since: Date.now() }));
-        timer = window.setTimeout(check, ready ? AWAKE_POLL_MS : WAKE_POLL_MS);
+        const ready = Boolean(d.ready), resting = Boolean(d.resting), capped = Boolean(d.capped);
+        setDavid((prev) => (prev.ready === ready && prev.resting === resting && prev.capped === capped
+          ? prev : { ready, resting, capped, since: Date.now() }));
+        timer = window.setTimeout(check, ready || resting || capped ? AWAKE_POLL_MS : WAKE_POLL_MS);
       });
     };
     check();
@@ -109,7 +111,8 @@ export default function Translator() {
   }, [asked, reference, bothSettled, davidText, goliathText]);
 
   const busy = sides.david.phase === "busy" || sides.goliath.phase === "busy";
-  const locked = busy || !david.ready;
+  // Resting: a translation wakes David (it takes about 40 s); capped: Goliath still translates.
+  const locked = busy || !(david.ready || david.resting || david.capped);
   const status = davidStatus(david);
 
   function run(phrase: string, dir: Direction, example: Example | null) {
@@ -162,7 +165,10 @@ export default function Translator() {
   // Example buttons grouped by where their correct translation comes from.
   const groups = useMemo(() => {
     const by = new Map<string, Example[]>();
-    for (const ex of examples) by.set(ex.source, [...(by.get(ex.source) ?? []), ex]);
+    for (const ex of examples) {
+      const key = ex.group ?? ex.source;
+      by.set(key, [...(by.get(key) ?? []), ex]);
+    }
     return [...by.entries()];
   }, [examples]);
 
@@ -205,7 +211,10 @@ export default function Translator() {
 
         {groups.map(([source, items], i) => (
           <div className="tx__examples" key={source}>
-            <p className="tx__examples-label" id={`ex-label-${i}`}>Frases de {source.replace(/^Mozilla Pontoon \((.+)\)$/, "$1")}, con su traducción correcta:</p>
+            <p className="tx__examples-label" id={`ex-label-${i}`}>
+              {source}
+              {items[0].group_note && <span className="tx__examples-note"> · {items[0].group_note}</span>}
+            </p>
             <ul className="tx__chips" aria-labelledby={`ex-label-${i}`}>
               {(allExamples ? items : items.slice(0, FIRST_EXAMPLES)).map((ex) => (
                 <li key={ex.pair_id}>
@@ -287,8 +296,10 @@ export default function Translator() {
         </p>
         {examples.length > 0 && (
           <p>
-            Las frases de ejemplo son de Firefox Focus: David nunca las vio al entrenar, pero tiene la memoria de traducción
-            de los demás productos de Mozilla.
+            <b>Los ejemplos</b> son de los casos en que David le gana a Goliath en todo el conjunto medido, no solo en esa
+            frase: la interfaz de Firefox Focus (David nunca la vio, pero tiene la memoria de traducción de los demás
+            productos de Mozilla) y palabras de los diccionarios que David consulta y Goliath no tiene. Cada botón dice
+            la traducción correcta, hecha por personas.
           </p>
         )}
       </footer>

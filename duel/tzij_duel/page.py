@@ -21,7 +21,7 @@ import time
 from datetime import date
 from typing import Any, Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -31,6 +31,7 @@ from duel_core import chrf_pp
 from .david_app import David
 from .david_app import Translation as DavidRequest
 from .examples import load_examples, public
+from .limits import Limits
 from .remote import DavidUnavailable, RemoteDavid
 from .settings import Settings, david_usd_per_s, gemini_price_on, get_settings
 from .variants import Variant, goliath_variant, translate
@@ -73,9 +74,15 @@ class InProcessDavid:
         return self.david.evidence.evidence(text, direction, outputs)
 
 
+DAVID_CAP_TEXT = "Por hoy David ya se encendió las veces que esta página permite. Vuelve mañana."
+GEMINI_CAP_TEXT = "Por hoy se acabaron las traducciones de Goliath en esta página. David sigue traduciendo."
+
+
 class Page:
-    def __init__(self, settings: Settings, *, david: Any = None, goliath: Variant | None = None) -> None:
+    def __init__(self, settings: Settings, *, david: Any = None, goliath: Variant | None = None,
+                 limits: Limits | None = None) -> None:
         self.settings = settings
+        self.limits = limits or Limits()
         self.david = david or (RemoteDavid(settings.david_url) if settings.david_url else InProcessDavid(settings))
         self.goliath = goliath or goliath_variant(settings)
         self._references: dict[tuple[str, str], dict | None] = {}
@@ -94,9 +101,13 @@ class Page:
 
     async def side(self, name: Side, text: str, direction: str, reference: str | None) -> dict[str, Any]:
         t0 = time.perf_counter()
+        if name == "david" and not self.limits.start_check():
+            return {"status": "error", "text": "", "latency_ms": None, "closeness": None, "cost": None,
+                    "error": DAVID_CAP_TEXT, "model": self.settings.david_model}
         if name == "david":
             try:
                 r = await self.david.translate(text, direction)
+                self.limits.end_check(r.get("status") == "ok")
             except DavidUnavailable as exc:
                 r = {"status": "error", "text": "", "error": str(exc)[:200]}
             status, out, error, model = r["status"], r.get("text", ""), r.get("error"), r.get("model", self.settings.david_model)
@@ -104,6 +115,9 @@ class Page:
             gpu_s = round((r.get("latency_ms") or 0) / 1000, 2)
             cost = {"usd": round(gpu_s * david_usd_per_s(self.settings), 7), "gpu_seconds": gpu_s,
                     "usd_per_hour": round(david_usd_per_s(self.settings) * 3600, 2)}
+        elif not self.limits.gemini_call():
+            return {"status": "error", "text": "", "latency_ms": None, "closeness": None, "cost": None,
+                    "error": GEMINI_CAP_TEXT, "model": self.settings.gemini_model}
         else:
             g = await translate(self.goliath, text, direction, retriever=None, online=True)
             status, out, error, model = g.status, g.text, g.error, g.model
@@ -153,16 +167,35 @@ def create_app(settings: Settings | None = None, page: Page | None = None) -> Fa
                 "david_usd_per_hour": round(david_usd_per_s(settings) * 3600, 2),
                 "gemini_usd_per_m": {"input": inp, "output": outp}}
 
+    def client_ip(request: Request) -> str:
+        # Cloud Run puts the visitor's address first in X-Forwarded-For.
+        forwarded = request.headers.get("x-forwarded-for", "")
+        return forwarded.split(",")[0].strip() or (request.client.host if request.client else "?")
+
     @app.get("/api/david")
-    async def david_ready() -> dict[str, Any]:
-        return {"ready": await svc.david.health()}
+    async def david_ready(request: Request) -> dict[str, Any]:
+        ip = client_ip(request)
+        if not svc.limits.allow(ip, "check"):
+            raise HTTPException(429, "Demasiadas consultas seguidas: espera un momento.")
+        if not svc.limits.keep_alive(ip):
+            # A page left open: stop keeping David awake. The next translation wakes him again.
+            return {"ready": False, "resting": True}
+        if not svc.limits.start_check():
+            return {"ready": False, "capped": True}
+        ready = await svc.david.health()
+        svc.limits.end_check(ready)
+        return {"ready": ready}
 
     @app.get("/api/examples")
     async def examples() -> list[dict]:
         return [public(e) for e in load_examples()]
 
     @app.post("/api/translate")
-    async def translate_text(body: Translation) -> dict[str, Any]:
+    async def translate_text(body: Translation, request: Request) -> dict[str, Any]:
+        ip = client_ip(request)
+        if not svc.limits.allow(ip, "translate"):
+            raise HTTPException(429, "Demasiadas traducciones seguidas: espera un minuto y vuelve a intentar.")
+        svc.limits.translated(ip)
         return await svc.translate_text(body)
 
     @app.post("/api/evidence")
