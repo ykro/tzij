@@ -39,8 +39,10 @@ export DAVID_SERVICE="${DAVID_SERVICE:-${APP}-david}"
 export PAGE_SERVICE="${PAGE_SERVICE:-${APP}}"
 
 # dotenv <KEY>: a value from .env (or .env.example), for the few settings the deploy scripts need.
+# A key missing from an older .env comes from .env.example.
 dotenv() {
-  local root; root="$(cd "$INFRA_DIR/.." && pwd)"
-  local file="$root/.env"; [ -f "$file" ] || file="$root/.env.example"
-  sed -n -E "s/^$1=(.*)$/\1/p" "$file" | tail -1
+  local root value; root="$(cd "$INFRA_DIR/.." && pwd)"
+  [ -f "$root/.env" ] && value="$(sed -n -E "s/^$1=(.*)$/\1/p" "$root/.env" | tail -1)"
+  [ -n "${value:-}" ] || value="$(sed -n -E "s/^$1=(.*)$/\1/p" "$root/.env.example" | tail -1)"
+  printf '%s\n' "$value"
 }

@@ -7,7 +7,8 @@ compiles in a cache directory; with that cache in place the same three steps too
 
 infra/20-david.sh runs this file as a Cloud Run Job on an L4 with the freshly built image: it starts
 Ollama with an empty cache, does everything David does (load both models, retrieval, MBR
-translations of short and long phrases in both directions), and uploads the cache to CACHE_URI.
+translations of short and long phrases in both directions, the page's examples one by one and
+several at once), and uploads the cache to CACHE_URI.
 The final image carries that cache (david/Dockerfile.cache). If Cloud Run's GPU driver changes, CUDA
 ignores the stale entries and compiles again: slower, never wrong.
 """
@@ -21,6 +22,7 @@ import subprocess
 import sys
 import tarfile
 import time
+from pathlib import Path
 
 sys.path[:0] = ["/app", "/app/duel"]
 
@@ -70,6 +72,18 @@ async def main() -> None:
         result = await translate(variant, phrase, direction, retriever=retriever, online=True)
         timings[f"translation_{i}"] = time.perf_counter() - t
         print(f"  {direction} «{phrase}» -> «{result.text}» ({timings[f'translation_{i}']:.1f} s)", flush=True)
+    # The page's examples, one at a time and then several at once (other batch sizes, other kernels).
+    examples = json.loads((Path("/app/duel/examples.json")).read_text(encoding="utf-8"))["examples"]
+    t = time.perf_counter()
+    for ex in examples:
+        await translate(variant, ex["text"], ex["direction"], retriever=retriever, online=True)
+    timings["examples"] = time.perf_counter() - t
+    for size in (2, 4, 8):
+        t = time.perf_counter()
+        batch = [examples[i % len(examples)] for i in range(size)]
+        await asyncio.gather(*(translate(variant, ex["text"], ex["direction"], retriever=retriever, online=True)
+                               for ex in batch))
+        timings[f"together_{size}"] = time.perf_counter() - t
     ollama.terminate()
     ollama.wait()
     size = sum(os.path.getsize(os.path.join(d, f)) for d, _, fs in os.walk(CACHE) for f in fs)
