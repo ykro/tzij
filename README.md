@@ -19,6 +19,12 @@ La demo es una sola página pública en Cloud Run (`make page-url`): escribes un
 4. **Un nicho pre-registrado:** con una memoria de traducción que Goliath no tiene, David gana por +8.5 chrF++.
 5. **Un modelo pequeño en la nube:** David, su índice y su decodificación en una sola imagen, en una GPU de Cloud Run que se enciende al abrir la página y se apaga sola.
 
+## Taller / Codelab de 60 Minutos (En Vivo — 100% Gemma 4)
+
+- **Codelab Interactivo (Firebase Hosting):** [https://david-vs-goliath-2027.web.app](https://david-vs-goliath-2027.web.app)
+- **App del Codelab funcionando en vivo (`SoporteLocal` con `gemma4:e2b` sobre Ollama en Cloud Run):** [https://soporte-local-611681112050.us-central1.run.app](https://soporte-local-611681112050.us-central1.run.app)
+- **Código ejecutable y pruebas del Codelab:** [`codelab/demo-app/`](codelab/demo-app/) (`node --test codelab/demo-app/duel.test.mjs`)
+
 ## La demo: la página
 
 | | David | Goliath |

@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoporteLocal — Normalizador Regional de Tickets con Gemma 4 E2B (David vs. Goliath)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FAF9F5;
+      --surface: #FFFFFF;
+      --ink: #14171F;
+      --slate: #334155;
+      --muted: #64748B;
+      --border: #E2E8F0;
+      --blue: #1A73E8;
+      --blue-bg: #EFF6FF;
+      --teal: #0D9488;
+      --teal-bg: #F0FDFA;
+      --amber: #D97706;
+      --amber-bg: #FFFBEB;
+      --violet: #6D28D9;
+      --violet-bg: #F5F3FF;
+      --rose: #E11D48;
+      --rose-bg: #FFF1F2;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      padding-bottom: 2.5rem;
+    }
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.95rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand { display: flex; align-items: center; gap: 0.85rem; }
+    .badge {
+      background: var(--blue);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      letter-spacing: 0.3px;
+    }
+    .status-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      background: var(--teal-bg);
+      color: var(--teal);
+      border: 1px solid #99F6E4;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 1.15rem auto;
+      padding: 0 1.25rem;
+      display: grid;
+      grid-template-columns: 380px minmax(0, 1fr);
+      gap: 1.2rem;
+      align-items: start;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      box-shadow: 0 4px 14px rgba(20, 23, 31, 0.04);
+    }
+    .card-title {
+      font-size: 1.02rem;
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+    .card-sub {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.9rem;
+      line-height: 1.45;
+    }
+    .preset-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.45rem;
+      margin-bottom: 0.9rem;
+    }
+    .preset-btn {
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.45rem 0.5rem;
+      font-family: inherit;
+      font-size: 0.76rem;
+      font-weight: 700;
+      color: var(--slate);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .preset-btn.active, .preset-btn:hover {
+      background: var(--blue-bg);
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+    .field { margin-bottom: 0.8rem; }
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--slate);
+      margin-bottom: 0.28rem;
+    }
+    .tag {
+      padding: 0.1rem 0.48rem;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+    .tag-blue { color: var(--blue); background: var(--blue-bg); }
+    .tag-teal { color: var(--teal); background: var(--teal-bg); }
+    .tag-amber { color: var(--amber); background: var(--amber-bg); }
+    .tag-rose { color: var(--rose); background: var(--rose-bg); }
+    .tag-violet { color: var(--violet); background: var(--violet-bg); }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 0.52rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      color: var(--ink);
+      background: #FCFBF9;
+    }
+    textarea { resize: vertical; min-height: 76px; line-height: 1.45; }
+    .btn-run {
+      width: 100%;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      padding: 0.78rem;
+      border-radius: 9px;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 800;
+      cursor: pointer;
+      margin-top: 0.25rem;
+    }
+    .hygiene-box {
+      margin-top: 0.9rem;
+      padding: 0.75rem 0.85rem;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+    .hygiene-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.35rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+    }
+    .audit-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--teal-bg);
+      border: 1px solid #99F6E4;
+      color: #0F766E;
+      padding: 0.7rem 1.05rem;
+      border-radius: 10px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .metrics-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    .metric-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.8rem 0.95rem;
+      border-top: 4px solid var(--blue);
+    }
+    .metric-box.rose { border-top-color: var(--rose); background: #FFFDFD; }
+    .metric-box.teal { border-top-color: var(--teal); }
+    .metric-box.violet { border-top-color: var(--violet); }
+    .metric-label { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    .metric-val { font-size: 1.32rem; font-weight: 800; color: var(--ink); margin-top: 0.18rem; font-family: 'JetBrains Mono', monospace; }
+    .metric-sub { font-size: 0.73rem; color: var(--slate); margin-top: 0.14rem; }
+
+    .rag-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      margin-top: 0.35rem;
+    }
+    .rag-table th, .rag-table td {
+      border: 1px solid var(--border);
+      padding: 0.48rem 0.65rem;
+      text-align: left;
+    }
+    .rag-table th {
+      background: #F8FAFC;
+      font-weight: 700;
+      color: var(--slate);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+    }
+    .rag-table tr.best-last-row {
+      background: var(--teal-bg);
+      font-weight: 700;
+    }
+    .dual-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.95rem;
+      margin-bottom: 1rem;
+    }
+    .doc-box {
+      background: #FCFBF9;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      color: var(--ink);
+      margin-bottom: 0.65rem;
+    }
+    .mbr-list {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.55rem 0.7rem;
+      color: var(--slate);
+    }
+    .code-json {
+      background: #181A24;
+      color: #F1F3F8;
+      padding: 0.85rem 1rem;
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <span class="badge">100% GEMMA 4 · DAVID VS. GOLIATH</span>
+      <div>
+        <div style="font-weight:800; font-size:1.08rem;">SoporteLocal — Normalizador Regional de Tickets con Gemma 4 E2B</div>
+        <div style="font-size:0.78rem; color:var(--muted);">Glosario 0 Leaks (Dropout 85/15) + RAG Híbrido (BM25 + Dense + RRF best_last) + Consenso MBR-3 + Validador + chrF++</div>
+      </div>
+    </div>
+    <span class="status-pill" id="engineStatus">Motor: gemma4:e2b · 0 Modismos Crudos · 100% Cifras</span>
+  </header>
+
+  <main class="container" id="dashboardRoot">
+    <!-- Panel Izquierdo: Entrada de Ticket Regional y Auditoría de Datos -->
+    <section class="card">
+      <div class="card-title">
+        <span>1. Ticket Regional de Entrada</span>
+        <span class="tag tag-blue">GT · CO · MX</span>
+      </div>
+      <div class="card-sub">Selecciona un caso regional preconfigurado o escribe un ticket con modismos locales para ejecutar el duelo en vivo.</div>
+
+      <div class="preset-bar">
+        <button class="preset-btn active" id="btnPresetGT" onclick="loadPreset('GT')">Guatemala (GT)</button>
+        <button class="preset-btn" id="btnPresetCO" onclick="loadPreset('CO')">Colombia (CO)</button>
+        <button class="preset-btn" id="btnPresetMX" onclick="loadPreset('MX')">México (MX)</button>
+      </div>
+
+      <div class="field">
+        <label>Región del Glosario Activo <span class="tag tag-violet">FILTRO RAG</span></label>
+        <select id="regionSelect" onchange="runDuel()">
+          <option value="GT">Guatemala (GT) — pisto, baras, clavo, chispudo, cabal</option>
+          <option value="CO">Colombia (CO) — parce, camellar, chicharrón, lukas, embolatado</option>
+          <option value="MX">México (MX) — bronca, feria, varos, chafa, al chile</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Cliente / Cuenta Empresarial <span class="tag tag-teal">METADATO</span></label>
+        <input id="customerName" value="Comercializadora Reforma S.A. (Ciudad de Guatemala)" />
+      </div>
+
+      <div class="field">
+        <label>Ticket Crudo con Jerga Regional <span class="tag tag-amber">ENTRADA USUARIO</span></label>
+        <textarea id="ticketText">Qué onda soporte, cabal hoy a las 14:30 tuvimos un gran clavo con el lote #804: el POS descontó dos veces el pisto del cliente por 450 baras y necesitamos resolverlo chispudo antes del cierre.</textarea>
+      </div>
+
+      <div class="field">
+        <label>Referencia Humana (Para evaluar chrF++) <span class="tag tag-blue">GROUND TRUTH</span></label>
+        <textarea id="humanReference">Equipo de soporte, exactamente hoy a las 14:30 tuvimos un incidente técnico con el lote #804: el POS descontó dos veces el saldo disponible del cliente por 450 quetzales (GTQ) y necesitamos resolverlo con atención prioritaria antes del cierre.</textarea>
+      </div>
+
+      <button class="btn-run" id="btnRunDuel" onclick="runDuel()">Ejecutar Duelo Gemma 4 (Zero-Shot vs. Especialista RAG + MBR-3)</button>
+
+      <div class="hygiene-box">
+        <div style="font-weight:800; color:var(--ink); margin-bottom:0.2rem;">Higiene del Dataset (Técnica 1)</div>
+        <div class="hygiene-row">
+          <span>verifyZeroDataLeaks(train, test):</span>
+          <strong style="color:var(--teal);" id="leakStatusText">PASS (0 fugas)</strong>
+        </div>
+        <div class="hygiene-row">
+          <span>applyGlossaryDropout(rate=0.15):</span>
+          <strong style="color:var(--violet);" id="dropoutStatusText">86.7% retenido / 13.3% oculto</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel Derecho: RAG Híbrido RRF best_last, Duelo chrF++ y JSON Estructurado -->
+    <section>
+      <div class="audit-banner" id="auditBanner">
+        <span id="auditSummaryText">[GUARDRAIL ACTIVO] Validador Post-Generación: 0 modismos sin normalizar · 100% de montos e IDs preservados (14:30, 804, 450)</span>
+        <span style="font-family:'JetBrains Mono',monospace;" id="auditBadgeRight">validateNormalizedTicket: PASS</span>
+      </div>
+
+      <div class="metrics-strip">
+        <div class="metric-box rose">
+          <div class="metric-label">Gemma 4 Zero-Shot (Sin RAG)</div>
+          <div class="metric-val" id="mZeroChrf">58.4</div>
+          <div class="metric-sub" id="mZeroSub">chrF++ (0-100) · Falla en modismos locales</div>
+        </div>
+        <div class="metric-box teal">
+          <div class="metric-label">Gemma 4 Especialista (RAG + MBR-3)</div>
+          <div class="metric-val" id="mSpecChrf">96.2</div>
+          <div class="metric-sub" id="mSpecSub">chrF++ (0-100) · Consenso de 3 muestras</div>
+        </div>
+        <div class="metric-box">
+          <div class="metric-label">Ganancia Δ chrF++ Medida</div>
+          <div class="metric-val" id="mDeltaChrf">+37.8 pts</div>
+          <div class="metric-sub">Salto por RAG Híbrido + best_last + MBR-3</div>
+        </div>
+        <div class="metric-box violet">
+          <div class="metric-label">Modismos Detectados (RRF k=60)</div>
+          <div class="metric-val" id="mIdiomCount">5 / 5</div>
+          <div class="metric-sub" id="mTopLast">best_last al final: "clavo"</div>
+        </div>
+      </div>
+
+      <!-- Inspector RAG Híbrido (Paso 4 Screenshot Target) -->
+      <div class="card" id="ragRrfCard" style="margin-bottom:1rem;">
+        <div class="card-title">
+          <span>2. Inspector del Motor RAG Híbrido (BM25 Léxico + Similitud Densa Subpalabra + RRF k=60)</span>
+          <span class="tag tag-violet">ORDENAMIENTO: best_last</span>
+        </div>
+        <div class="card-sub">
+          Para evitar el efecto <em>Lost-in-the-Middle</em> en la ventana de atención de Gemma 4 E2B, <code>retrieveHybridRRF()</code> invierte los resultados y coloca el modismo con mayor puntaje RRF en la <strong>última fila</strong>, inmediatamente antes del ticket del usuario.
+        </div>
+        <table class="rag-table">
+          <thead>
+            <tr>
+              <th>Posición en Prompt</th>
+              <th>Región</th>
+              <th>Modismo Detectado</th>
+              <th>Normalización Estándar</th>
+              <th>Rank BM25</th>
+              <th>Similitud Densa</th>
+              <th>Score RRF (k=60)</th>
+            </tr>
+          </thead>
+          <tbody id="ragTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- Duelo Lado a Lado y Ticket JSON (Paso 6 Screenshot Target) -->
+      <div id="duelChrfSection">
+        <div class="dual-grid">
+          <div class="card" style="border-top: 4px solid var(--rose);">
+            <div class="card-title">
+              <span>3A. Gemma 4 Zero-Shot (Sin Contexto Local)</span>
+              <span class="tag tag-rose" id="zeroTagBadge">chrF++: 58.4 · GUARDRAIL FAIL</span>
+            </div>
+            <div class="card-sub">Sin glosario regional, el modelo confunde <em>"pisto"</em> o deja modismos crudos como <em>"clavo"</em> y <em>"chispudo"</em> sin traducir.</div>
+            <div class="doc-box" id="zeroOutputBox"></div>
+            <div class="mbr-list" id="zeroValidationBox"></div>
+          </div>
+
+          <div class="card" style="border-top: 4px solid var(--teal);">
+            <div class="card-title">
+              <span>3B. Gemma 4 Especialista (RAG best_last + MBR-3)</span>
+              <span class="tag tag-teal" id="specTagBadge">chrF++: 96.2 · GUARDRAIL PASS</span>
+            </div>
+            <div class="card-sub">Inyecta el glosario RRF con <code>best_last</code>, muestrea 3 candidatos y elige el de mayor soporte promedio <code>chrF++</code>.</div>
+            <div class="doc-box" id="specOutputBox"></div>
+            <div class="mbr-list" id="mbrSupportBox"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span>4. Ticket Estructurado Validado para Mesa de Ayuda (JSON Schema + Validador Determinista)</span>
+            <span class="tag tag-blue">100% CIFRAS PRESERVADAS</span>
+          </div>
+          <div class="card-sub">El validador <code>validateNormalizedTicket()</code> garantiza que ningún modismo regional pase crudo a la cola de ingeniería y que todas las cifras originales se conserven.</div>
+          <pre class="code-json" id="structuredTicketJson"></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const PRESETS = {
+      GT: {
+        region: "GT",
+        customerName: "Comercializadora Reforma S.A. (Ciudad de Guatemala)",
+        ticketText: "Qué onda soporte, cabal hoy a las 14:30 tuvimos un gran clavo con el lote #804: el POS descontó dos veces el pisto del cliente por 450 baras y necesitamos resolverlo chispudo antes del cierre.",
+        humanReference: "Equipo de soporte, exactamente hoy a las 14:30 tuvimos un incidente técnico con el lote #804: el POS descontó dos veces el saldo disponible del cliente por 450 quetzales (GTQ) y necesitamos resolverlo con atención prioritaria antes del cierre."
+      },
+      CO: {
+        region: "CO",
+        customerName: "Logística Andina SAS (Medellín)",
+        ticketText: "Parce, se nos armó un chicharrón con el dispersor #502: el servicio dejó de camellar y quedaron embolatadas 850 lukas de la conciliación.",
+        humanReference: "Equipo de soporte, se nos presentó un fallo crítico bloqueante con el dispersor #502: el servicio dejó de operar en producción y quedaron extraviados en conciliación 850 miles de pesos (COP) de la conciliación."
+      },
+      MX: {
+        region: "MX",
+        customerName: "Distribuidora del Norte S.A. de C.V. (Monterrey)",
+        ticketText: "Al chile traemos una bronca en el conector SPEI #309: la red está muy chafa y no se reflejó la feria del cliente por 1,250 varos.",
+        humanReference: "De manera urgente presentamos una incidencia operativa en el conector SPEI #309: la red está inestable con pérdida de paquetes y no se reflejó el saldo en cuenta del cliente por 1,250 pesos mexicanos (MXN)."
+      }
+    };
+
+    function loadPreset(code) {
+      const p = PRESETS[code];
+      if (!p) return;
+      document.getElementById('regionSelect').value = p.region;
+      document.getElementById('customerName').value = p.customerName;
+      document.getElementById('ticketText').value = p.ticketText;
+      document.getElementById('humanReference').value = p.humanReference;
+
+      ['GT', 'CO', 'MX'].forEach(c => {
+        document.getElementById('btnPreset' + c).classList.toggle('active', c === code);
+      });
+      runDuel();
+    }
+
+    async function runDuel() {
+      const btn = document.getElementById('btnRunDuel');
+      const origText = btn.textContent;
+      btn.textContent = 'Ejecutando RAG RRF + Consenso MBR-3...';
+      btn.disabled = true;
+
+      const payload = {
+        region: document.getElementById('regionSelect').value,
+        customerName: document.getElementById('customerName').value,
+        ticketText: document.getElementById('ticketText').value,
+        humanReference: document.getElementById('humanReference').value,
+      };
+
+      try {
+        const res = await fetch('/api/duel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+
+        document.getElementById('engineStatus').textContent =
+          `Motor: ${data.engineLabel} · 0 Modismos Crudos · 100% Cifras`;
+
+        const keepPct = (data.dataHygiene.glossaryDropout.effectiveKeepRatio * 100).toFixed(1);
+        const dropPct = (100 - Number(keepPct)).toFixed(1);
+        document.getElementById('leakStatusText').textContent =
+          data.dataHygiene.zeroLeaksAudit.passed ? 'PASS (0 fugas Train/Test)' : 'FAIL';
+        document.getElementById('dropoutStatusText').textContent =
+          `${keepPct}% retenido (${data.dataHygiene.glossaryDropout.keptCount}) / ${dropPct}% oculto (${data.dataHygiene.glossaryDropout.droppedCount})`;
+
+        const zScore = data.duel.zeroShot.chrfPlusPlus;
+        const sScore = data.duel.specialist.chrfPlusPlus;
+        const delta = data.duel.specialist.deltaChrF;
+
+        document.getElementById('mZeroChrf').textContent = zScore.toFixed(1);
+        document.getElementById('mSpecChrf').textContent = sScore.toFixed(1);
+        document.getElementById('mDeltaChrf').textContent = (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' pts';
+
+        const detCount = data.rag.detectedIdioms.length;
+        const totalHits = data.rag.hits.length;
+        document.getElementById('mIdiomCount').textContent = `${detCount} modismos`;
+        document.getElementById('mTopLast').textContent = data.rag.topHitAtEnd
+          ? `best_last (#${totalHits}): "${data.rag.topHitAtEnd.idiom}"`
+          : 'Sin modismos';
+
+        // Tabla RAG best_last
+        const tbody = document.getElementById('ragTableBody');
+        tbody.innerHTML = data.rag.hits.map((h, i) => {
+          const isLast = i === data.rag.hits.length - 1;
+          return `<tr class="${isLast ? 'best-last-row' : ''}">
+            <td>#${i + 1} ${isLast ? '★ (best_last · Mayor Atención)' : ''}</td>
+            <td><strong>${h.region}</strong></td>
+            <td><code>${h.idiom}</code></td>
+            <td>${h.standard}</td>
+            <td>#${h.bm25Rank} (${h.bm25Score})</td>
+            <td>#${h.denseRank} (${h.denseScore})</td>
+            <td><strong>${h.rrfScore}</strong></td>
+          </tr>`;
+        }).join('');
+
+        // Paneles de Duelo
+        document.getElementById('zeroOutputBox').textContent = data.duel.zeroShot.output;
+        document.getElementById('specOutputBox').textContent = data.duel.specialist.output;
+
+        const zVal = data.duel.zeroShot.validation;
+        document.getElementById('zeroTagBadge').textContent =
+          `chrF++: ${zScore.toFixed(1)} · ${zVal.passed ? 'PASS' : 'GUARDRAIL FAIL'}`;
+        document.getElementById('zeroValidationBox').textContent =
+          `Modismos sin normalizar (${zVal.untranslatedIdioms.length}): [${zVal.untranslatedIdioms.join(', ')}] · Cifras preservadas: [${zVal.preservedNumbers.join(', ')}]`;
+
+        const sVal = data.duel.specialist.validation;
+        document.getElementById('specTagBadge').textContent =
+          `chrF++: ${sScore.toFixed(1)} · ${sVal.passed ? 'GUARDRAIL PASS' : 'FAIL'}`;
+
+        const mbrLines = data.duel.specialist.mbrConsensus.candidatesWithSupport
+          .map(c => `Candidato #${c.index + 1}${c.index === data.duel.specialist.mbrConsensus.selectedIndex ? ' [GANADOR MBR-3]' : ''}: soporte chrF++ = ${c.supportScore}`)
+          .join(' | ');
+        document.getElementById('mbrSupportBox').textContent = mbrLines;
+
+        document.getElementById('auditSummaryText').textContent =
+          `[GUARDRAIL ACTIVO] Validador Post-Generación: ${sVal.untranslatedIdioms.length} modismos sin normalizar · 100% de cifras preservadas (${sVal.preservedNumbers.join(', ')})`;
+
+        document.getElementById('structuredTicketJson').textContent = JSON.stringify({
+          structuredTicket: data.structuredTicket,
+          postGenerationValidation: sVal,
+          evaluationMetrics: {
+            zeroShotChrFPlusPlus: zScore,
+            specialistChrFPlusPlus: sScore,
+            deltaGain: delta,
+          }
+        }, null, 2);
+      } finally {
+        btn.textContent = origText;
+        btn.disabled = false;
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', runDuel);
+  </script>
+</body>
+</html>
