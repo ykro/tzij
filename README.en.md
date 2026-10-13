@@ -19,11 +19,9 @@ The Spanish [README.md](README.md) is the primary document; this is a faithful E
 4. **A pre-registered niche:** with a translation memory Goliath lacks, David wins by +8.5 chrF++.
 5. **A small model in the cloud:** David, his index and his decoding in one image, on a Cloud Run GPU that starts when the page opens and turns itself off.
 
-## 60-Minute Interactive Codelab (Live — 100% Gemma 4)
+## Hands-on codelab
 
-- **Interactive Codelab (Firebase Hosting):** [https://david-vs-goliath-2027.web.app](https://david-vs-goliath-2027.web.app)
-- **Live Codelab App (`SoporteLocal` running `gemma4:e2b` on Ollama on Cloud Run):** [https://soporte-local-611681112050.us-central1.run.app](https://soporte-local-611681112050.us-central1.run.app)
-- **Runnable Codelab code and test suite:** [`codelab/demo-app/`](codelab/demo-app/) (`node --test codelab/demo-app/duel.test.mjs`)
+The codelab for this talk is “Train your own David” ([codelabs-2027/entrena-tu-david](https://github.com/ykro/codelabs-2027/tree/main/entrena-tu-david)), in Spanish: you fine-tune Gemma 4 E2B with LoRA on Colab and measure it against the base model. It runs in the browser with a Google account and ends with something that works.
 
 ## The demo: the page
 

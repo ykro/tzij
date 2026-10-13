@@ -19,11 +19,9 @@ La demo es una sola página pública en Cloud Run (`make page-url`): escribes un
 4. **Un nicho pre-registrado:** con una memoria de traducción que Goliath no tiene, David gana por +8.5 chrF++.
 5. **Un modelo pequeño en la nube:** David, su índice y su decodificación en una sola imagen, en una GPU de Cloud Run que se enciende al abrir la página y se apaga sola.
 
-## Taller / Codelab de 60 Minutos (En Vivo — 100% Gemma 4)
+## Taller práctico
 
-- **Codelab Interactivo (Firebase Hosting):** [https://david-vs-goliath-2027.web.app](https://david-vs-goliath-2027.web.app)
-- **App del Codelab funcionando en vivo (`SoporteLocal` con `gemma4:e2b` sobre Ollama en Cloud Run):** [https://soporte-local-611681112050.us-central1.run.app](https://soporte-local-611681112050.us-central1.run.app)
-- **Código ejecutable y pruebas del Codelab:** [`codelab/demo-app/`](codelab/demo-app/) (`node --test codelab/demo-app/duel.test.mjs`)
+El taller de esta charla es «Entrena a tu propio David» ([codelabs-2027/entrena-tu-david](https://github.com/ykro/codelabs-2027/tree/main/entrena-tu-david)): ajustas Gemma 4 E2B con LoRA en Colab y lo comparas con el modelo base. Se sigue desde el navegador, con una cuenta de Google, y termina con algo que funciona.
 
 ## La demo: la página
 
