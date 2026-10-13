@@ -19,6 +19,10 @@ The Spanish [README.md](README.md) is the primary document; this is a faithful E
 4. **A pre-registered niche:** with a translation memory Goliath lacks, David wins by +8.5 chrF++.
 5. **A small model in the cloud:** David, his index and his decoding in one image, on a Cloud Run GPU that starts when the page opens and turns itself off.
 
+## Slides
+
+This demo is part of the talk “David vs. Goliath”. The slides (in Spanish) are on Google Slides: [David vs. Goliath](https://docs.google.com/presentation/d/1MddCAi51juUAEXbbiUyXwL6CqYzId0ELFSBwzREUW6U/edit?usp=sharing).
+
 ## Hands-on codelab
 
 The codelab for this talk is “Train your own David” ([codelabs-2027/entrena-tu-david](https://github.com/ykro/codelabs-2027/tree/main/entrena-tu-david)), in Spanish: you fine-tune Gemma 4 E2B with LoRA on Colab and measure it against the base model. It runs in the browser with a Google account and ends with something that works.
